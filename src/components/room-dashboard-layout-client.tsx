@@ -35,7 +35,7 @@ const roomNavItems = [
 
 export function RoomDashboardLayoutClient({ room, children }: RoomDashboardLayoutClientProps) {
   const pathname = usePathname();
-  const currentPath = pathname.split('/').pop() || 'dashboard';
+  const basePath = `/dashboard/rooms/${room.id}`;
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
@@ -53,11 +53,14 @@ export function RoomDashboardLayoutClient({ room, children }: RoomDashboardLayou
           </div>
           <div className="flex items-center gap-1 overflow-x-auto pb-1">
             {roomNavItems.map(item => {
-              const isActive = currentPath === item.href || (item.href === 'dashboard' && currentPath === '');
+              const href = item.href === 'dashboard' ? basePath : `${basePath}/${item.href}`;
+              const isActive = item.href === 'dashboard'
+                ? pathname === basePath
+                : pathname.startsWith(`${basePath}/${item.href}`);
               return (
                 <Link
                   key={item.name}
-                  href={`/dashboard/rooms/${room.id}/${item.href}`}
+                  href={href}
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap',
                     isActive

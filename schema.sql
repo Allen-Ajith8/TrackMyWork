@@ -793,3 +793,143 @@ CREATE TRIGGER trigger_add_creator_as_tl
 -- ============================================================================
 -- END OF SCHEMA
 -- ============================================================================
+
+-- ============================================================================
+-- PERMISSIONS & PROFILE BOOTSTRAP
+-- ============================================================================
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO service_role;
+
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated, service_role;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT SELECT ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT ALL PRIVILEGES ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT USAGE, SELECT ON SEQUENCES TO authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT EXECUTE ON FUNCTIONS TO authenticated, service_role;
+
+-- Users can create their own profile row (needed for OAuth sign-ups).
+DROP POLICY IF EXISTS "users_insert_own" ON public.users;
+CREATE POLICY "users_insert_own" ON public.users
+    FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- Create a public.users row automatically for every new auth user.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    INSERT INTO public.users (id, email, username, display_name, avatar_url)
+    VALUES (
+        NEW.id,
+        COALESCE(NEW.email, ''),
+        NEW.raw_user_meta_data->>'username',
+        COALESCE(
+            NEW.raw_user_meta_data->>'display_name',
+            NEW.raw_user_meta_data->>'full_name',
+            NEW.raw_user_meta_data->>'name'
+        ),
+        COALESCE(
+            NEW.raw_user_meta_data->>'avatar_url',
+            NEW.raw_user_meta_data->>'picture'
+        )
+    )
+    ON CONFLICT (id) DO NOTHING;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Backfill profiles for users created before the trigger existed.
+INSERT INTO public.users (id, email, username, display_name, avatar_url)
+SELECT
+    u.id,
+    COALESCE(u.email, ''),
+    u.raw_user_meta_data->>'username',
+    COALESCE(
+        u.raw_user_meta_data->>'display_name',
+        u.raw_user_meta_data->>'full_name',
+        u.raw_user_meta_data->>'name'
+    ),
+    COALESCE(
+        u.raw_user_meta_data->>'avatar_url',
+        u.raw_user_meta_data->>'picture'
+    )
+FROM auth.users u
+ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    display_name = COALESCE(users.display_name, EXCLUDED.display_name),
+    avatar_url = COALESCE(users.avatar_url, EXCLUDED.avatar_url),
+    updated_at = NOW();
+
+-- Storage policies (artifacts is private, avatars is public).
+DROP POLICY IF EXISTS "Artifacts upload" ON storage.objects;
+CREATE POLICY "Artifacts upload" ON storage.objects
+    FOR INSERT TO authenticated
+    WITH CHECK (bucket_id = 'artifacts' AND auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Artifacts read own room" ON storage.objects;
+CREATE POLICY "Artifacts read own room" ON storage.objects
+    FOR SELECT TO authenticated
+    USING (
+        bucket_id = 'artifacts'
+        AND (storage.foldername(name))[1] IN (
+            SELECT id::text FROM public.rooms
+            WHERE public.is_room_member(auth.uid(), id)
+        )
+    );
+
+DROP POLICY IF EXISTS "Avatar upload" ON storage.objects;
+CREATE POLICY "Avatar upload" ON storage.objects
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        bucket_id = 'avatars'
+        AND auth.uid()::text = (storage.foldername(name))[1]
+    );
+
+DROP POLICY IF EXISTS "Avatar update" ON storage.objects;
+CREATE POLICY "Avatar update" ON storage.objects
+    FOR UPDATE TO authenticated
+    USING (
+        bucket_id = 'avatars'
+        AND auth.uid()::text = (storage.foldername(name))[1]
+    );
+
+DROP POLICY IF EXISTS "Avatar public read" ON storage.objects;
+CREATE POLICY "Avatar public read" ON storage.objects
+    FOR SELECT
+    USING (bucket_id = 'avatars');
+
+DROP POLICY IF EXISTS "Room assets upload" ON storage.objects;
+CREATE POLICY "Room assets upload" ON storage.objects
+    FOR INSERT TO authenticated
+    WITH CHECK (bucket_id = 'room-assets' AND auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Room assets read" ON storage.objects;
+CREATE POLICY "Room assets read" ON storage.objects
+    FOR SELECT TO authenticated
+    USING (
+        bucket_id = 'room-assets'
+        AND (storage.foldername(name))[1] IN (
+            SELECT id::text FROM public.rooms
+            WHERE public.is_room_member(auth.uid(), id)
+        )
+    );
+
+NOTIFY pgrst, 'reload schema';

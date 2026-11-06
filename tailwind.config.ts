@@ -57,11 +57,22 @@ const config: Config = {
         'slide-in': 'slide-in 0.3s ease-out',
         'fade-in': 'fade-in 0.2s ease-out',
         'scale-in': 'scale-in 0.2s ease-out',
+        'loading-bar': 'loading-bar 1.4s ease-in-out infinite',
+        shimmer: 'shimmer 1.8s ease-in-out infinite',
       },
       keyframes: {
         'pulse-purple': {
           '0%, 100%': { boxShadow: '0 0 0 0 rgba(168, 85, 247, 0.7)' },
           '50%': { boxShadow: '0 0 0 12px rgba(168, 85, 247, 0)' },
+        },
+        'loading-bar': {
+          '0%': { transform: 'translateX(-100%)' },
+          '50%': { transform: 'translateX(120%)' },
+          '100%': { transform: 'translateX(-100%)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-400px 0' },
+          '100%': { backgroundPosition: '400px 0' },
         },
         'slide-in': {
           '0%': { transform: 'translateX(-100%)', opacity: '0' },

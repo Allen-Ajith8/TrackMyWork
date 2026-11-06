@@ -19,6 +19,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { formatRelativeTime, cn } from '@/lib/utils';
+import { DashboardSkeleton } from '@/components/page-skeletons';
 import type { Room, Task, Notification } from '@/types/database';
 
 export default function DashboardPage() {
@@ -130,11 +131,7 @@ export default function DashboardPage() {
   ];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (

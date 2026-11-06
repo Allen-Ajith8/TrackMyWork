@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore, useRoomStore, useTaskStore, useVibeStore } from '@/lib/store';
 import {
@@ -714,10 +715,10 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
               )}
             </div>
             <Button variant="outline" size="sm" asChild>
-              <a href={`/dashboard/rooms/${room.id}/settings`}>
+              <Link href={`/dashboard/rooms/${room.id}/settings`}>
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
-              </a>
+              </Link>
             </Button>
           </div>
         </div>

@@ -17,10 +17,15 @@ import {
   Zap,
   Bell,
   Eye,
+  UserRound,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { useRoomStore, useNotificationStore, useUIStore } from '@/lib/store';
+import { LoadingScreen } from '@/components/loading-screen';
+import { userFromAuthUser } from '@/lib/profile';
+
+const avatarFallback = (value: string) => value.replace(/^@/, '').charAt(0).toUpperCase() || 'U';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -50,26 +55,16 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { user, session, setUser, setSession, clearAuth } = useAuthStore();
   const { setCurrentRoom, clearRoom } = useRoomStore();
-  const { setNotifications } = useNotificationStore();
+  const { setNotifications, unreadCount } = useNotificationStore();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const supabase = createClient();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         setSession(toStoredSession(session));
         if (session?.user) {
-          setUser({
-            id: session.user.id,
-            email: session.user.email!,
-            username: session.user.user_metadata.username,
-            display_name: session.user.user_metadata.display_name,
-            avatar_url: session.user.user_metadata.avatar_url,
-            is_global_admin: session.user.user_metadata.is_global_admin || false,
-            fcm_token: null,
-            created_at: session.user.created_at,
-            updated_at: new Date().toISOString(),
-          });
+          setUser(userFromAuthUser(session.user));
         }
       } else if (event === 'SIGNED_OUT') {
         clearAuth();
@@ -83,30 +78,35 @@ export default function DashboardLayout({
     supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       if (session) {
         setSession(toStoredSession(session));
-        setUser({
-          id: session.user.id,
-          email: session.user.email!,
-          username: session.user.user_metadata.username,
-          display_name: session.user.user_metadata.display_name,
-          avatar_url: session.user.user_metadata.avatar_url,
-          is_global_admin: session.user.user_metadata.is_global_admin || false,
-          fcm_token: null,
-          created_at: session.user.created_at,
-          updated_at: new Date().toISOString(),
-        });
+        setUser(userFromAuthUser(session.user));
+      } else {
+        const next = typeof window !== 'undefined' ? window.location.pathname : '/dashboard';
+        router.replace(`/auth/login?redirect=${encodeURIComponent(next)}`);
       }
     });
 
+    // Keep the mobile drawer closed on small screens.
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+
     return () => subscription.unsubscribe();
-  }, [router, setUser, setSession, clearAuth, clearRoom, setNotifications]);
+  }, [router, setUser, setSession, clearAuth, clearRoom, setNotifications, setSidebarOpen]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
 
   if (!user) {
-    return null; // Will redirect via auth state change
+    return (
+      <div className="min-h-screen bg-surface-50">
+        <LoadingScreen variant="full" label="Preparing your workspace" sublabel="Checking your session…" />
+      </div>
+    );
   }
+
+  const displayName = user.display_name || user.username || 'Member';
+  const secondaryLabel = user.username ? `@${user.username}` : 'View your profile';
 
   return (
     <div className="min-h-screen bg-surface-50">
@@ -135,6 +135,7 @@ export default function DashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
+                  onClick={() => setSidebarOpen(false)}
                   className={`sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
                 >
                   <item.icon className="w-5 h-5" />
@@ -146,29 +147,38 @@ export default function DashboardLayout({
 
           {/* User Menu */}
           <div className="p-4 border-t border-surface-200">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+            <Link
+              href="/dashboard/profile"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 rounded-lg p-1 -m-1 hover:bg-surface-100 transition-colors"
+              title="Edit your profile"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
                 {user.avatar_url ? (
-                  <img src={user.avatar_url} alt="" className="w-10 h-10 rounded-full" />
+                  <img src={user.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <span className="text-primary-700 font-semibold">
-                    {user.display_name?.[0] || user.username?.[0] || user.email[0].toUpperCase()}
+                    {avatarFallback(displayName)}
                   </span>
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-surface-900 truncate">
-                  {user.display_name || user.username || user.email}
+                  {displayName}
                 </p>
-                <p className="text-xs text-surface-500 truncate">{user.email}</p>
+                <p className="text-xs text-surface-500 truncate">{secondaryLabel}</p>
               </div>
-            </div>
+            </Link>
             <div className="mt-3 space-y-1">
-              <Link href="/dashboard/settings" className="sidebar-link">
+              <Link href="/dashboard/profile" onClick={() => setSidebarOpen(false)} className="sidebar-link">
+                <UserRound className="w-5 h-5" />
+                Profile
+              </Link>
+              <Link href="/dashboard/settings" onClick={() => setSidebarOpen(false)} className="sidebar-link">
                 <Settings className="w-5 h-5" />
                 Settings
               </Link>
-              <Link href="/dashboard/help" className="sidebar-link">
+              <Link href="/dashboard/help" onClick={() => setSidebarOpen(false)} className="sidebar-link">
                 <HelpCircle className="w-5 h-5" />
                 Help & Docs
               </Link>
@@ -182,7 +192,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Mobile Overlay */}
-      {!sidebarOpen && (
+      {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
@@ -208,8 +218,13 @@ export default function DashboardLayout({
 
             <div className="flex items-center gap-3">
               {/* Notifications */}
-              <Link href="/dashboard/notifications" className="relative btn-ghost p-2">
+              <Link href="/dashboard/notifications" className="relative btn-ghost p-2" aria-label="Notifications">
                 <Bell className="w-5 h-5 text-surface-600" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Link>
 
               {/* Global Admin Ghost Mode */}
