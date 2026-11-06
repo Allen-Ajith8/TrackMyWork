@@ -2,35 +2,26 @@
 REM ============================================================================
 REM TrackMyWork - Run Everything (Website + MCP Server)
 REM ============================================================================
-REM This batch file starts both the Next.js dev server and MCP server
-REM in separate command prompt windows
-REM ============================================================================
 
 title TrackMyWork - Full Stack
 color 0B
 
 echo.
-echo  ████████╗██╗  ██╗███████╗    ██╗   ██╗██╗ ██████╗ ███╗   ██╗
-echo  ╚══██╔══╝██║  ██║██╔════╝    ██║   ██║██║██╔═══██╗████╗  ██║
-echo     ██║   ███████║█████╗      ██║   ██║██║██║   ██║██╔██╗ ██║
-echo     ██║   ██╔══██║██╔══╝      ╚██╗ ██╔╝██║██║   ██║██║╚██╗██║
-echo     ██║   ██║  ██║███████╗     ╚████╔╝ ██║╚██████╔╝██║ ╚████║
-echo     ╚═╝   ╚═╝  ╚═╝╚══════╝      ╚═══╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
-echo.
-echo  Starting Full Stack: Website + MCP Server
-echo  ============================================================
+echo  ================================================================
+echo   Starting Full Stack: Website + MCP Server
+echo  ============================================================================
 echo.
 
 REM Check if .env.local exists
 if not exist ".env.local" (
-    echo ⚠️  WARNING: .env.local not found!
+    echo WARNING: .env.local not found!
     echo    Copy .env.example to .env.local and fill in your credentials
     echo.
 )
 
 REM Check MCP server .env
 if not exist "mcp-server\.env" (
-    echo ⚠️  WARNING: mcp-server\.env not found!
+    echo WARNING: mcp-server\.env not found!
     echo    Copy mcp-server\.env.example to mcp-server\.env and fill in credentials
     echo.
 )
@@ -52,7 +43,7 @@ REM Start MCP Server in new window
 start "TrackMyWork - MCP Server" cmd /k "cd /d "%~dp0mcp-server" && npm run dev"
 
 echo.
-echo ✅ Both servers started!
+echo Both servers started!
 echo    Website:    http://localhost:3000
 echo    MCP WS:     ws://localhost:3003
 echo    MCP HTTP:   http://localhost:3002
