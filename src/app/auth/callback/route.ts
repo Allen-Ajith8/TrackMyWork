@@ -1,16 +1,33 @@
-import { createServerClientSupabase } from '@/lib/supabase/server';
+import { createRouteHandlerSupabase } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
+  const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') || '/dashboard';
+  const errorDescription =
+    searchParams.get('error_description') || searchParams.get('error');
 
-  if (code) {
-    const supabase = createServerClientSupabase();
-    await supabase.auth.exchangeCodeForSession(code);
+  // Only allow internal redirects (prevents open-redirect abuse).
+  const requestedNext = searchParams.get('next') || '/dashboard';
+  const next = requestedNext.startsWith('/') ? requestedNext : '/dashboard';
+
+  if (errorDescription) {
+    return NextResponse.redirect(
+      new URL(`/auth/login?error=${encodeURIComponent(errorDescription)}`, origin)
+    );
   }
 
-  return NextResponse.redirect(new URL(next, req.url));
+  if (code) {
+    const supabase = createRouteHandlerSupabase();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (error) {
+      return NextResponse.redirect(
+        new URL(`/auth/login?error=${encodeURIComponent(error.message)}`, origin)
+      );
+    }
+  }
+
+  return NextResponse.redirect(new URL(next, origin));
 }

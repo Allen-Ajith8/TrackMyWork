@@ -16,7 +16,9 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(
+    searchParams.get('error_description') || searchParams.get('error') || ''
+  );
 
   const supabase = createClient();
 
@@ -37,11 +39,22 @@ function LoginForm() {
   }
 
   async function handleOAuth(provider: 'google' | 'github') {
+    setLoading(true);
+    setError('');
+
+    // Build the callback URL properly so `next` is encoded as a query param.
+    const callbackUrl = new URL('/auth/callback', window.location.origin);
+    callbackUrl.searchParams.set('next', redirect);
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=${redirect}` },
+      options: { redirectTo: callbackUrl.toString() },
     });
-    if (error) setError(error.message);
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
   }
 
   return (
