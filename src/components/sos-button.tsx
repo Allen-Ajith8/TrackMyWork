@@ -18,6 +18,7 @@ import {
   ChevronUp,
   Download,
   Info,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,13 +69,14 @@ export function SosButton({ roomId, roomMembers, initialErrorLog, initialContext
           initialErrorLog={initialErrorLog}
           initialContext={initialContext}
           initialFiles={initialFiles}
+          onClose={() => setDialogOpen(false)}
         />
       </DialogContent>
     </Dialog>
   );
 }
 
-function SosDialogContent({ roomId, roomMembers, initialErrorLog, initialContext, initialFiles }: Omit<SosDialogProps, 'open' | 'onOpenChange'>) {
+function SosDialogContent({ roomId, roomMembers, initialErrorLog, initialContext, initialFiles, onClose }: Omit<SosDialogProps, 'open' | 'onOpenChange'> & { onClose: () => void }) {
   const { user } = useAuthStore();
   const [errorLog, setErrorLog] = React.useState(initialErrorLog || '');
   const [context, setContext] = React.useState<'android_logcat' | 'rust_compiler' | 'flutter_build' | 'general'>(initialContext || 'general');
@@ -88,10 +90,10 @@ function SosDialogContent({ roomId, roomMembers, initialErrorLog, initialContext
   const [showFull, setShowFull] = React.useState(false);
 
   const CONTEXT_OPTIONS = [
-    { value: 'android_logcat', label: 'Android Logcat', icon: <Terminal className="w-4 h-4" /> },
-    { value: 'rust_compiler', label: 'Rust Compiler', icon: <Code className="w-4 h-4" /> },
-    { value: 'flutter_build', label: 'Flutter Build', icon: <Zap className="w-4 h-4" /> },
-    { value: 'general', label: 'General Error', icon: <Info className="w-4 h-4" /> },
+    { value: 'android_logcat', label: 'Android Logcat', icon: Terminal },
+    { value: 'rust_compiler', label: 'Rust Compiler', icon: Code },
+    { value: 'flutter_build', label: 'Flutter Build', icon: Zap },
+    { value: 'general', label: 'General Error', icon: Info },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,11 +174,16 @@ function SosDialogContent({ roomId, roomMembers, initialErrorLog, initialContext
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CONTEXT_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    <opt.icon /> {opt.label}
-                  </SelectItem>
-                ))}
+                {CONTEXT_OPTIONS.map(opt => {
+                  const Icon = opt.icon;
+                  return (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <span className="flex items-center gap-2">
+                        <Icon className="w-4 h-4" /> {opt.label}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -294,7 +301,7 @@ Examples:
       )}
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+        <Button type="button" variant="outline" onClick={onClose}>
           Close
         </Button>
       </DialogFooter>

@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = createAdminClient();
+  let roomIdForLog: string | null = null;
 
   try {
     // Find room by GitHub repo
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
       console.log(`No room found for repo: ${repoUrl}`);
       return NextResponse.json({ received: true, message: 'No matching room' });
     }
+    roomIdForLog = room.id;
 
     // Log webhook event
     await admin.from('nim_logs').insert({
@@ -152,14 +154,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('GitHub webhook error:', error);
-    await admin.from('nim_logs').insert({
-      room_id: room.id,
-      trigger_type: 'github_webhook',
-      model_used: 'webhook_receiver',
-      input_text: JSON.stringify({ event, delivery }),
-      success: false,
-      error_message: error instanceof Error ? error.message : 'Unknown error',
-    });
+    if (roomIdForLog) {
+      await admin.from('nim_logs').insert({
+        room_id: roomIdForLog,
+        trigger_type: 'github_webhook',
+        model_used: 'webhook_receiver',
+        input_text: JSON.stringify({ event, delivery }),
+        success: false,
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
@@ -167,13 +171,13 @@ export async function POST(req: NextRequest) {
 async function handleAutoTaskProgression(
   admin: ReturnType<typeof createAdminClient>,
   roomId: string,
-  commit: GitHubWebhookPayload['commits'][0],
+  commit: NonNullable<GitHubWebhookPayload['commits']>[number],
   files: string[]
 ) {
   // Get open tasks in this room
   const { data: tasks } = await admin
     .from('tasks')
-    .select('id, title, description, github_issue_number, status')
+    .select('id, title, description, github_issue_number, status, assigned_to')
     .eq('room_id', roomId)
     .in('status', ['todo', 'in_progress', 'review']);
 
@@ -182,8 +186,8 @@ async function handleAutoTaskProgression(
   // Match commits to tasks (simple keyword matching)
   for (const task of tasks) {
     const message = commit.message.toLowerCase();
-    const taskKeywords = task.title.toLowerCase().split(' ').filter((w) => w.length > 3);
-    const matches = taskKeywords.some((kw) => message.includes(kw));
+    const taskKeywords = task.title.toLowerCase().split(' ').filter((w: string) => w.length > 3);
+    const matches = taskKeywords.some((kw: string) => message.includes(kw));
 
     const issueMatch = task.github_issue_number && message.includes(`#${task.github_issue_number}`);
 
@@ -226,10 +230,18 @@ async function handleAutoTaskProgression(
   }
 }
 
+async function handleAutoBroadcast(
+  _admin: ReturnType<typeof createAdminClient>,
+  _roomId: string,
+  _commits: GitHubWebhookPayload['commits']
+) {
+  // Temporarily disabled until broadcast behavior is explicitly re-enabled.
+}
+
 async function handleNonTechTranslation(
   admin: ReturnType<typeof createAdminClient>,
   roomId: string,
-  commit: GitHubWebhookPayload['commits'][0],
+  commit: NonNullable<GitHubWebhookPayload['commits']>[number],
   files: string[]
 ) {
   // Get Pitch/Media role members
@@ -263,7 +275,7 @@ async function handleNonTechTranslation(
 async function handleCodeReview(
   admin: ReturnType<typeof createAdminClient>,
   roomId: string,
-  commit: GitHubWebhookPayload['commits'][0],
+  commit: NonNullable<GitHubWebhookPayload['commits']>[number],
   files: string[]
 ) {
   // Only review significant changes
@@ -305,7 +317,7 @@ async function handleCodeReview(
 async function handleJuryAlignment(
   admin: ReturnType<typeof createAdminClient>,
   roomId: string,
-  commit: GitHubWebhookPayload['commits'][0],
+  commit: NonNullable<GitHubWebhookPayload['commits']>[number],
   files: string[]
 ) {
   const { data: room } = await admin

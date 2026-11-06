@@ -19,6 +19,7 @@ import {
   Eye,
 } from 'lucide-react';
 import Link from 'next/link';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { useRoomStore, useNotificationStore, useUIStore } from '@/lib/store';
 
 const navigation = [
@@ -30,6 +31,15 @@ const navigation = [
   { name: 'Team', href: '/dashboard/team', icon: Users },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
+
+function toStoredSession(session: Session | null) {
+  return session
+    ? {
+        access_token: session.access_token,
+        expires_at: session.expires_at ?? Math.floor(Date.now() / 1000) + session.expires_in,
+      }
+    : null;
+}
 
 export default function DashboardLayout({
   children,
@@ -45,9 +55,9 @@ export default function DashboardLayout({
   const supabase = createClient();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setSession(session);
+        setSession(toStoredSession(session));
         if (session?.user) {
           setUser({
             id: session.user.id,
@@ -70,9 +80,9 @@ export default function DashboardLayout({
     });
 
     // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       if (session) {
-        setSession(session);
+        setSession(toStoredSession(session));
         setUser({
           id: session.user.id,
           email: session.user.email!,

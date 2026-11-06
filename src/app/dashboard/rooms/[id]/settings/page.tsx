@@ -46,8 +46,8 @@ export default async function TeamManagementPage({ params }: { params: Promise<{
   }
 
   // Check if user is member (RLS will enforce, but we can redirect early)
-  const isMember = members.some(m => m.user_id === user.id && m.status === 'active');
-  if (!isMember && !user.is_global_admin) {
+  const isMember = members.some((m: any) => m.user_id === user.id && m.status === 'active');
+  if (!isMember && !(user as any).is_global_admin) {
     notFound();
   }
 

@@ -48,8 +48,8 @@ function AvatarGroup({ className, children, max = 5, ...props }: AvatarGroupProp
   return (
     <div className={cn('flex -space-x-2', className)} {...props}>
       {visibleChildren.map((child, index) =>
-        React.cloneElement(child as React.ReactElement, {
-          className: cn('ring-2 ring-background', child.props.className),
+        React.cloneElement(child as React.ReactElement<any>, {
+          className: cn('ring-2 ring-background', (child as React.ReactElement<any>).props.className),
           style: { zIndex: max - index },
         })
       )}

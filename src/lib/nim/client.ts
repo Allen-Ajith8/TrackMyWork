@@ -356,8 +356,6 @@ Provide a 2-3 sentence summary for the Pitch team.`;
       yield chunk;
     }
   }
-}
-
 // Raw call for flexible usage (Discord, etc.)
   async callNimRaw(
     messages: NimMessage[],

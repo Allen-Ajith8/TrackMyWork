@@ -25,7 +25,7 @@ async function getRoomTasks(roomId: string) {
     .eq('room_id', roomId)
     .order('created_at', { ascending: false });
 
-  const transformedTasks = (tasks || []).map(task => ({
+  const transformedTasks = (tasks || []).map((task: any) => ({
     ...task,
     assignee: task.assigned_to_user,
   }));

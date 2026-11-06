@@ -18,10 +18,10 @@ interface RoomWithRole extends Room {
 interface RoomsListClientProps {
   user: {
     id: string;
-    email: string;
+    email?: string;
     username?: string | null;
     display_name?: string | null;
-    is_global_admin: boolean;
+    is_global_admin?: boolean;
   };
   rooms: RoomWithRole[];
 }
@@ -44,7 +44,7 @@ export function RoomsListClient({ user, rooms }: RoomsListClientProps) {
       </div>
 
       {rooms.length === 0 ? (
-        {/* Empty State */}
+        /* Empty State */
         <Card className="text-center py-12">
           <CardContent className="pt-6">
             <FolderKanban className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
@@ -62,7 +62,7 @@ export function RoomsListClient({ user, rooms }: RoomsListClientProps) {
           </CardContent>
         </Card>
       ) : (
-        {/* Rooms Grid */}
+        /* Rooms Grid */
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {rooms.map(room => (
             <Link key={room.id} href={`/dashboard/rooms/${room.id}`} className="block">

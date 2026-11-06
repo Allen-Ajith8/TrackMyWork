@@ -45,7 +45,7 @@ async function getRoomData(roomId: string) {
     .order('created_at', { ascending: false });
 
   // Transform tasks to include assignee
-  const transformedTasks = (tasks || []).map(task => ({
+  const transformedTasks = (tasks || []).map((task: any) => ({
     ...task,
     assignee: task.assigned_to_user,
   }));

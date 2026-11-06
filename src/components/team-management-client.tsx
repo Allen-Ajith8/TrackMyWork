@@ -20,6 +20,7 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -196,7 +197,7 @@ function MemberRow({ member, currentUserId, isTeamLeader, isGlobalAdmin, onUpdat
               {PERMISSION_KEYS.map(perm => (
                 <label key={perm} className="flex items-center gap-2 cursor-pointer group">
                   <Switch
-                    checked={member[perm] || false}
+                    checked={Boolean((member as any)[`flag_${perm}`])}
                     onCheckedChange={(checked) => handlePermissionChange(perm, checked)}
                     disabled={!canManage || (member.flag_is_team_leader && perm !== 'can_edit_rules')}
                   />
@@ -284,7 +285,7 @@ function InviteDialog({ open, onOpenChange, onSubmit }: InviteDialogProps) {
 
           <div className="space-y-2">
             <Label>Role</Label>
-            <Select onValueChange={(v) => setFormData({ ...formData, role_title: v as RoleTitle })} defaultValue={formData.role_title}>
+            <Select onValueChange={(v: string) => setFormData({ ...formData, role_title: v as RoleTitle })} defaultValue={formData.role_title}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {ROLE_OPTIONS.map(role => <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>)}
@@ -410,7 +411,7 @@ export function TeamManagementClient({ room, initialMembers }: {
       user_id: data.email, // temporary
       status: 'pending',
       role_title: data.role_title,
-      custom_role_name: data.custom_role_name,
+      custom_role_name: data.custom_role_name ?? null,
       flag_can_edit_repo: data.permissions.can_edit_repo || false,
       flag_can_trigger_nim: data.permissions.can_trigger_nim || false,
       flag_can_assign_tasks: data.permissions.can_assign_tasks || false,
@@ -419,7 +420,8 @@ export function TeamManagementClient({ room, initialMembers }: {
       flag_can_invite_members: data.permissions.can_invite_members || false,
       flag_can_edit_rules: data.permissions.can_edit_rules || false,
       flag_is_team_leader: false,
-      invited_by: user?.id,
+      joined_at: null,
+      invited_by: user?.id ?? null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       user: {

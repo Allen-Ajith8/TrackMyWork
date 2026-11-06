@@ -31,7 +31,7 @@ DropdownMenuContent.displayName = DropdownMenuPrimitives.Content.displayName;
 
 const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitives.Item>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitives.Item>
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitives.Item> & { inset?: boolean }
 >(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitives.Item
     ref={ref}
@@ -104,7 +104,7 @@ DropdownMenuRadioItem.displayName = DropdownMenuPrimitives.RadioItem.displayName
 
 const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitives.Label>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitives.Label>
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitives.Label> & { inset?: boolean }
 >(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitives.Label
     ref={ref}
@@ -126,7 +126,7 @@ const DropdownMenuSeparator = React.forwardRef<
 ));
 DropdownMenuSeparator.displayName = DropdownMenuPrimitives.Separator.displayName;
 
-const DropdownMenuShortcut = ({ className, ...props }: React.HTMLSpanElement) => (
+const DropdownMenuShortcut = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (
   <span
     className={cn('ml-auto text-xs tracking-widest opacity-60', className)}
     {...props}

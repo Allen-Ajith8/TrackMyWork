@@ -4,7 +4,7 @@ import * as React from 'react';
 import * as SelectPrimitives from '@radix-ui/react-select';
 import { cn } from '@/lib/utils';
 
-const Select = SelectPrimitives.Root;
+const Select = SelectPrimitives.Root as unknown as React.ComponentType<any>;
 const SelectGroup = SelectPrimitives.Group;
 const SelectValue = SelectPrimitives.Value;
 

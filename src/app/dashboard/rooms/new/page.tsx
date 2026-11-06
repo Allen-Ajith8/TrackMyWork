@@ -1,6 +1,6 @@
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { RoomCreationWizardClient } from './room-creation-wizard-client';
+import { RoomCreationWizardClient } from '../../../../components/room-creation-wizard-client';
 
 async function getUser() {
   const supabase = createServerClientSupabase();

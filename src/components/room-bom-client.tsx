@@ -127,7 +127,7 @@ function BomDialog({ open, onOpenChange, members, roomId, onSubmit, editingItem 
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
-                onValueChange={(v) => setFormData({ ...formData, status: v as BomStatus })}
+                onValueChange={(v: string) => setFormData({ ...formData, status: v as BomStatus })}
                 defaultValue={formData.status}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -162,7 +162,7 @@ function BomDialog({ open, onOpenChange, members, roomId, onSubmit, editingItem 
           <div className="space-y-2">
             <Label>Buyer</Label>
             <Select
-              onValueChange={(v) => setFormData({ ...formData, buyer_id: v })}
+              onValueChange={(v: string) => setFormData({ ...formData, buyer_id: v })}
               defaultValue={formData.buyer_id}
             >
               <SelectTrigger><SelectValue placeholder="Select buyer" /></SelectTrigger>
@@ -199,7 +199,8 @@ function BomDialog({ open, onOpenChange, members, roomId, onSubmit, editingItem 
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit">{editingItem ? 'Save' : 'Add'}</Button>
           </DialogFooter>
-        </form      </DialogContent>
+        </form>
+      </DialogContent>
     </Dialog>
   );
 }
@@ -229,8 +230,14 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
   const failedCount = bom.filter(i => i.status === 'failed').length;
 
   const handleUpdateBom = async (data: Partial<HardwareBomItem>) => {
+    const supabase = createClient();
     if (editingBomItem) {
       setBom(prev => prev.map(i => i.id === editingBomItem.id ? { ...i, ...data, updated_at: new Date().toISOString() } : i));
+      try {
+        await supabase.from('hardware_bom').update(data).eq('id', editingBomItem.id);
+      } catch (error) {
+        console.error('Failed to update BOM:', error);
+      }
     } else {
       const newItem: HardwareBomItem = {
         id: crypto.randomUUID(),
@@ -242,16 +249,11 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
         total_actual_cost: (data.quantity || 0) * (data.unit_actual_cost || 0),
       } as HardwareBomItem;
       setBom(prev => [newItem, ...prev]);
-    }
-    try {
-      const supabase = createClient();
-      if (editingBomItem) {
-        await supabase.from('hardware_bom').update(data).eq('id', editingBomItem.id);
-      } else {
+      try {
         await supabase.from('hardware_bom').insert(newItem);
+      } catch (error) {
+        console.error('Failed to create BOM item:', error);
       }
-    } catch (error) {
-      console.error('Failed to update BOM:', error);
     }
   };
 
@@ -406,7 +408,7 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
                         <td className="py-3 pr-4 font-medium">{item.total_est_cost ? formatCurrency(item.total_est_cost) : '—'}</td>
                         <td className="py-3 pr-4">{item.unit_actual_cost ? formatCurrency(item.unit_actual_cost) : '—'}</td>
                         <td className="py-3 pr-4 font-medium">{item.total_actual_cost ? formatCurrency(item.total_actual_cost) : '—'}</td>
-                        <td className="py-3 pr-4">{buyer ? <span className="flex items-center gap-1"><Avatar className="h-5 w-5" src={buyer.user.avatar_url} fallback={buyer.user.display_name || buyer.user.username} />{buyer.user.display_name || buyer.user.username}</span> : '—'}</td>
+                        <td className="py-3 pr-4">{buyer ? <span className="flex items-center gap-1"><Avatar className="h-5 w-5" src={buyer.user.avatar_url} fallback={buyer.user.display_name || buyer.user.username || undefined} />{buyer.user.display_name || buyer.user.username}</span> : '—'}</td>
                         <td className="py-3 pr-4">
                           <Badge variant="role" role={getBomStatusColor(item.status).replace('bg-', '').replace(' text-', '')}>
                             {statusOpt?.icon}

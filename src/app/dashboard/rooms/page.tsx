@@ -16,7 +16,7 @@ async function getUserRooms() {
 
   return {
     user,
-    rooms: (memberships || []).map(m => ({
+    rooms: (memberships || []).map((m: any) => ({
       ...m.rooms,
       user_role: m.role_title,
       is_team_leader: m.flag_is_team_leader,

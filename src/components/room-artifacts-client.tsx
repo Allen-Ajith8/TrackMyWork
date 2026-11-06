@@ -138,7 +138,7 @@ function ArtifactDialog({ open, onOpenChange, roomId, onSubmit }: ArtifactDialog
               <SelectContent>
                 {ARTIFACT_TYPES.map(t => (
                   <SelectItem key={t.value} value={t.value}>
-                    <getTypeIcon(t.value) />
+                    {getTypeIcon(t.value)}
                     {t.label}
                   </SelectItem>
                 ))}
@@ -277,7 +277,7 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
                 size="sm"
                 onClick={() => setFilterType(t.value)}
               >
-                <getTypeIcon(t.value) />
+                {getTypeIcon(t.value)}
                 {t.label} ({typeCounts[t.value] || 0})
               </Button>
             ))}
@@ -318,7 +318,7 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
                       )}
                       {artifact.type !== 'image' && (
                         <div className="text-center p-4">
-                          <getTypeIcon(artifact.type) className="w-16 h-16 mx-auto mb-2 opacity-50" />
+                          <span className="contents [&>svg]:w-16 [&>svg]:h-16 [&>svg]:mx-auto [&>svg]:mb-2 [&>svg]:opacity-50">{getTypeIcon(artifact.type)}</span>
                           <p className="font-medium text-white">{artifact.type.toUpperCase()}</p>
                         </div>
                       )}
@@ -331,7 +331,7 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
                     <div className="p-3 border-t flex-1 flex flex-col">
                       <div className="flex items-center justify-between mb-2">
                         <span className={cn('badge', getTypeColor(artifact.type))}>
-                          <getTypeIcon(artifact.type) />
+                          {getTypeIcon(artifact.type)}
                           {artifact.type}
                         </span>
                         <DropdownMenu>
@@ -385,7 +385,7 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-3">
                           <span className={cn('w-8 h-8 rounded flex items-center justify-center', getTypeColor(artifact.type))}>
-                            <getTypeIcon(artifact.type) />
+                            {getTypeIcon(artifact.type)}
                           </span>
                           <div>
                             <p className="font-medium">{artifact.name}</p>

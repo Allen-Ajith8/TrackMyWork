@@ -4,7 +4,7 @@ import * as React from 'react';
 import * as TabsPrimitives from '@radix-ui/react-tabs';
 import { cn } from '@/lib/utils';
 
-const Tabs = TabsPrimitives.Root;
+const Tabs = TabsPrimitives.Root as unknown as React.ComponentType<any>;
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitives.List>,

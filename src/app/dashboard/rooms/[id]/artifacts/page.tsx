@@ -25,7 +25,7 @@ async function getRoomArtifacts(roomId: string) {
     .eq('room_id', roomId)
     .order('created_at', { ascending: false });
 
-  const transformedArtifacts = (artifacts || []).map(artifact => ({
+  const transformedArtifacts = (artifacts || []).map((artifact: any) => ({
     ...artifact,
     uploader: artifact.uploaded_by_user,
   }));

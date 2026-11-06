@@ -176,8 +176,8 @@ async function handleStatusCommand(interaction: DiscordInteraction): Promise<Nex
   }
 
   const fields = rooms.map(r => ({
-    name: `${r.rooms.name} (${r.rooms.invite_code})`,
-    value: `**Role:** ${r.role_title}${r.flag_is_team_leader ? ' 👑' : ''}\n**Type:** ${r.rooms.project_type}`,
+    name: `${r.rooms[0]?.name ?? 'Room'} (${r.rooms[0]?.invite_code ?? 'no invite code'})`,
+    value: `**Role:** ${r.role_title}${r.flag_is_team_leader ? ' 👑' : ''}\n**Type:** ${r.rooms[0]?.project_type ?? 'Unknown'}`,
     inline: true,
   }));
 

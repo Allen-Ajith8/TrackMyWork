@@ -107,7 +107,7 @@ export function RoomCreationWizard() {
   const supabase = createClient();
 
   const form = useForm<FullFormData>({
-    resolver: zodResolver(fullSchema),
+    resolver: zodResolver(fullSchema) as any,
     defaultValues: {
       name: '',
       description: '',
@@ -126,7 +126,7 @@ export function RoomCreationWizard() {
   });
 
   const watchTeamSize = form.watch('team_size');
-  const watchMembers = form.watch('members');
+  const watchMembers = form.watch('members') || [];
   const watchProjectType = form.watch('project_type');
 
   const handleSkip = async () => {
@@ -330,7 +330,11 @@ export function RoomCreationWizard() {
               placeholder="My Awesome Hackathon Project"
               {...form.register('name')}
             />
-            <FormMessage name="name" />
+            {form.formState.errors.name && (
+              <p className="text-sm font-medium text-destructive">
+                {form.formState.errors.name.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -350,7 +354,11 @@ export function RoomCreationWizard() {
               placeholder="https://github.com/owner/repo"
               {...form.register('github_repo')}
             />
-            <FormMessage name="github_repo" />
+            {form.formState.errors.github_repo && (
+              <p className="text-sm font-medium text-destructive">
+                {form.formState.errors.github_repo.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -365,7 +373,7 @@ export function RoomCreationWizard() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="team_size">Team Size</Label>
-              <Select onValueChange={v => form.setValue('team_size', Number(v))} defaultValue={watchTeamSize.toString()}>
+              <Select onValueChange={(v: string) => form.setValue('team_size', Number(v))} defaultValue={watchTeamSize.toString()}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -379,7 +387,7 @@ export function RoomCreationWizard() {
 
             <div className="space-y-2">
               <Label htmlFor="project_type">Project Type</Label>
-              <Select onValueChange={v => form.setValue('project_type', v as ProjectType)} defaultValue={watchProjectType}>
+              <Select onValueChange={(v: string) => form.setValue('project_type', v as ProjectType)} defaultValue={watchProjectType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -442,7 +450,7 @@ export function RoomCreationWizard() {
                       <div className="space-y-2">
                         <Label>Role</Label>
                         <Select
-                          onValueChange={(v) => updateMemberRole(index, v as RoleTitle)}
+                          onValueChange={(v: string) => updateMemberRole(index, v as RoleTitle)}
                           defaultValue={member.role_title}
                         >
                           <SelectTrigger>
@@ -514,7 +522,7 @@ export function RoomCreationWizard() {
               <p className="text-sm text-muted-foreground">One rule per line. These will be injected into .cursorrules / AGENTS.md</p>
               <Textarea
                 placeholder="No API costs&#10;Native Rust Android only&#10;No external dependencies&#10;TypeScript strict mode required"
-                value={form.watch('tech_stack_locks').join('\n')}
+                value={(form.watch('tech_stack_locks') || []).join('\n')}
                 onChange={(e) => form.setValue('tech_stack_locks', e.target.value.split('\n').filter(Boolean))}
                 rows={5}
               />
@@ -625,7 +633,7 @@ export function RoomCreationWizard() {
         </div>
 
         {/* Form */}
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(handleSubmit as any)} className="space-y-6">
           {step === 1 && renderStep1()}
           {step === 2 && renderStep2()}
           {step === 3 && renderStep3()}

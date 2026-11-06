@@ -248,7 +248,7 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
-                onValueChange={(v) => setFormData({ ...formData, status: v as TaskStatus })}
+                onValueChange={(v: string) => setFormData({ ...formData, status: v as TaskStatus })}
                 defaultValue={formData.status}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -260,7 +260,7 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
             <div className="space-y-2">
               <Label>Category</Label>
               <Select
-                onValueChange={(v) => setFormData({ ...formData, category: v as TaskCategory })}
+                onValueChange={(v: string) => setFormData({ ...formData, category: v as TaskCategory })}
                 defaultValue={formData.category}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -276,7 +276,7 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
           <div className="space-y-2">
             <Label>Assignee</Label>
             <Select
-              onValueChange={(v) => setFormData({ ...formData, assigned_to: v })}
+              onValueChange={(v: string) => setFormData({ ...formData, assigned_to: v })}
               defaultValue={formData.assigned_to}
             >
               <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
@@ -413,7 +413,7 @@ function BomDialog({ open, onOpenChange, members, roomId, onSubmit, editingItem 
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
-                onValueChange={(v) => setFormData({ ...formData, status: v as BomStatus })}
+                onValueChange={(v: string) => setFormData({ ...formData, status: v as BomStatus })}
                 defaultValue={formData.status}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -448,7 +448,7 @@ function BomDialog({ open, onOpenChange, members, roomId, onSubmit, editingItem 
           <div className="space-y-2">
             <Label>Buyer</Label>
             <Select
-              onValueChange={(v) => setFormData({ ...formData, buyer_id: v })}
+              onValueChange={(v: string) => setFormData({ ...formData, buyer_id: v })}
               defaultValue={formData.buyer_id}
             >
               <SelectTrigger><SelectValue placeholder="Select buyer" /></SelectTrigger>

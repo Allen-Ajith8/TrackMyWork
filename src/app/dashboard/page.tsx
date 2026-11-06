@@ -51,7 +51,7 @@ export default function DashboardPage() {
           .eq('user_id', user.id)
           .eq('status', 'active');
 
-        const roomIds = memberships?.map((m) => m.room_id) || [];
+        const roomIds = memberships?.map((m: { room_id: string }) => m.room_id) || [];
         setStats((s) => ({ ...s, rooms: roomIds.length }));
 
         if (roomIds.length > 0) {
@@ -67,8 +67,8 @@ export default function DashboardPage() {
             setTasks(tasksData);
             setStats((s) => ({
               ...s,
-              activeTasks: tasksData.filter((t) => !['done'].includes(t.status)).length,
-              completedTasks: tasksData.filter((t) => t.status === 'done').length,
+              activeTasks: tasksData.filter((t: { status: string }) => !['done'].includes(t.status)).length,
+              completedTasks: tasksData.filter((t: { status: string }) => t.status === 'done').length,
             }));
           }
 
@@ -91,7 +91,7 @@ export default function DashboardPage() {
 
           // Set current room if not set
           if (!currentRoom && memberships?.[0]?.rooms) {
-            setCurrentRoom(memberships[0].rooms as Room);
+            setCurrentRoom(memberships[0].rooms as unknown as Room);
           }
         }
       } catch (error) {
@@ -107,11 +107,11 @@ export default function DashboardPage() {
     const channel = supabase
       .channel('dashboard-updates')
       .on(
-        'postgres_changes',
+        'postgres_changes' as any,
         { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user?.id}` },
-        (payload) => {
+        (payload: { eventType: string; new: Notification }) => {
           if (payload.eventType === 'INSERT') {
-            setNotifications((prev) => [payload.new as Notification, ...prev].slice(0, 20));
+            useNotificationStore.getState().addNotification(payload.new as Notification);
           }
         }
       )
@@ -265,7 +265,8 @@ export default function DashboardPage() {
                       </p>
                       <p className="text-xs text-surface-500 mt-0.5">
                         {formatRelativeTime(notif.created_at)}
-                        {notif.room && ` • ${(notif.room as { name: string }).name}`}
+                        {(notif as Notification & { rooms?: { name: string } | null }).rooms?.name &&
+                          ` • ${(notif as Notification & { rooms?: { name: string } | null }).rooms?.name}`}
                       </p>
                     </div>
                   </Link>

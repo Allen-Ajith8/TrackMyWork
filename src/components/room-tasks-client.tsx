@@ -15,7 +15,6 @@ import {
   AlertCircle,
   Clock,
   Calendar,
-  User,
   Flag,
   ArrowRight,
   Edit,
@@ -252,7 +251,7 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
-                onValueChange={(v) => setFormData({ ...formData, status: v as TaskStatus })}
+                onValueChange={(v: string) => setFormData({ ...formData, status: v as TaskStatus })}
                 defaultValue={formData.status}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -264,7 +263,7 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
             <div className="space-y-2">
               <Label>Category</Label>
               <Select
-                onValueChange={(v) => setFormData({ ...formData, category: v as TaskCategory })}
+                onValueChange={(v: string) => setFormData({ ...formData, category: v as TaskCategory })}
                 defaultValue={formData.category}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -280,7 +279,7 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
           <div className="space-y-2">
             <Label>Assignee</Label>
             <Select
-              onValueChange={(v) => setFormData({ ...formData, assigned_to: v })}
+              onValueChange={(v: string) => setFormData({ ...formData, assigned_to: v })}
               defaultValue={formData.assigned_to}
             >
               <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
@@ -502,7 +501,7 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
                             </td>
                             <td className="py-3 pr-4"><Badge variant="role" role={getTaskStatusColor(task.status).replace('bg-', '').replace(' text-', '')}>{task.status.replace('_', ' ')}</Badge></td>
                             <td className="py-3 pr-4"><Badge variant="role" role={CATEGORY_COLORS[task.category].replace('bg-', '').replace(' text-', '')}>{CATEGORY_LABELS[task.category]}</Badge></td>
-                            <td className="py-3 pr-4">{assignee ? <Avatar className="h-5 w-5 inline" src={assignee.user.avatar_url} fallback={assignee.user.display_name || assignee.user.username} /> : <span className="text-muted-foreground">—</span>}</td>
+                            <td className="py-3 pr-4">{assignee ? <Avatar className="h-5 w-5 inline" src={assignee.user.avatar_url} fallback={assignee.user.display_name || assignee.user.username || undefined} /> : <span className="text-muted-foreground">—</span>}</td>
                             <td className="py-3 pr-4">{task.priority > 5 ? <span className="badge bg-red-100 text-red-800">{PRIORITY_LABELS[task.priority as keyof typeof PRIORITY_LABELS]}</span> : task.priority}</td>
                             <td className="py-3 pr-4">{task.due_date ? formatRelativeTime(task.due_date) : '—'}</td>
                             <td className="py-3">
