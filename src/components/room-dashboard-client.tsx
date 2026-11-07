@@ -764,23 +764,17 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                   {(Object.keys(CATEGORY_LABELS) as TaskCategory[]).map(c => <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Dialog>
-                <Button variant="outline" asChild>
-                  <DialogTrigger asChild>
-                    <button className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      New Task
-                    </button>
-                  </DialogTrigger>
-                </Button>
-                <TaskDialog
-                  open={taskDialogOpen}
-                  onOpenChange={setTaskDialogOpen}
-                  members={initialMembers}
-                  roomId={room.id}
-                  onSubmit={handleCreateTask}
-                />
-              </Dialog>
+              <Button variant="outline" onClick={() => setTaskDialogOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                New Task
+              </Button>
+              <TaskDialog
+                open={taskDialogOpen}
+                onOpenChange={setTaskDialogOpen}
+                members={initialMembers}
+                roomId={room.id}
+                onSubmit={handleCreateTask}
+              />
             </div>
 
             {/* Kanban Board */}
@@ -809,14 +803,9 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
           <div className="p-4 h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Bill of Materials</h2>
-              <Dialog>
-              <Button asChild>
-                <DialogTrigger asChild>
-                  <button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Add Item
-                  </button>
-                </DialogTrigger>
+              <Button onClick={() => setBomDialogOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add Item
               </Button>
               <BomDialog
                 open={bomDialogOpen}
@@ -825,7 +814,6 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                 roomId={room.id}
                 onSubmit={handleUpdateBom}
               />
-            </Dialog>
             </div>
             <div className="flex-1 overflow-auto">
               <table className="w-full text-sm">
@@ -912,14 +900,9 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
           <div className="p-4 h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Submission Hub / Artifacts</h2>
-              <Dialog>
-              <Button asChild>
-                <DialogTrigger asChild>
-                  <button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Upload
-                  </button>
-                </DialogTrigger>
+              <Button onClick={() => setArtifactDialogOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Upload
               </Button>
               <ArtifactDialog
                 open={artifactDialogOpen}
@@ -927,7 +910,6 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                 roomId={room.id}
                 onSubmit={handleUploadArtifact}
               />
-            </Dialog>
             </div>
             <div className="flex-1 overflow-auto">
               {initialArtifacts.length === 0 ? (

@@ -438,21 +438,10 @@ export function RoomTeamClient({ room, initialMembers }: {
               </div>
             </div>
             {canManage && (
-              <Dialog>
-                <Button asChild>
-                  <DialogTrigger asChild>
-                    <button className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      Invite Member
-                    </button>
-                  </DialogTrigger>
-                </Button>
-                <InviteDialog
-                  open={inviteDialogOpen}
-                  onOpenChange={setInviteDialogOpen}
-                  onSubmit={handleInviteSubmit}
-                />
-              </Dialog>
+              <Button onClick={() => setInviteDialogOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Invite Member
+              </Button>
             )}
           </div>
         </div>
@@ -486,25 +475,25 @@ export function RoomTeamClient({ room, initialMembers }: {
             </Select>
             <div className="flex items-center gap-2 ml-auto">
               {canManage && (
-                <Dialog>
-                  <Button variant="outline" size="sm" asChild>
-                    <DialogTrigger asChild>
-                      <button className="gap-2">
-                        <Plus className="w-4 h-4" />
-                        Invite
-                      </button>
-                    </DialogTrigger>
-                  </Button>
-                  <InviteDialog
-                    open={inviteDialogOpen}
-                    onOpenChange={setInviteDialogOpen}
-                    onSubmit={handleInviteSubmit}
-                  />
-                </Dialog>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInviteDialogOpen(true)}
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Invite
+                </Button>
               )}
             </div>
           </div>
         </div>
+
+        <InviteDialog
+          open={inviteDialogOpen}
+          onOpenChange={setInviteDialogOpen}
+          onSubmit={handleInviteSubmit}
+        />
 
         {/* Members List */}
         <div className="flex-1 overflow-y-auto p-6">

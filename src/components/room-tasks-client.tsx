@@ -401,14 +401,9 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
               <Button variant="outline" size="sm" onClick={() => setViewMode(viewMode === 'kanban' ? 'list' : 'kanban')}>
                 {viewMode === 'kanban' ? <List className="w-4 h-4" /> : <Kanban className="w-4 h-4" />}
               </Button>
-              <Dialog>
-              <Button asChild>
-                <DialogTrigger asChild>
-                  <button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    New Task
-                  </button>
-                </DialogTrigger>
+              <Button onClick={() => setTaskDialogOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                New Task
               </Button>
               <TaskDialog
                 open={taskDialogOpen}
@@ -418,7 +413,6 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
                 onSubmit={editingTask ? (data) => handleUpdateTask(editingTask.id, data) : handleCreateTask}
                 editingTask={editingTask}
               />
-            </Dialog>
             </div>
           </div>
         </div>

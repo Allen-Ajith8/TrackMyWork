@@ -288,14 +288,9 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
                 <Calculator className="w-4 h-4 mr-2" />
                 Estimate Costs (NIM)
               </Button>
-              <Dialog>
-              <Button asChild>
-                <DialogTrigger asChild>
-                  <button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Add Item
-                  </button>
-                </DialogTrigger>
+              <Button onClick={() => setBomDialogOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add Item
               </Button>
               <BomDialog
                 open={bomDialogOpen}
@@ -305,7 +300,6 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
                 onSubmit={handleUpdateBom}
                 editingItem={editingBomItem}
               />
-            </Dialog>
             </div>
           </div>
         </div>
