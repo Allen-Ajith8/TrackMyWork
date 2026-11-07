@@ -772,14 +772,23 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                   {(Object.keys(CATEGORY_LABELS) as TaskCategory[]).map(c => <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Button variant="outline" asChild>
-                <DialogTrigger asChild>
-                  <button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    New Task
-                  </button>
-                </DialogTrigger>
-              </Button>
+              <Dialog>
+                <Button variant="outline" asChild>
+                  <DialogTrigger asChild>
+                    <button className="gap-2">
+                      <Plus className="w-4 h-4" />
+                      New Task
+                    </button>
+                  </DialogTrigger>
+                </Button>
+                <TaskDialog
+                  open={taskDialogOpen}
+                  onOpenChange={setTaskDialogOpen}
+                  members={initialMembers}
+                  roomId={room.id}
+                  onSubmit={handleCreateTask}
+                />
+              </Dialog>
             </div>
 
             {/* Kanban Board */}
@@ -808,6 +817,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
           <div className="p-4 h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Bill of Materials</h2>
+              <Dialog>
               <Button asChild>
                 <DialogTrigger asChild>
                   <button className="gap-2">
@@ -816,6 +826,14 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                   </button>
                 </DialogTrigger>
               </Button>
+              <BomDialog
+                open={bomDialogOpen}
+                onOpenChange={setBomDialogOpen}
+                members={initialMembers}
+                roomId={room.id}
+                onSubmit={handleUpdateBom}
+              />
+            </Dialog>
             </div>
             <div className="flex-1 overflow-auto">
               <table className="w-full text-sm">
@@ -902,6 +920,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
           <div className="p-4 h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Submission Hub / Artifacts</h2>
+              <Dialog>
               <Button asChild>
                 <DialogTrigger asChild>
                   <button className="gap-2">
@@ -910,6 +929,13 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                   </button>
                 </DialogTrigger>
               </Button>
+              <ArtifactDialog
+                open={artifactDialogOpen}
+                onOpenChange={setArtifactDialogOpen}
+                roomId={room.id}
+                onSubmit={handleUploadArtifact}
+              />
+            </Dialog>
             </div>
             <div className="flex-1 overflow-auto">
               {initialArtifacts.length === 0 ? (
@@ -963,31 +989,17 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
         </TabsContent>
       </div>
 
-      {/* Dialogs */}
-      <TaskDialog
-        open={taskDialogOpen}
-        onOpenChange={setTaskDialogOpen}
-        members={initialMembers}
-        roomId={room.id}
-        onSubmit={editingTask ? (data) => handleUpdateTask(editingTask.id, data) : handleCreateTask}
-        editingTask={editingTask}
-      />
-
-      <BomDialog
-        open={bomDialogOpen}
-        onOpenChange={setBomDialogOpen}
-        members={initialMembers}
-        roomId={room.id}
-        onSubmit={handleUpdateBom}
-        editingItem={editingBomItem}
-      />
-
-      <ArtifactDialog
-        open={artifactDialogOpen}
-        onOpenChange={setArtifactDialogOpen}
-        roomId={room.id}
-        onSubmit={handleUploadArtifact}
-      />
+      {/* Dialogs for editing (inline with triggers for new items) */}
+      {editingTask && (
+        <TaskDialog
+          open={taskDialogOpen}
+          onOpenChange={setTaskDialogOpen}
+          members={initialMembers}
+          roomId={room.id}
+          onSubmit={(data) => handleUpdateTask(editingTask.id, data)}
+          editingTask={editingTask}
+        />
+      )}
     </div>
   );
 }
