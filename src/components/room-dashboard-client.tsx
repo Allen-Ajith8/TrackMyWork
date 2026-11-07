@@ -717,22 +717,23 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
       </div>
 
       {/* Tab Navigation */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="border-b bg-white px-6 flex-shrink-0">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="tasks">
-            <Kanban className="w-4 h-4 mr-2" />
-            Tasks
-          </TabsTrigger>
-          <TabsTrigger value="bom">
-            <Package className="w-4 h-4 mr-2" />
-            BOM
-          </TabsTrigger>
-          <TabsTrigger value="artifacts">
-            <FileImage className="w-4 h-4 mr-2" />
-            Artifacts
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
+        <div className="border-b bg-white px-6 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="tasks">
+              <Kanban className="w-4 h-4 mr-2" />
+              Tasks
+            </TabsTrigger>
+            <TabsTrigger value="bom">
+              <Package className="w-4 h-4 mr-2" />
+              BOM
+            </TabsTrigger>
+            <TabsTrigger value="artifacts">
+              <FileImage className="w-4 h-4 mr-2" />
+              Artifacts
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
@@ -962,6 +963,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
           </div>
         </TabsContent>
       </div>
+      </Tabs>
 
       {/* Dialogs for editing (inline with triggers for new items) */}
       {editingTask && (
