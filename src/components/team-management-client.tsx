@@ -396,47 +396,69 @@ export function TeamManagementClient({ room, initialMembers }: {
   };
 
   const handleResendInvite = async (memberId: string) => {
-    // TODO: Resend invite email
-    setToast({ type: 'success', title: 'Invite Resent', message: 'Invitation email has been sent again' });
+    const member = members.find((m) => m.id === memberId);
+    if (!member?.user.email) {
+      setToast({ type: 'error', title: 'Error', message: 'This member has no email on file.' });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/rooms/${room.id}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: member.user.email, resend: true }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'Could not resend the invitation.');
+      }
+
+      setToast({
+        type: 'success',
+        title: 'Invite Resent',
+        message: payload.message || `Invitation sent again to ${member.user.email}`,
+      });
+    } catch (error) {
+      setToast({
+        type: 'error',
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Could not resend the invitation.',
+      });
+    }
   };
 
   const handleInviteSubmit = async (data: { email: string; role_title: RoleTitle; custom_role_name?: string; permissions: Partial<Record<RoomPermission, boolean>> }) => {
-    // TODO: Create invite in Supabase and send email
-    setToast({ type: 'success', title: 'Invite Sent', message: `Invitation sent to ${data.email}` });
-    
-    // Optimistic update
-    const newMember: RoomMember & { user: User } = {
-      id: crypto.randomUUID(),
-      room_id: room.id,
-      user_id: data.email, // temporary
-      status: 'pending',
-      role_title: data.role_title,
-      custom_role_name: data.custom_role_name ?? null,
-      flag_can_edit_repo: data.permissions.can_edit_repo || false,
-      flag_can_trigger_nim: data.permissions.can_trigger_nim || false,
-      flag_can_assign_tasks: data.permissions.can_assign_tasks || false,
-      flag_can_upload_assets: data.permissions.can_upload_assets || false,
-      flag_can_manage_bom: data.permissions.can_manage_bom || false,
-      flag_can_invite_members: data.permissions.can_invite_members || false,
-      flag_can_edit_rules: data.permissions.can_edit_rules || false,
-      flag_is_team_leader: false,
-      joined_at: null,
-      invited_by: user?.id ?? null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      user: {
-        id: data.email,
-        email: data.email,
-        username: data.email.split('@')[0],
-        display_name: data.custom_role_name || data.role_title,
-        avatar_url: null,
-        is_global_admin: false,
-        fcm_token: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    };
-    setMembers(prev => [...prev, newMember]);
+    try {
+      const response = await fetch(`/api/rooms/${room.id}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email,
+          role_title: data.role_title,
+          custom_role_name: data.custom_role_name,
+          permissions: data.permissions,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'Could not send the invitation.');
+      }
+
+      setMembers((prev) => [...prev, { ...payload.member, user: payload.user }]);
+      setToast({
+        type: 'success',
+        title: 'Invite Sent',
+        message: `Invitation sent to ${data.email}`,
+      });
+    } catch (error) {
+      setToast({
+        type: 'error',
+        title: 'Invite Failed',
+        message: error instanceof Error ? error.message : 'Could not send the invitation.',
+      });
+    }
   };
 
   const uniqueRoles = Array.from(new Set(members.map(m => m.role_title)));
