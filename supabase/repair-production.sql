@@ -178,6 +178,21 @@ on conflict (id) do update set
   avatar_url = coalesce(public.users.avatar_url, excluded.avatar_url),
   updated_at = now();
 
+-- 4b. Unique username constraint (Instagram-style handle uniqueness).
+-- Safe to run repeatedly. Fails if duplicate non-null usernames already exist;
+-- clean those up manually before applying this migration.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'users_username_key'
+      and conrelid = 'public.users'::regclass
+  ) then
+    alter table public.users add constraint users_username_key unique (username);
+  end if;
+end
+$$;
+
 -- 5. Privileges --------------------------------------------------------------
 
 grant usage on schema public to anon, authenticated;

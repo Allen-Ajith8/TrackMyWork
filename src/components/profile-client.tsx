@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -13,13 +13,14 @@ import {
   ShieldCheck,
   Trash2,
   UserRound,
+  X,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/lib/store';
 import {
   getDisplayName,
-  isUsernameValid,
   sanitizeUsername,
+  validateUsername,
   type ProfileMetadata,
 } from '@/lib/profile';
 import { formatDate } from '@/lib/utils';
@@ -65,6 +66,72 @@ export function ProfileClient({ authUser, initialProfile }: ProfileClientProps) 
   const [removeAvatar, setRemoveAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<Status>(null);
+  const [usernameCheck, setUsernameCheck] = useState<{
+    state: 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
+    message: string;
+  }>({ state: 'idle', message: '' });
+
+  const savedUsername = initialProfile?.username || metadata.username || '';
+  const cleanUsername = sanitizeUsername(username);
+
+  // Live availability check (debounced) — mirrors the Instagram-style
+  // "is this handle free?" feedback while typing.
+  useEffect(() => {
+    if (!cleanUsername) {
+      setUsernameCheck({ state: 'idle', message: '' });
+      return;
+    }
+
+    if (cleanUsername === savedUsername) {
+      setUsernameCheck({ state: 'available', message: 'This is your current username.' });
+      return;
+    }
+
+    const validationError = validateUsername(cleanUsername);
+    if (validationError) {
+      setUsernameCheck({ state: 'invalid', message: validationError });
+      return;
+    }
+
+    setUsernameCheck({ state: 'checking', message: 'Checking availability…' });
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/profile/username?username=${encodeURIComponent(cleanUsername)}`,
+          { cache: 'no-store' }
+        );
+        const payload = await response.json().catch(() => ({}));
+
+        if (cancelled) return;
+
+        if (payload.available) {
+          setUsernameCheck({
+            state: 'available',
+            message: `@${cleanUsername} is available.`,
+          });
+        } else {
+          setUsernameCheck({
+            state: 'taken',
+            message: payload.reason || 'That username is already taken.',
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setUsernameCheck({
+            state: 'idle',
+            message: 'Could not check availability. It will be verified when you save.',
+          });
+        }
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [cleanUsername, savedUsername]);
 
   const previewName = displayName.trim() || getDisplayName(metadata, 'Member');
   const previewUsername = username ? `@${username}` : null;
@@ -120,25 +187,85 @@ export function ProfileClient({ authUser, initialProfile }: ProfileClientProps) 
     event.preventDefault();
     setStatus(null);
 
-    const cleanUsername = sanitizeUsername(username);
-
     if (displayName.trim().length < 2) {
       setStatus({ type: 'error', message: 'Display name must be at least 2 characters.' });
       return;
     }
-    if (cleanUsername && !isUsernameValid(cleanUsername)) {
-      setStatus({
-        type: 'error',
-        message: 'Username must be 3–20 characters using letters, numbers or underscores.',
-      });
+
+    const usernameError = validateUsername(cleanUsername);
+    if (usernameError) {
+      setUsernameCheck({ state: 'invalid', message: usernameError });
+      setStatus({ type: 'error', message: usernameError });
       return;
     }
 
     setSaving(true);
 
     try {
+      // Re-check right before writing so a handle taken while typing is caught.
+      if (cleanUsername && cleanUsername !== savedUsername) {
+        setUsernameCheck({ state: 'checking', message: 'Checking availability…' });
+        const response = await fetch(
+          `/api/profile/username?username=${encodeURIComponent(cleanUsername)}`,
+          { cache: 'no-store' }
+        );
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok || !payload.available) {
+          const reason = payload.reason || 'That username is already taken.';
+          setUsernameCheck({ state: 'taken', message: reason });
+          throw new Error(reason);
+        }
+
+        setUsernameCheck({
+          state: 'available',
+          message: `@${cleanUsername} is available.`,
+        });
+      }
+
       const uploadedAvatar = await uploadAvatar();
       const nextAvatar = removeAvatar ? null : uploadedAvatar;
+
+      // Write the profile row first: its UNIQUE(username) constraint is the
+      // final guard against two people claiming the same handle at once.
+      const profileFields = {
+        display_name: displayName.trim(),
+        username: cleanUsername || null,
+        avatar_url: nextAvatar,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: updated, error: updateError } = await supabase
+        .from('users')
+        .update(profileFields)
+        .eq('id', authUser.id)
+        .select('id');
+
+      if (updateError) {
+        if (updateError.code === '23505') {
+          const message = 'That username was just taken. Please choose another.';
+          setUsernameCheck({ state: 'taken', message });
+          throw new Error(message);
+        }
+        throw new Error(updateError.message);
+      }
+
+      if (!updated || updated.length === 0) {
+        const { error: insertError } = await supabase.from('users').insert({
+          id: authUser.id,
+          email: authUser.email,
+          ...profileFields,
+        });
+
+        if (insertError) {
+          if (insertError.code === '23505') {
+            const message = 'That username was just taken. Please choose another.';
+            setUsernameCheck({ state: 'taken', message });
+            throw new Error(message);
+          }
+          throw new Error(insertError.message);
+        }
+      }
 
       const { error: authError } = await supabase.auth.updateUser({
         data: {
@@ -151,32 +278,6 @@ export function ProfileClient({ authUser, initialProfile }: ProfileClientProps) 
 
       if (authError) {
         throw new Error(authError.message);
-      }
-
-      // Best-effort sync with the public.users table. Auth metadata remains the
-      // source of truth if the table is not available yet.
-      try {
-        const { data: updated } = await supabase
-          .from('users')
-          .update({
-            display_name: displayName.trim(),
-            username: cleanUsername || null,
-            avatar_url: nextAvatar,
-          })
-          .eq('id', authUser.id)
-          .select('id');
-
-        if (!updated || updated.length === 0) {
-          await supabase.from('users').insert({
-            id: authUser.id,
-            email: authUser.email,
-            display_name: displayName.trim(),
-            username: cleanUsername || null,
-            avatar_url: nextAvatar,
-          });
-        }
-      } catch {
-        // Non-fatal: the profile still saves to auth metadata.
       }
 
       if (user) {
@@ -312,6 +413,30 @@ export function ProfileClient({ authUser, initialProfile }: ProfileClientProps) 
                 />
               </div>
               <p className="text-xs text-surface-500 mt-1">Letters, numbers and underscores.</p>
+              {usernameCheck.state === 'checking' && (
+                <p className="text-xs text-surface-400 mt-1 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  {usernameCheck.message}
+                </p>
+              )}
+              {usernameCheck.state === 'available' && (
+                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                  <Check className="w-3 h-3" />
+                  {usernameCheck.message}
+                </p>
+              )}
+              {usernameCheck.state === 'taken' && (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <X className="w-3 h-3" />
+                  {usernameCheck.message}
+                </p>
+              )}
+              {usernameCheck.state === 'invalid' && (
+                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                  <X className="w-3 h-3" />
+                  {usernameCheck.message}
+                </p>
+              )}
             </div>
           </div>
 

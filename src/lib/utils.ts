@@ -134,3 +134,36 @@ export function parseGitHubRepoUrl(url: string): { owner: string; repo: string }
 export function constructGitHubUrl(owner: string, repo: string): string {
   return `https://github.com/${owner}/${repo}`;
 }
+
+/**
+ * Accepts "owner/repo", "github.com/owner/repo" or a full GitHub URL and
+ * returns the canonical URL stored on a room. GitHub sends canonical
+ * `html_url` values in webhooks, so storing the same shape keeps matching
+ * reliable.
+ */
+export function normalizeGitHubRepoInput(
+  value: string
+): { owner: string; repo: string; url: string } | null {
+  let candidate = value.trim();
+  if (!candidate) return null;
+
+  candidate = candidate
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '')
+    .replace(/[?#].*$/, '')
+    .replace(/\/+$/, '')
+    .replace(/\.git$/i, '');
+
+  if (candidate.toLowerCase().startsWith('github.com/')) {
+    candidate = candidate.slice('github.com/'.length);
+  }
+
+  const parts = candidate.split('/').filter(Boolean);
+  if (parts.length < 2) return null;
+
+  const [owner, repo] = parts;
+  const validSegment = /^[A-Za-z0-9_.-]+$/;
+  if (!validSegment.test(owner) || !validSegment.test(repo)) return null;
+
+  return { owner, repo, url: constructGitHubUrl(owner, repo) };
+}

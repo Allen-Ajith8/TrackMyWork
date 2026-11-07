@@ -35,6 +35,52 @@ export function isUsernameValid(value: string): boolean {
   return /^[a-z0-9_]{3,20}$/.test(value);
 }
 
+/** Handles that should never belong to a user account. */
+export const RESERVED_USERNAMES = new Set([
+  'admin',
+  'administrator',
+  'root',
+  'support',
+  'help',
+  'official',
+  'trackmywork',
+  'api',
+  'auth',
+  'dashboard',
+  'settings',
+  'profile',
+  'team',
+  'rooms',
+  'tasks',
+  'bom',
+  'artifacts',
+  'null',
+  'undefined',
+]);
+
+/**
+ * Returns a human-readable error, or null when the username is acceptable.
+ * An empty username is allowed (username is optional).
+ */
+export function validateUsername(value: string): string | null {
+  if (!value) return null;
+
+  if (value.length < 3) {
+    return 'Username must be at least 3 characters.';
+  }
+  if (value.length > 20) {
+    return 'Username must be 20 characters or fewer.';
+  }
+  if (!/^[a-z0-9_]+$/.test(value)) {
+    return 'Use lowercase letters, numbers and underscores only.';
+  }
+  if (RESERVED_USERNAMES.has(value)) {
+    return 'That username is reserved. Please choose another.';
+  }
+
+  return null;
+}
+
 export function getDisplayName(
   metadata: ProfileMetadata,
   fallback = 'Member'
