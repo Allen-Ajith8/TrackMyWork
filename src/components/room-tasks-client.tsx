@@ -380,7 +380,8 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
     setTasks(prev => [newTask, ...prev]);
     try {
       const supabase = createClient();
-      await supabase.from('tasks').insert(newTask);
+      const { error } = await supabase.from('tasks').insert(newTask);
+      if (error) throw error;
     } catch (error) {
       console.error('Failed to create task:', error);
       setTasks(prev => prev.filter(t => t.id !== newTask.id));

@@ -250,9 +250,11 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
       } as HardwareBomItem;
       setBom(prev => [newItem, ...prev]);
       try {
-        await supabase.from('hardware_bom').insert(newItem);
+        const { error } = await supabase.from('hardware_bom').insert(newItem);
+        if (error) throw error;
       } catch (error) {
         console.error('Failed to create BOM item:', error);
+        setBom(prev => prev.filter(i => i.id !== newItem.id));
       }
     }
   };
