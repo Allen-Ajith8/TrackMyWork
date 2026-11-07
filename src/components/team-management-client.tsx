@@ -126,8 +126,13 @@ function MemberRow({ member, currentUserId, isTeamLeader, isGlobalAdmin, onUpdat
               <Mail className="w-5 h-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="font-medium">{member.custom_role_name || member.role_title}</p>
-              <p className="text-sm text-muted-foreground">Invited: {formatRelativeTime(member.created_at)}</p>
+              <p className="font-medium truncate">
+                {member.user?.display_name || member.user?.email || member.custom_role_name || member.role_title}
+              </p>
+              <p className="text-sm text-muted-foreground truncate">
+                {member.user?.email ? `${member.user.email} • ` : ''}
+                {member.custom_role_name || member.role_title} • Invited {formatRelativeTime(member.created_at)}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
