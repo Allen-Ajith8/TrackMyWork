@@ -156,14 +156,6 @@ function KanbanColumn({ status, label, tasks, members, onUpdateTask, onDeleteTas
           </div>
         )}
       </div>
-      <Button variant="outline" size="sm" className="mt-2" asChild>
-        <DialogTrigger asChild>
-          <button className="w-full justify-start gap-2">
-            <Plus className="w-4 h-4" />
-            Add Task
-          </button>
-        </DialogTrigger>
-      </Button>
     </div>
   );
 }
