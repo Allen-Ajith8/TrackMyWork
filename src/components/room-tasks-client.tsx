@@ -208,7 +208,13 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ ...formData, room_id: roomId });
+    onSubmit({
+      ...formData,
+      room_id: roomId,
+      assigned_to: formData.assigned_to || null,
+      due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null,
+      priority: Number(formData.priority) || 0,
+    });
     onOpenChange(false);
   };
 

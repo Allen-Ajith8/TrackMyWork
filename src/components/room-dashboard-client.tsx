@@ -206,7 +206,13 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ ...formData, room_id: roomId });
+    onSubmit({
+      ...formData,
+      room_id: roomId,
+      assigned_to: formData.assigned_to || null,
+      due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null,
+      priority: Number(formData.priority) || 0,
+    });
     onOpenChange(false);
   };
 
@@ -364,7 +370,7 @@ function BomDialog({ open, onOpenChange, members, roomId, onSubmit, editingItem 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ ...formData, room_id: roomId, quantity: Number(formData.quantity), unit_est_cost: formData.unit_est_cost ? Number(formData.unit_est_cost) : null, unit_actual_cost: formData.unit_actual_cost ? Number(formData.unit_actual_cost) : null });
+    onSubmit({ ...formData, room_id: roomId, buyer_id: formData.buyer_id || null, quantity: Number(formData.quantity) || 0, unit_est_cost: formData.unit_est_cost ? Number(formData.unit_est_cost) : null, unit_actual_cost: formData.unit_actual_cost ? Number(formData.unit_actual_cost) : null });
     onOpenChange(false);
   };
 
