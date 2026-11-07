@@ -36,6 +36,21 @@ alter table public.artifacts
 alter table public.notifications
   add column if not exists action_url text;
 
+-- Room rules are written when a room is created.
+create table if not exists public.room_rules (
+  room_id uuid primary key references public.rooms(id) on delete cascade,
+  tech_stack_locks text[] not null default '{}',
+  budget_cap numeric,
+  custom_agent_instructions text,
+  nim_auto_broadcast boolean not null default true,
+  auto_task_progression boolean not null default true,
+  non_tech_translation boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.room_rules enable row level security;
+
 -- 2. Row-level security ------------------------------------------------------
 -- The project managers/team leaders write through the browser client, so give
 -- signed-in members a working policy on every app table. Data scoping is done
@@ -48,6 +63,7 @@ begin
   foreach target in array array[
     'users',
     'rooms',
+    'room_rules',
     'room_members',
     'tasks',
     'hardware_bom',
