@@ -438,14 +438,21 @@ export function RoomTeamClient({ room, initialMembers }: {
               </div>
             </div>
             {canManage && (
-              <Button asChild>
-                <DialogTrigger asChild>
-                  <button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Invite Member
-                  </button>
-                </DialogTrigger>
-              </Button>
+              <Dialog>
+                <Button asChild>
+                  <DialogTrigger asChild>
+                    <button className="gap-2">
+                      <Plus className="w-4 h-4" />
+                      Invite Member
+                    </button>
+                  </DialogTrigger>
+                </Button>
+                <InviteDialog
+                  open={inviteDialogOpen}
+                  onOpenChange={setInviteDialogOpen}
+                  onSubmit={handleInviteSubmit}
+                />
+              </Dialog>
             )}
           </div>
         </div>
@@ -479,14 +486,21 @@ export function RoomTeamClient({ room, initialMembers }: {
             </Select>
             <div className="flex items-center gap-2 ml-auto">
               {canManage && (
-                <Button variant="outline" size="sm" asChild>
-                  <DialogTrigger asChild>
-                    <button className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      Invite
-                    </button>
-                  </DialogTrigger>
-                </Button>
+                <Dialog>
+                  <Button variant="outline" size="sm" asChild>
+                    <DialogTrigger asChild>
+                      <button className="gap-2">
+                        <Plus className="w-4 h-4" />
+                        Invite
+                      </button>
+                    </DialogTrigger>
+                  </Button>
+                  <InviteDialog
+                    open={inviteDialogOpen}
+                    onOpenChange={setInviteDialogOpen}
+                    onSubmit={handleInviteSubmit}
+                  />
+                </Dialog>
               )}
             </div>
           </div>
@@ -517,13 +531,6 @@ export function RoomTeamClient({ room, initialMembers }: {
             </div>
           )}
         </div>
-
-        {/* Dialogs */}
-        <InviteDialog
-          open={inviteDialogOpen}
-          onOpenChange={setInviteDialogOpen}
-          onSubmit={handleInviteSubmit}
-        />
 
         <ToastViewport />
       </div>

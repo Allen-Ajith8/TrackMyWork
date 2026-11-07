@@ -158,14 +158,6 @@ function KanbanColumn({ status, label, tasks, members, onUpdateTask, onDeleteTas
           </div>
         )}
       </div>
-      <Button variant="outline" size="sm" className="mt-2" asChild>
-        <DialogTrigger asChild>
-          <button className="w-full justify-start gap-2">
-            <Plus className="w-4 h-4" />
-            Add Task
-          </button>
-        </DialogTrigger>
-      </Button>
     </div>
   );
 }
@@ -409,6 +401,7 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
               <Button variant="outline" size="sm" onClick={() => setViewMode(viewMode === 'kanban' ? 'list' : 'kanban')}>
                 {viewMode === 'kanban' ? <List className="w-4 h-4" /> : <Kanban className="w-4 h-4" />}
               </Button>
+              <Dialog>
               <Button asChild>
                 <DialogTrigger asChild>
                   <button className="gap-2">
@@ -417,6 +410,15 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
                   </button>
                 </DialogTrigger>
               </Button>
+              <TaskDialog
+                open={taskDialogOpen}
+                onOpenChange={setTaskDialogOpen}
+                members={initialMembers}
+                roomId={room.id}
+                onSubmit={editingTask ? (data) => handleUpdateTask(editingTask.id, data) : handleCreateTask}
+                editingTask={editingTask}
+              />
+            </Dialog>
             </div>
           </div>
         </div>
@@ -526,16 +528,6 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
             </div>
           )}
         </div>
-
-        {/* Dialogs */}
-        <TaskDialog
-          open={taskDialogOpen}
-          onOpenChange={setTaskDialogOpen}
-          members={initialMembers}
-          roomId={room.id}
-          onSubmit={editingTask ? (data) => handleUpdateTask(editingTask.id, data) : handleCreateTask}
-          editingTask={editingTask}
-        />
 
         <ToastViewport />
       </div>

@@ -248,6 +248,7 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
               <Button variant="outline" size="sm" onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}>
                 {viewMode === 'grid' ? <List className="w-4 h-4" /> : <FileImage className="w-4 h-4" />}
               </Button>
+              <Dialog>
               <Button asChild>
                 <DialogTrigger asChild>
                   <button className="gap-2">
@@ -256,6 +257,13 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
                   </button>
                 </DialogTrigger>
               </Button>
+              <ArtifactDialog
+                open={artifactDialogOpen}
+                onOpenChange={setArtifactDialogOpen}
+                roomId={room.id}
+                onSubmit={handleUploadArtifact}
+              />
+            </Dialog>
             </div>
           </div>
         </div>
@@ -426,14 +434,6 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
             </div>
           )}
         </div>
-
-        {/* Dialogs */}
-        <ArtifactDialog
-          open={artifactDialogOpen}
-          onOpenChange={setArtifactDialogOpen}
-          roomId={room.id}
-          onSubmit={handleUploadArtifact}
-        />
 
         <ToastViewport />
       </div>
