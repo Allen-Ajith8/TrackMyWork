@@ -113,7 +113,72 @@ begin
 end
 $$;
 
--- 4. Privileges --------------------------------------------------------------
+-- 4. Keep public.users in sync with auth.users --------------------------------
+-- New signups were not getting a profile row, which breaks team pages and
+-- invitations. Create the trigger plus a one-time backfill.
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.users (id, email, username, display_name, avatar_url)
+  values (
+    new.id,
+    coalesce(new.email, ''),
+    new.raw_user_meta_data->>'username',
+    coalesce(
+      new.raw_user_meta_data->>'display_name',
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      split_part(coalesce(new.email, ''), '@', 1)
+    ),
+    coalesce(
+      new.raw_user_meta_data->>'avatar_url',
+      new.raw_user_meta_data->>'picture'
+    )
+  )
+  on conflict (id) do update set
+    email = excluded.email,
+    display_name = coalesce(public.users.display_name, excluded.display_name),
+    avatar_url = coalesce(public.users.avatar_url, excluded.avatar_url),
+    updated_at = now();
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- Backfill profiles for accounts created before the trigger existed.
+insert into public.users (id, email, username, display_name, avatar_url)
+select
+  u.id,
+  coalesce(u.email, ''),
+  u.raw_user_meta_data->>'username',
+  coalesce(
+    u.raw_user_meta_data->>'display_name',
+    u.raw_user_meta_data->>'full_name',
+    u.raw_user_meta_data->>'name',
+    split_part(coalesce(u.email, ''), '@', 1)
+  ),
+  coalesce(
+    u.raw_user_meta_data->>'avatar_url',
+    u.raw_user_meta_data->>'picture'
+  )
+from auth.users u
+on conflict (id) do update set
+  email = excluded.email,
+  display_name = coalesce(public.users.display_name, excluded.display_name),
+  avatar_url = coalesce(public.users.avatar_url, excluded.avatar_url),
+  updated_at = now();
+
+-- 5. Privileges --------------------------------------------------------------
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
@@ -121,6 +186,6 @@ grant select, insert, update, delete on all tables in schema public to service_r
 grant select on all tables in schema public to anon;
 grant usage, select on all sequences in schema public to authenticated;
 
--- 5. Refresh the API schema cache -------------------------------------------
+-- 6. Refresh the API schema cache -------------------------------------------
 
 notify pgrst, 'reload schema';

@@ -26,6 +26,28 @@ const ROLE_TITLES = [
 ];
 
 /**
+ * Supabase's admin API has no "get user by email" call, so page through the
+ * user list. Hackathon teams are small; 10 pages x 200 users is plenty.
+ */
+async function findAuthUserByEmail(
+  admin: ReturnType<typeof createAdminClient>,
+  email: string
+) {
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error || !data?.users?.length) return null;
+
+    const match = data.users.find(
+      (candidate) => candidate.email?.toLowerCase() === email
+    );
+    if (match) return match;
+    if (data.users.length < 200) return null;
+  }
+
+  return null;
+}
+
+/**
  * Invite a teammate to a room.
  *
  * The invitee does not need an account: Supabase Auth sends them an invite
@@ -85,14 +107,53 @@ export async function POST(
     );
   }
 
-  // Resolve the invitee to a public.users row. If they have never signed up,
-  // send a Supabase invite email which creates the auth user (and, via the
-  // handle_new_user trigger, their profile).
+  // Resolve the invitee to a public.users row.
   let { data: invitee } = await admin
     .from('users')
     .select('*')
     .eq('email', email)
     .maybeSingle();
+
+  // Older deployments may not have the auth.users -> public.users trigger, so
+  // an account can exist without a profile row. Find it in Auth and backfill
+  // the profile instead of trying to re-invite an existing account.
+  if (!invitee) {
+    const authUser = await findAuthUserByEmail(admin, email);
+
+    if (authUser) {
+      const { data: created } = await admin
+        .from('users')
+        .insert({
+          id: authUser.id,
+          email,
+          username:
+            (authUser.user_metadata?.username as string | undefined) ||
+            email.split('@')[0],
+          display_name:
+            (authUser.user_metadata?.display_name as string | undefined) ||
+            (authUser.user_metadata?.full_name as string | undefined) ||
+            email.split('@')[0],
+          avatar_url:
+            (authUser.user_metadata?.avatar_url as string | undefined) ||
+            (authUser.user_metadata?.picture as string | undefined) ||
+            null,
+        })
+        .select('*')
+        .single();
+
+      invitee = created;
+
+      // Another concurrent request may have won the race.
+      if (!invitee) {
+        const { data: retry } = await admin
+          .from('users')
+          .select('*')
+          .eq('email', email)
+          .maybeSingle();
+        invitee = retry;
+      }
+    }
+  }
 
   if (!invitee) {
     const origin = new URL(req.url).origin;
@@ -102,43 +163,32 @@ export async function POST(
     );
 
     if (inviteError) {
-      // Supabase refuses to re-invite an address that already has an account.
-      // Try once more to read the profile; otherwise return a clear error.
-      const { data: retry } = await admin
+      return NextResponse.json(
+        { error: inviteError.message || 'Could not send the invitation email.' },
+        { status: 400 }
+      );
+    }
+
+    const { data: created } = await admin
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+
+    invitee = created;
+
+    if (!invitee && invited?.user) {
+      const { data: inserted } = await admin
         .from('users')
+        .insert({
+          id: invited.user.id,
+          email,
+          username: email.split('@')[0],
+          display_name: invited.user.email?.split('@')[0] ?? email.split('@')[0],
+        })
         .select('*')
-        .eq('email', email)
-        .maybeSingle();
-
-      if (!retry) {
-        return NextResponse.json(
-          { error: inviteError.message || 'Could not send the invitation email.' },
-          { status: 400 }
-        );
-      }
-      invitee = retry;
-    } else {
-      const { data: created } = await admin
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle();
-
-      invitee = created;
-
-      if (!invitee && invited?.user) {
-        const { data: inserted } = await admin
-          .from('users')
-          .insert({
-            id: invited.user.id,
-            email,
-            username: email.split('@')[0],
-            display_name: invited.user.email?.split('@')[0] ?? email.split('@')[0],
-          })
-          .select('*')
-          .single();
-        invitee = inserted;
-      }
+        .single();
+      invitee = inserted;
     }
   }
 
