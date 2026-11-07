@@ -12,7 +12,18 @@ type InviteBody = {
   resend?: boolean;
 };
 
-const ROLE_TITLES = ['Team Leader', 'Hardware/BOM', 'Animations', 'Code/Vibe-Coder', 'Pitch/Media', 'Custom'];
+const ROLE_TITLES = [
+  'Team Leader',
+  'Frontend',
+  'Backend',
+  'AI/ML',
+  'Pitch/Media',
+  'Video Editor',
+  'Hardware',
+  'Designer',
+  'DevOps',
+  'Custom',
+];
 
 /**
  * Invite a teammate to a room.
