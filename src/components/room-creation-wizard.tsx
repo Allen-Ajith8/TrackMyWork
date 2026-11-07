@@ -55,7 +55,16 @@ type Step2Data = z.infer<typeof step2Schema>;
 // Step 3: Rules
 const step3Schema = z.object({
   tech_stack_locks: z.array(z.string()).optional(),
-  budget_cap: z.coerce.number().optional(),
+  budget_cap: z.preprocess(
+    (value) =>
+      value === '' ||
+      value === null ||
+      value === undefined ||
+      (typeof value === 'number' && Number.isNaN(value))
+        ? undefined
+        : value,
+    z.coerce.number().optional()
+  ),
   custom_agent_instructions: z.string().optional(),
   nim_auto_broadcast: z.boolean().default(false),
   auto_task_progression: z.boolean().default(true),
