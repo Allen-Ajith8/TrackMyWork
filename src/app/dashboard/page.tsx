@@ -90,9 +90,17 @@ export default function DashboardPage() {
           
           if (notifs) setNotifications(notifs);
 
-          // Set current room if not set
-          if (!currentRoom && memberships?.[0]?.rooms) {
-            setCurrentRoom(memberships[0].rooms as unknown as Room);
+          // Keep the "current room" in sync with the rooms the user belongs to.
+          // A room can be deleted or the user removed while the id is still
+          // persisted in local storage.
+          const memberRooms = (memberships || [])
+            .map((membership: any) => membership.rooms)
+            .filter(Boolean) as Room[];
+
+          if (memberRooms.length === 0) {
+            if (currentRoom) setCurrentRoom(null);
+          } else if (!currentRoom || !memberRooms.some((room) => room.id === currentRoom.id)) {
+            setCurrentRoom(memberRooms[0]);
           }
         }
       } catch (error) {
