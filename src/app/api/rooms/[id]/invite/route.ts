@@ -208,9 +208,29 @@ export async function POST(
 
   if (existing) {
     if (body?.resend) {
-      await admin.auth.admin.inviteUserByEmail(email, {
+      const { error: resendError } = await admin.auth.admin.inviteUserByEmail(email, {
         redirectTo: `${new URL(req.url).origin}/auth/login`,
       });
+
+      if (resendError) {
+        // Registered accounts cannot receive another "invite" email. Nudge
+        // them in-app instead so the pending invite is still actionable.
+        await admin.from('notifications').insert({
+          user_id: invitee.id,
+          room_id: roomId,
+          type: 'invite',
+          title: 'Reminder: you have a room invite',
+          content: { room_id: roomId, invited_by: user.id },
+          action_url: `/dashboard/rooms/${roomId}`,
+        });
+
+        return NextResponse.json({
+          resent: true,
+          message:
+            'This teammate already has an account, so an in-app invite reminder was sent instead.',
+        });
+      }
+
       return NextResponse.json({
         resent: true,
         message: 'Invitation email sent again.',
