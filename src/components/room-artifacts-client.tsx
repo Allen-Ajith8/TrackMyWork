@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/lib/store';
@@ -248,16 +249,12 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
               <Button variant="outline" size="sm" onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}>
                 {viewMode === 'grid' ? <List className="w-4 h-4" /> : <FileImage className="w-4 h-4" />}
               </Button>
-              <Button onClick={() => setArtifactDialogOpen(true)} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Upload
+              <Button asChild className="gap-2">
+                <Link href={`/dashboard/artifacts/upload?room=${room.id}`}>
+                  <Plus className="w-4 h-4" />
+                  Upload
+                </Link>
               </Button>
-              <ArtifactDialog
-                open={artifactDialogOpen}
-                onOpenChange={setArtifactDialogOpen}
-                roomId={room.id}
-                onSubmit={handleUploadArtifact}
-              />
             </div>
           </div>
         </div>

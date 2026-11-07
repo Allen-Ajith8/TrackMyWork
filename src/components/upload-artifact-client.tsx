@@ -28,13 +28,19 @@ function formatBytes(bytes: number) {
 export function UploadArtifactClient({
   userId,
   rooms,
+  defaultRoomId,
 }: {
   userId: string;
   rooms: { id: string; name: string }[];
+  defaultRoomId?: string;
 }) {
   const router = useRouter();
   const supabase = createClient();
-  const [roomId, setRoomId] = useState(rooms[0]?.id || '');
+  const [roomId, setRoomId] = useState(
+    defaultRoomId && rooms.some((room) => room.id === defaultRoomId)
+      ? defaultRoomId
+      : rooms[0]?.id || ''
+  );
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<ArtifactType>('apk');

@@ -907,16 +907,12 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
           <div className="p-4 h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Submission Hub / Artifacts</h2>
-              <Button onClick={() => setArtifactDialogOpen(true)} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Upload
+              <Button asChild className="gap-2">
+                <Link href={`/dashboard/artifacts/upload?room=${room.id}`}>
+                  <Plus className="w-4 h-4" />
+                  Upload
+                </Link>
               </Button>
-              <ArtifactDialog
-                open={artifactDialogOpen}
-                onOpenChange={setArtifactDialogOpen}
-                roomId={room.id}
-                onSubmit={handleUploadArtifact}
-              />
             </div>
             <div className="flex-1 overflow-auto">
               {initialArtifacts.length === 0 ? (
