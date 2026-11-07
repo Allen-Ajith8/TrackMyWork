@@ -1,6 +1,7 @@
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { RoomBomClient } from '@/components/room-bom-client';
+import { loadRoomMembers } from '@/lib/room-relations';
 
 async function getRoomBom(roomId: string) {
   const supabase = createServerClientSupabase();
@@ -13,19 +14,16 @@ async function getRoomBom(roomId: string) {
 
   if (!room) return { room: null, bom: [], members: [] };
 
-  const { data: members } = await supabase
-    .from('room_members')
-    .select('*, users(*)')
-    .eq('room_id', roomId)
-    .eq('status', 'active');
+  const [members, bomResult] = await Promise.all([
+    loadRoomMembers(supabase, roomId, { activeOnly: true }),
+    supabase
+      .from('hardware_bom')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: false }),
+  ]);
 
-  const { data: bom } = await supabase
-    .from('hardware_bom')
-    .select('*')
-    .eq('room_id', roomId)
-    .order('created_at', { ascending: false });
-
-  return { room, bom: bom || [], members: members || [] };
+  return { room, bom: bomResult.data || [], members };
 }
 
 export default async function RoomBomPage({ params }: { params: Promise<{ id: string }> }) {

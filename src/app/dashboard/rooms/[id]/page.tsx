@@ -1,6 +1,7 @@
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { redirect, notFound } from 'next/navigation';
 import { RoomDashboardClient } from '@/components/room-dashboard-client';
+import { attachUser, loadRoomMembers } from '@/lib/room-relations';
 
 async function getRoomData(roomId: string) {
   const supabase = createServerClientSupabase();
@@ -16,46 +17,45 @@ async function getRoomData(roomId: string) {
     return { room: null, tasks: [], bom: [], artifacts: [], members: [] };
   }
 
-  // Get members with user info
-  const { data: members } = await supabase
-    .from('room_members')
-    .select('*, users(*)')
-    .eq('room_id', roomId)
-    .eq('status', 'active');
+  const [members, tasksResult, bomResult, artifactsResult] = await Promise.all([
+    loadRoomMembers(supabase, roomId, { activeOnly: true }),
+    supabase
+      .from('tasks')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('hardware_bom')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('artifacts')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('created_at', { ascending: false }),
+  ]);
 
-  // Get tasks with assignee info
-  const { data: tasks } = await supabase
-    .from('tasks')
-    .select('*, assigned_to_user:users!tasks_assigned_to_fkey(*)')
-    .eq('room_id', roomId)
-    .order('created_at', { ascending: false });
+  const transformedTasks = await attachUser({
+    supabase,
+    rows: tasksResult.data || [],
+    idField: 'assigned_to',
+    as: 'assignee',
+  });
 
-  // Get BOM items
-  const { data: bom } = await supabase
-    .from('hardware_bom')
-    .select('*')
-    .eq('room_id', roomId)
-    .order('created_at', { ascending: false });
-
-  // Get artifacts
-  const { data: artifacts } = await supabase
-    .from('artifacts')
-    .select('*, uploaded_by_user:users!artifacts_uploaded_by_fkey(*)')
-    .eq('room_id', roomId)
-    .order('created_at', { ascending: false });
-
-  // Transform tasks to include assignee
-  const transformedTasks = (tasks || []).map((task: any) => ({
-    ...task,
-    assignee: task.assigned_to_user,
-  }));
+  const transformedArtifacts = await attachUser({
+    supabase,
+    rows: artifactsResult.data || [],
+    idField: 'uploaded_by',
+    as: 'uploader',
+  });
 
   return {
     room,
     tasks: transformedTasks,
-    bom: bom || [],
-    artifacts: artifacts || [],
-    members: members || [],
+    bom: bomResult.data || [],
+    artifacts: transformedArtifacts,
+    members,
   };
 }
 

@@ -1,6 +1,7 @@
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { RoomTasksClient } from '@/components/room-tasks-client';
+import { attachUser, loadRoomMembers } from '@/lib/room-relations';
 
 async function getRoomTasks(roomId: string) {
   const supabase = createServerClientSupabase();
@@ -13,24 +14,22 @@ async function getRoomTasks(roomId: string) {
 
   if (!room) return { room: null, tasks: [], members: [] };
 
-  const { data: members } = await supabase
-    .from('room_members')
-    .select('*, users(*)')
-    .eq('room_id', roomId)
-    .eq('status', 'active');
+  const members = await loadRoomMembers(supabase, roomId, { activeOnly: true });
 
   const { data: tasks } = await supabase
     .from('tasks')
-    .select('*, assigned_to_user:users!tasks_assigned_to_fkey(*)')
+    .select('*')
     .eq('room_id', roomId)
     .order('created_at', { ascending: false });
 
-  const transformedTasks = (tasks || []).map((task: any) => ({
-    ...task,
-    assignee: task.assigned_to_user,
-  }));
+  const transformedTasks = await attachUser({
+    supabase,
+    rows: tasks || [],
+    idField: 'assigned_to',
+    as: 'assignee',
+  });
 
-  return { room, tasks: transformedTasks, members: members || [] };
+  return { room, tasks: transformedTasks, members };
 }
 
 export default async function RoomTasksPage({ params }: { params: Promise<{ id: string }> }) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { attachUser } from '@/lib/room-relations';
 import { nimClient } from '@/lib/nim/client';
 import crypto from 'crypto';
 
@@ -319,7 +320,7 @@ async function handleRoomInfoCommand(interaction: DiscordInteraction): Promise<N
   const admin = createAdminClient();
   const { data: room } = await admin
     .from('rooms')
-    .select('*, room_members(*, users(*))')
+    .select('*')
     .eq('invite_code', roomCode)
     .single();
 
@@ -334,10 +335,28 @@ async function handleRoomInfoCommand(interaction: DiscordInteraction): Promise<N
     });
   }
 
-  const activeMembers = room.room_members?.filter((m: { status: string }) => m.status === 'active') || [];
-  const memberList = activeMembers.slice(0, 10).map((m: { role_title: string; flag_is_team_leader: boolean; users: { username?: string; display_name?: string } }) =>
-    `${m.flag_is_team_leader ? '👑' : '👤'} **${m.users.display_name || m.users.username}** — ${m.role_title}`
-  ).join('\n');
+  const { data: memberRows } = await admin
+    .from('room_members')
+    .select('*')
+    .eq('room_id', room.id);
+
+  const members = memberRows
+    ? await attachUser({
+        supabase: admin,
+        rows: memberRows,
+        idField: 'user_id',
+        as: 'user',
+      })
+    : [];
+
+  const activeMembers = members.filter((m) => m.status === 'active');
+  const memberList = activeMembers
+    .slice(0, 10)
+    .map(
+      (m) =>
+        `${m.flag_is_team_leader ? '👑' : '👤'} **${m.user?.display_name || m.user?.username || 'Member'}** — ${m.role_title}`
+    )
+    .join('\n');
 
   return NextResponse.json({
     type: RESPONSE_TYPES.CHANNEL_MESSAGE_WITH_SOURCE,

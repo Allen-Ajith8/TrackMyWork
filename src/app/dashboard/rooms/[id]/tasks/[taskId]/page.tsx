@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { createServerClientSupabase } from '@/lib/supabase/server';
+import { attachUser } from '@/lib/room-relations';
 import { TaskDetailClient } from '@/components/task-detail-client';
 
 export const dynamic = 'force-dynamic';
@@ -34,23 +35,30 @@ export default async function TaskDetailPage({
 
   const { data: members } = await supabase
     .from('room_members')
-    .select('user_id, role_title, custom_role_name, users(*)')
+    .select('user_id, role_title, custom_role_name')
     .eq('room_id', id)
     .eq('status', 'active');
+
+  const membersWithUsers = await attachUser({
+    supabase,
+    rows: members || [],
+    idField: 'user_id',
+    as: 'user',
+  });
 
   return (
     <TaskDetailClient
       room={{ id: room.id, name: room.name }}
       task={task}
-      members={(members || []).map((member: any) => ({
+      members={membersWithUsers.map((member) => ({
         userId: member.user_id,
         name:
-          member.users?.display_name ||
-          member.users?.username ||
-          (member.users?.email || '').split('@')[0] ||
+          member.user?.display_name ||
+          member.user?.username ||
+          (member.user?.email || '').split('@')[0] ||
           'Member',
         role: member.custom_role_name || member.role_title || 'Member',
-        avatarUrl: member.users?.avatar_url || null,
+        avatarUrl: member.user?.avatar_url || null,
       }))}
     />
   );

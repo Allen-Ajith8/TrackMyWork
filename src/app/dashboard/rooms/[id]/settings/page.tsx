@@ -1,6 +1,7 @@
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { redirect, notFound } from 'next/navigation';
 import { TeamManagementClient } from '@/components/team-management-client';
+import { loadRoomMembers } from '@/lib/room-relations';
 
 async function getRoomData(roomId: string) {
   const supabase = createServerClientSupabase();
@@ -16,16 +17,11 @@ async function getRoomData(roomId: string) {
     return { room: null, members: [] };
   }
 
-  // Get members with user info
-  const { data: members } = await supabase
-    .from('room_members')
-    .select('*, users(*)')
-    .eq('room_id', roomId)
-    .order('created_at', { ascending: true });
+  const members = await loadRoomMembers(supabase, roomId, { activeOnly: false });
 
   return {
     room,
-    members: members || [],
+    members,
   };
 }
 

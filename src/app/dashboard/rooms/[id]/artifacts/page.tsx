@@ -1,6 +1,7 @@
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { RoomArtifactsClient } from '@/components/room-artifacts-client';
+import { attachUser, loadRoomMembers } from '@/lib/room-relations';
 
 async function getRoomArtifacts(roomId: string) {
   const supabase = createServerClientSupabase();
@@ -13,24 +14,22 @@ async function getRoomArtifacts(roomId: string) {
 
   if (!room) return { room: null, artifacts: [], members: [] };
 
-  const { data: members } = await supabase
-    .from('room_members')
-    .select('*, users(*)')
-    .eq('room_id', roomId)
-    .eq('status', 'active');
+  const members = await loadRoomMembers(supabase, roomId, { activeOnly: true });
 
   const { data: artifacts } = await supabase
     .from('artifacts')
-    .select('*, uploaded_by_user:users!artifacts_uploaded_by_fkey(*)')
+    .select('*')
     .eq('room_id', roomId)
     .order('created_at', { ascending: false });
 
-  const transformedArtifacts = (artifacts || []).map((artifact: any) => ({
-    ...artifact,
-    uploader: artifact.uploaded_by_user,
-  }));
+  const transformedArtifacts = await attachUser({
+    supabase,
+    rows: artifacts || [],
+    idField: 'uploaded_by',
+    as: 'uploader',
+  });
 
-  return { room, artifacts: transformedArtifacts, members: members || [] };
+  return { room, artifacts: transformedArtifacts, members };
 }
 
 export default async function RoomArtifactsPage({ params }: { params: Promise<{ id: string }> }) {
