@@ -2,6 +2,7 @@ import { createServerClientSupabase } from '@/lib/supabase/server';
 import { redirect, notFound } from 'next/navigation';
 import { TeamManagementClient } from '@/components/team-management-client';
 import { RoomRepoClient } from '@/components/room-repo-client';
+import { RoomDetailsClient } from '@/components/room-details-client';
 import { loadRoomMembers } from '@/lib/room-relations';
 
 async function getRoomData(roomId: string) {
@@ -50,6 +51,7 @@ export default async function TeamManagementPage({ params }: { params: Promise<{
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
+      <RoomDetailsClient room={room} />
       <RoomRepoClient room={room} />
       <div className="flex-1 overflow-y-auto p-6">
         <TeamManagementClient room={room} initialMembers={members} />
