@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, ArrowRight, Check, Loader2, SkipForward, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Github, Loader2, SkipForward, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -112,6 +112,7 @@ export function RoomCreationWizard() {
   const router = useRouter();
   const [step, setStep] = React.useState(1);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [connectGithub, setConnectGithub] = React.useState(false);
   const [toast, setToast] = React.useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
   const supabase = createClient();
 
@@ -187,6 +188,10 @@ export function RoomCreationWizard() {
       });
 
       setToast({ type: 'success', title: 'Room Created!', message: `Invite code: ${inviteCode}` });
+      if (connectGithub) {
+        window.location.assign(`/api/github/connect?roomId=${encodeURIComponent(room.id)}`);
+        return;
+      }
       setTimeout(() => router.push(`/dashboard/rooms/${room.id}`), 1500);
     } catch (error) {
       setToast({ type: 'error', title: 'Error', message: error instanceof Error ? error.message : 'Failed to create room' });
@@ -286,6 +291,10 @@ export function RoomCreationWizard() {
       }
 
       setToast({ type: 'success', title: 'Room Created!', message: `Invite code: ${inviteCode}` });
+      if (connectGithub) {
+        window.location.assign(`/api/github/connect?roomId=${encodeURIComponent(room.id)}`);
+        return;
+      }
       setTimeout(() => router.push(`/dashboard/rooms/${room.id}`), 1500);
     } catch (error) {
       setToast({ type: 'error', title: 'Error', message: error instanceof Error ? error.message : 'Failed to create room' });
@@ -368,6 +377,22 @@ export function RoomCreationWizard() {
               this repo with GitHub. That installs webhooks automatically so
               commits and PRs sync to your room.
             </p>
+            <label className="flex items-start gap-3 rounded-lg border border-surface-200 bg-surface-50 p-3">
+              <Switch
+                checked={connectGithub}
+                onCheckedChange={setConnectGithub}
+                className="mt-0.5"
+              />
+              <div>
+                <p className="flex items-center gap-1.5 text-sm font-medium text-surface-900">
+                  <Github className="h-4 w-4" />
+                  Connect GitHub after creating
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Authorize the repository and install webhooks automatically.
+                </p>
+              </div>
+            </label>
             {form.formState.errors.github_repo && (
               <p className="text-sm font-medium text-destructive">
                 {form.formState.errors.github_repo.message}

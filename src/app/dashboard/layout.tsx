@@ -15,7 +15,6 @@ import {
   HelpCircle,
   LogOut,
   Zap,
-  Bell,
   Eye,
   UserRound,
 } from 'lucide-react';
@@ -23,6 +22,7 @@ import Link from 'next/link';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { useRoomStore, useNotificationStore, useUIStore } from '@/lib/store';
 import { LoadingScreen } from '@/components/loading-screen';
+import { NotificationsBell } from '@/components/notifications-bell';
 import { userFromAuthUser } from '@/lib/profile';
 
 const avatarFallback = (value: string) => value.replace(/^@/, '').charAt(0).toUpperCase() || 'U';
@@ -55,7 +55,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { user, session, setUser, setSession, clearAuth } = useAuthStore();
   const { setCurrentRoom, clearRoom } = useRoomStore();
-  const { setNotifications, unreadCount } = useNotificationStore();
+  const { setNotifications } = useNotificationStore();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const supabase = createClient();
 
@@ -218,14 +218,7 @@ export default function DashboardLayout({
 
             <div className="flex items-center gap-3">
               {/* Notifications */}
-              <Link href="/dashboard/notifications" className="relative btn-ghost p-2" aria-label="Notifications">
-                <Bell className="w-5 h-5 text-surface-600" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </Link>
+              <NotificationsBell />
 
               {/* Global Admin Ghost Mode */}
               {user.is_global_admin && (

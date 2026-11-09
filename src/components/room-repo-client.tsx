@@ -264,7 +264,7 @@ export function RoomRepoClient({ room, canManageRepo }: RoomRepoClientProps) {
 
   return (
     <Card className="border border-surface-200">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardHeader className="space-y-1 pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Github className="w-4 h-4" />
           Room Repository

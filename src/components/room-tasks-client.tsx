@@ -436,15 +436,15 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
                 className="pl-10"
               />
             </div>
-            <Select onValueChange={setFilterStatus} defaultValue={filterStatus} className="w-36">
-              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+            <Select onValueChange={setFilterStatus} defaultValue={filterStatus}>
+              <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 {STATUS_COLUMNS.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select onValueChange={setFilterCategory} defaultValue={filterCategory} className="w-36">
-              <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+            <Select onValueChange={setFilterCategory} defaultValue={filterCategory}>
+              <SelectTrigger className="w-36"><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 {(Object.keys(CATEGORY_LABELS) as TaskCategory[]).map(c => <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>)}

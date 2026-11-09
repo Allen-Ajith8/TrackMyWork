@@ -27,6 +27,7 @@ import {
   HeartPulse,
   Wifi,
   WifiOff,
+  Github,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -611,6 +612,15 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
     setTasks(initialTasks);
   }, [room, initialTasks, setCurrentRoom, setTasks]);
 
+  const canManageRepo = Boolean(
+    user &&
+      (room.created_by === user.id ||
+        initialMembers.some(
+          (member) =>
+            member.user_id === user.id && member.flag_is_team_leader
+        ))
+  );
+
   const filteredTasks = tasks.filter(task => {
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (filterStatus !== 'all' && task.status !== filterStatus) return false;
@@ -712,6 +722,16 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                 <Avatar className="bg-muted" fallback={`+${initialMembers.length - 5}`} />
               )}
             </div>
+            {!room.github_installation_id && canManageRepo && (
+              <Button variant="outline" size="sm" asChild>
+                <a
+                  href={`/api/github/connect?roomId=${encodeURIComponent(room.id)}`}
+                >
+                  <Github className="w-4 h-4 mr-2" />
+                  Connect GitHub
+                </a>
+              </Button>
+            )}
             <Button variant="outline" size="sm" asChild>
               <Link href={`/dashboard/rooms/${room.id}/settings`}>
                 <Settings className="w-4 h-4 mr-2" />
@@ -757,15 +777,15 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                   className="pl-10"
                 />
               </div>
-              <Select onValueChange={setFilterStatus} defaultValue={filterStatus} className="w-36">
-                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+              <Select onValueChange={setFilterStatus} defaultValue={filterStatus}>
+                <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   {STATUS_COLUMNS.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Select onValueChange={setFilterCategory} defaultValue={filterCategory} className="w-36">
-                <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+              <Select onValueChange={setFilterCategory} defaultValue={filterCategory}>
+                <SelectTrigger className="w-36"><SelectValue placeholder="Category" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   {(Object.keys(CATEGORY_LABELS) as TaskCategory[]).map(c => <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>)}

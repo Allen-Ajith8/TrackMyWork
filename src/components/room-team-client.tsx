@@ -489,16 +489,16 @@ export function RoomTeamClient({ room, initialMembers }: {
                 className="pl-10"
               />
             </div>
-            <Select onValueChange={setFilterStatus} defaultValue={filterStatus} className="w-36">
-              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+            <Select onValueChange={setFilterStatus} defaultValue={filterStatus}>
+              <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
               </SelectContent>
             </Select>
-            <Select onValueChange={setFilterRole} defaultValue={filterRole} className="w-40">
-              <SelectTrigger><SelectValue placeholder="Role" /></SelectTrigger>
+            <Select onValueChange={setFilterRole} defaultValue={filterRole}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="Role" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
                 {uniqueRoles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}

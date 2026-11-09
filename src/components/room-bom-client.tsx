@@ -368,8 +368,8 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
                 className="pl-10"
               />
             </div>
-            <Select onValueChange={setFilterStatus} defaultValue={filterStatus} className="w-36">
-              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+            <Select onValueChange={setFilterStatus} defaultValue={filterStatus}>
+              <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 {BOM_STATUS_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
