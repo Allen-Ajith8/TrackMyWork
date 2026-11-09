@@ -418,6 +418,7 @@ export interface GitHubWebhookPayload {
   pull_request?: { number: number; title: string; merged: boolean; head: { sha: string } };
   repository: { full_name: string; html_url: string };
   sender: { login: string; id: number };
+  installation?: { id: number };
   commits?: { id: string; message: string; author: { name: string }; added: string[]; modified: string[]; removed: string[] }[];
 }
 

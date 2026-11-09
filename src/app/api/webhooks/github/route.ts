@@ -5,12 +5,17 @@ import { nimClient } from '@/lib/nim/client';
 import type { GitHubWebhookPayload } from '@/types/database';
 import crypto from 'crypto';
 
-const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET!;
+const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || '';
 
 function verifySignature(payload: string, signature: string): boolean {
+  if (!GITHUB_WEBHOOK_SECRET) return false;
   const hmac = crypto.createHmac('sha256', GITHUB_WEBHOOK_SECRET);
   const digest = 'sha256=' + hmac.update(payload).digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+  const provided = Buffer.from(signature);
+  const expected = Buffer.from(digest);
+  // timingSafeEqual throws when lengths differ.
+  if (provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(provided, expected);
 }
 
 function parseDiff(diff: string): { added: string[]; modified: string[]; removed: string[]; summary: string } {
@@ -72,7 +77,9 @@ export async function POST(req: NextRequest) {
     const repoUrl = data.repository.html_url;
     const { data: room, error: roomError } = await admin
       .from('rooms')
-      .select('id, nim_auto_broadcast, auto_task_progression, non_tech_translation, jury_expectations')
+      .select(
+        'id, github_installation_id, nim_auto_broadcast, auto_task_progression, non_tech_translation, jury_expectations'
+      )
       .eq('github_repo', repoUrl)
       .single();
 
@@ -80,6 +87,17 @@ export async function POST(req: NextRequest) {
       console.log(`No room found for repo: ${repoUrl}`);
       return NextResponse.json({ received: true, message: 'No matching room' });
     }
+
+    // When both sides know the installation, make sure the event came from the
+    // installation this room is actually bound to.
+    if (
+      data.installation?.id &&
+      room.github_installation_id &&
+      Number(room.github_installation_id) !== data.installation.id
+    ) {
+      return NextResponse.json({ received: true, message: 'Installation mismatch' });
+    }
+
     roomIdForLog = room.id;
 
     // Log webhook event

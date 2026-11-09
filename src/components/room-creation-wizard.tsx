@@ -363,6 +363,11 @@ export function RoomCreationWizard() {
               placeholder="https://github.com/owner/repo"
               {...form.register('github_repo')}
             />
+            <p className="text-xs text-muted-foreground">
+              After creating the room, open Settings → Repository to authorize
+              this repo with GitHub. That installs webhooks automatically so
+              commits and PRs sync to your room.
+            </p>
             {form.formState.errors.github_repo && (
               <p className="text-sm font-medium text-destructive">
                 {form.formState.errors.github_repo.message}

@@ -8,6 +8,9 @@
 
 -- 1. Missing columns ---------------------------------------------------------
 
+alter table public.rooms
+  add column if not exists github_installation_id bigint;
+
 alter table public.tasks
   add column if not exists assigned_to uuid,
   add column if not exists created_by uuid default auth.uid(),

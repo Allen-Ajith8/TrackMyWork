@@ -162,11 +162,30 @@ The schema includes comprehensive RLS policies implementing the two-layer RBAC:
 - Custom role flags control granular permissions
 - All policies use helper functions (`is_global_admin`, `is_team_leader`, `has_room_permission`)
 
-### GitHub Webhook Setup
-1. Create a GitHub App in your organization
-2. Set webhook URL to `https://your-domain.vercel.app/api/webhooks/github`
-3. Subscribe to: `push`, `pull_request`, `issues`
-4. Add webhook secret to `GITHUB_WEBHOOK_SECRET`
+### GitHub App Setup (Repository Connection)
+Rooms connect to repositories through a GitHub App, so webhooks are installed
+automatically when a team leader clicks **Connect with GitHub** in
+**Room → Settings → Repository**.
+
+1. Create a GitHub App: <https://github.com/settings/apps/new>
+2. Set **Homepage URL** to `https://your-domain.vercel.app`
+3. Set **Setup URL** to `https://your-domain.vercel.app/api/github/callback`
+   and enable **Redirect on update**
+4. Set **Webhook URL** to `https://your-domain.vercel.app/api/webhooks/github`
+5. Set a **Webhook secret** and copy it to `GITHUB_WEBHOOK_SECRET`
+6. Repository permissions: **Contents** (read), **Metadata** (read),
+   **Issues** (read), **Pull requests** (read)
+7. Subscribe to events: `push`, `pull_request`, `issues`, `workflow_run`
+8. Add the app credentials to `.env.local`:
+   - `GITHUB_APP_ID`
+   - `GITHUB_APP_PRIVATE_KEY` (the downloaded `.pem`, newlines escaped as `\n`)
+   - `GITHUB_APP_SLUG` (the slug after `github.com/apps/`)
+   - `GITHUB_WEBHOOK_SECRET`
+   - optionally `GITHUB_STATE_SECRET` (defaults to the webhook secret)
+
+Once installed, commits, pull requests, and issues on the linked repository are
+matched to the room by repository URL and flow through
+`/api/webhooks/github`.
 
 ### Upstash QStash Cron Jobs
 Configure these schedules in QStash dashboard:

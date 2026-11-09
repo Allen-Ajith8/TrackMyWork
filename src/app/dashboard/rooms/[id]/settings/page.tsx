@@ -49,10 +49,20 @@ export default async function TeamManagementPage({ params }: { params: Promise<{
     notFound();
   }
 
+  const currentMember = members.find(
+    (m: any) => m.user_id === user.id && m.status === 'active'
+  );
+  const canManageRepo = Boolean(
+    room.created_by === user.id ||
+      currentMember?.flag_is_team_leader ||
+      currentMember?.flag_can_edit_repo ||
+      (user as any).is_global_admin
+  );
+
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
       <RoomDetailsClient room={room} />
-      <RoomRepoClient room={room} />
+      <RoomRepoClient room={room} canManageRepo={canManageRepo} />
       <div className="flex-1 overflow-y-auto p-6">
         <TeamManagementClient room={room} initialMembers={members} />
       </div>
