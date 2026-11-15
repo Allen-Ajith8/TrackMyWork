@@ -204,6 +204,80 @@ grant select, insert, update, delete on all tables in schema public to service_r
 grant select on all tables in schema public to anon;
 grant usage, select on all sequences in schema public to authenticated;
 
--- 6. Refresh the API schema cache -------------------------------------------
+-- 6. Vibe coding telemetry ---------------------------------------------------
+-- The MCP server writes IDE heartbeats and file locks; the dashboard reads them
+-- through Realtime. Create the tables if the hosted project predates them.
+
+create table if not exists public.vibe_heartbeats (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  editor_type text,
+  file_path text,
+  language text,
+  last_heartbeat timestamptz default now(),
+  created_at timestamptz default now(),
+  unique (room_id, user_id, editor_type)
+);
+
+create table if not exists public.file_locks (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.rooms(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  file_path text not null,
+  editor_type text,
+  locked_at timestamptz default now(),
+  expires_at timestamptz default (now() + interval '30 minutes'),
+  unique (room_id, file_path)
+);
+
+create index if not exists idx_vibe_heartbeats_room_id on public.vibe_heartbeats(room_id);
+create index if not exists idx_file_locks_room_id on public.file_locks(room_id);
+
+alter table public.vibe_heartbeats enable row level security;
+alter table public.file_locks enable row level security;
+
+do $$
+declare
+  target text;
+begin
+  foreach target in array array['vibe_heartbeats', 'file_locks']
+  loop
+    execute format('drop policy if exists "app_authenticated_all" on public.%I', target);
+    execute format(
+      'create policy "app_authenticated_all" on public.%I for all to authenticated using (true) with check (true)',
+      target
+    );
+  end loop;
+end
+$$;
+
+grant select, insert, update, delete on public.vibe_heartbeats to authenticated, service_role;
+grant select, insert, update, delete on public.file_locks to authenticated, service_role;
+
+-- Realtime only streams tables that are part of the publication.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'vibe_heartbeats'
+  ) then
+    alter publication supabase_realtime add table public.vibe_heartbeats;
+  end if;
+
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'file_locks'
+  ) then
+    alter publication supabase_realtime add table public.file_locks;
+  end if;
+end
+$$;
+
+-- 7. Refresh the API schema cache -------------------------------------------
 
 notify pgrst, 'reload schema';

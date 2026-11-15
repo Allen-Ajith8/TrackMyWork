@@ -594,7 +594,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
   initialMembers: (RoomMember & { user: User })[];
 }) {
   const { user } = useAuthStore();
-  const { currentRoom, setCurrentRoom } = useRoomStore();
+  const { currentRoom, setCurrentRoom, setRoomMembers } = useRoomStore();
   const { tasks, setTasks, addTask, updateTask, removeTask } = useTaskStore();
   const { heartbeats, fileLocks } = useVibeStore();
   const [activeTab, setActiveTab] = React.useState<'tasks' | 'bom' | 'artifacts'>('tasks');
@@ -609,8 +609,9 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
 
   React.useEffect(() => {
     setCurrentRoom(room);
+    setRoomMembers(initialMembers);
     setTasks(initialTasks);
-  }, [room, initialTasks, setCurrentRoom, setTasks]);
+  }, [room, initialMembers, setCurrentRoom, setRoomMembers, setTasks]);
 
   const canManageRepo = Boolean(
     user &&
@@ -666,21 +667,49 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
   };
 
   const getHeartbeatForUser = (userId: string) => {
-    for (const [key, hb] of heartbeats.entries()) {
-      if (hb.user_id === userId && Date.now() - new Date(hb.last_heartbeat).getTime() < 5 * 60 * 1000) {
-        return hb;
+    for (const heartbeat of heartbeats.values()) {
+      if (
+        heartbeat.room_id === room.id &&
+        heartbeat.user_id === userId &&
+        Date.now() - new Date(heartbeat.last_heartbeat).getTime() < 5 * 60 * 1000
+      ) {
+        return heartbeat;
       }
     }
     return null;
   };
 
   const isFileLocked = (filePath: string) => {
-    for (const [key, lock] of fileLocks.entries()) {
-      if (lock.filePath === filePath && lock.expiresAt > Date.now()) {
+    for (const lock of fileLocks.values()) {
+      if (
+        lock.roomId === room.id &&
+        lock.filePath === filePath &&
+        lock.expiresAt > Date.now()
+      ) {
         return lock;
       }
     }
     return null;
+  };
+
+  const liveHeartbeats = Array.from(heartbeats.values()).filter(
+    (heartbeat) =>
+      heartbeat.room_id === room.id &&
+      Date.now() - new Date(heartbeat.last_heartbeat).getTime() < 5 * 60 * 1000
+  );
+
+  const liveLocks = Array.from(fileLocks.values()).filter(
+    (lock) => lock.roomId === room.id && lock.expiresAt > Date.now()
+  );
+
+  const memberLabel = (userId: string) => {
+    const member = initialMembers.find((entry) => entry.user_id === userId);
+    return (
+      member?.user.display_name ||
+      member?.user.username ||
+      member?.user.email ||
+      'Teammate'
+    );
   };
 
   return (
@@ -741,6 +770,39 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
           </div>
         </div>
       </div>
+
+      {/* Live IDE telemetry (heartbeats + file locks from the MCP server) */}
+      {(liveHeartbeats.length > 0 || liveLocks.length > 0) && (
+        <div className="border-b bg-white px-6 py-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 font-medium text-green-700">
+            <HeartPulse className="w-3.5 h-3.5" />
+            Coding now
+          </span>
+          {liveHeartbeats.map((heartbeat) => (
+            <Badge
+              key={`${heartbeat.user_id}-${heartbeat.editor_type}`}
+              variant="secondary"
+              className="font-normal"
+            >
+              {memberLabel(heartbeat.user_id)}
+              {heartbeat.file_path ? ` · ${heartbeat.file_path}` : ''}
+              {heartbeat.editor_type ? ` · ${heartbeat.editor_type}` : ''}
+            </Badge>
+          ))}
+          {liveLocks.map((lock) => (
+            <Badge
+              key={lock.id}
+              variant="outline"
+              className="font-normal border-amber-300 bg-amber-50 text-amber-800"
+              title={`Locked until ${new Date(lock.expiresAt).toLocaleTimeString()}`}
+            >
+              <AlertCircle className="w-3 h-3 mr-1" />
+              {lock.filePath}
+              {lock.userName ? ` · ${lock.userName}` : ''}
+            </Badge>
+          ))}
+        </div>
+      )}
 
       {/* Tab Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">

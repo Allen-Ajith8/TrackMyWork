@@ -15,7 +15,8 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
-.mcp-server/.env
+mcp-server/.env
+mcp-server/.env.local
 
 # IDE
 .idea/

@@ -22,6 +22,9 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABAS
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const MCP_HTTP_PORT = parseInt(process.env.MCP_HTTP_PORT || '3002', 10);
 const MCP_WS_PORT = parseInt(process.env.MCP_WS_PORT || '3003', 10);
+const MCP_REQUIRE_AUTH = ['1', 'true', 'yes'].includes(
+  (process.env.MCP_REQUIRE_AUTH || '').toLowerCase()
+);
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.error('Missing Supabase credentials. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
@@ -31,6 +34,69 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
+
+/**
+ * Stdio tools run with the service-role key, so without verification any local
+ * caller could act as another user by passing an arbitrary `user_id`. When an
+ * `auth_token` (Supabase access token) is supplied we verify it and require it
+ * to belong to the claimed user. Set MCP_REQUIRE_AUTH=true to reject calls that
+ * do not present a token at all.
+ */
+async function resolveActingUser(args: {
+  user_id?: string;
+  auth_token?: string;
+}): Promise<string> {
+  const token = args.auth_token?.trim();
+
+  if (!token) {
+    if (MCP_REQUIRE_AUTH) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        'Missing auth_token. Sign in to TrackMyWork and pass your Supabase access token, or set MCP_REQUIRE_AUTH=false for local-only use.'
+      );
+    }
+    if (!args.user_id) {
+      throw new McpError(ErrorCode.InvalidParams, 'Missing user_id.');
+    }
+    return args.user_id;
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(token);
+
+  if (error || !user) {
+    throw new McpError(ErrorCode.InvalidParams, 'Invalid or expired auth_token.');
+  }
+
+  if (args.user_id && args.user_id !== user.id) {
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      'auth_token does not belong to the supplied user_id.'
+    );
+  }
+
+  return user.id;
+}
+
+/** Tools that write room telemetry must only accept active room members. */
+async function assertRoomMember(roomId: string, userId: string) {
+  const { data: member } = await supabase
+    .from('room_members')
+    .select('id')
+    .eq('room_id', roomId)
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (!member) {
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      'User is not an active member of this room.'
+    );
+  }
+}
 
 // WebSocket server for real-time IDE connections
 const wss = new WebSocketServer({ port: MCP_WS_PORT });
@@ -52,6 +118,22 @@ wss.on('connection', (ws, req) => {
             ws.close();
             return;
           }
+
+          // Only active room members may stream telemetry into a room.
+          const { data: member } = await supabase
+            .from('room_members')
+            .select('id')
+            .eq('room_id', msg.roomId)
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .maybeSingle();
+
+          if (!member) {
+            ws.send(JSON.stringify({ type: 'auth_error', error: 'Not a member of this room' }));
+            ws.close();
+            return;
+          }
+
           ideConnections.set(user.id, {
             ws,
             roomId: msg.roomId,
@@ -233,6 +315,7 @@ const server = new Server(
 const heartbeatSchema = z.object({
   room_id: z.string().uuid(),
   user_id: z.string().uuid(),
+  auth_token: z.string().optional(),
   editor_type: z.enum(['vscode', 'cursor', 'android-studio', 'opencode', 'other']),
   file_path: z.string().optional(),
   language: z.string().optional(),
@@ -248,6 +331,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           room_id: { type: 'string', format: 'uuid', description: 'Room UUID' },
           user_id: { type: 'string', format: 'uuid', description: 'User UUID' },
+          auth_token: { type: 'string', description: 'Supabase access token for the user (required when MCP_REQUIRE_AUTH=true)' },
           editor_type: { type: 'string', enum: ['vscode', 'cursor', 'android-studio', 'opencode', 'other'], description: 'IDE/Editor type' },
           file_path: { type: 'string', description: 'Current file being edited' },
           language: { type: 'string', description: 'Programming language' },
@@ -263,6 +347,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           room_id: { type: 'string', format: 'uuid', description: 'Room UUID' },
           user_id: { type: 'string', format: 'uuid', description: 'User UUID (must have can_trigger_nim permission)' },
+          auth_token: { type: 'string', description: 'Supabase access token for the user (required when MCP_REQUIRE_AUTH=true)' },
         },
         required: ['room_id', 'user_id'],
       },
@@ -275,6 +360,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           room_id: { type: 'string', format: 'uuid', description: 'Room UUID' },
           user_id: { type: 'string', format: 'uuid', description: 'User UUID' },
+          auth_token: { type: 'string', description: 'Supabase access token for the user (required when MCP_REQUIRE_AUTH=true)' },
           status: { type: 'string', description: 'Current vibe-coding status/prompt' },
           editor_type: { type: 'string', enum: ['vscode', 'cursor', 'android-studio', 'opencode', 'other'] },
         },
@@ -289,6 +375,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           room_id: { type: 'string', format: 'uuid', description: 'Room UUID' },
           user_id: { type: 'string', format: 'uuid', description: 'User UUID' },
+          auth_token: { type: 'string', description: 'Supabase access token for the user (required when MCP_REQUIRE_AUTH=true)' },
         },
         required: ['room_id', 'user_id'],
       },
@@ -301,6 +388,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           room_id: { type: 'string', format: 'uuid' },
           user_id: { type: 'string', format: 'uuid' },
+          auth_token: { type: 'string', description: 'Supabase access token for the user (required when MCP_REQUIRE_AUTH=true)' },
           title: { type: 'string' },
           description: { type: 'string' },
           category: { type: 'string', enum: ['code', 'hardware', 'animation', 'design', 'docs', 'pitch'] },
@@ -317,6 +405,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           room_id: { type: 'string', format: 'uuid' },
           user_id: { type: 'string', format: 'uuid' },
+          auth_token: { type: 'string', description: 'Supabase access token for the user (required when MCP_REQUIRE_AUTH=true)' },
           error_log: { type: 'string' },
           context: { type: 'string', enum: ['android_logcat', 'rust_compiler', 'flutter_build', 'general'] },
           relevant_files: { type: 'array', items: { type: 'string' } },
@@ -334,9 +423,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case 'trackmywork_heartbeat': {
         const parsed = heartbeatSchema.parse(args);
+        const userId = await resolveActingUser({
+          user_id: parsed.user_id,
+          auth_token: parsed.auth_token,
+        });
+        await assertRoomMember(parsed.room_id, userId);
+
         await supabase.from('vibe_heartbeats').upsert({
           room_id: parsed.room_id,
-          user_id: parsed.user_id,
+          user_id: userId,
           editor_type: parsed.editor_type,
           file_path: parsed.file_path || null,
           language: parsed.language || null,
@@ -344,19 +439,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }, { onConflict: 'room_id,user_id,editor_type' });
 
         return {
-          content: [{ type: 'text', text: `Heartbeat updated for user ${parsed.user_id} in room ${parsed.room_id}` }],
+          content: [{ type: 'text', text: `Heartbeat updated for user ${userId} in room ${parsed.room_id}` }],
         };
       }
 
       case 'trackmywork_pull_env': {
-        const { room_id, user_id } = args as { room_id: string; user_id: string };
+        const { room_id, user_id, auth_token } = args as {
+          room_id: string;
+          user_id: string;
+          auth_token?: string;
+        };
+        const actingUserId = await resolveActingUser({ user_id, auth_token });
 
         // Verify user has permission
         const { data: member } = await supabase
           .from('room_members')
           .select('flag_can_trigger_nim, flag_is_team_leader')
           .eq('room_id', room_id)
-          .eq('user_id', user_id)
+          .eq('user_id', actingUserId)
           .eq('status', 'active')
           .single();
 
@@ -402,17 +502,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'trackmywork_status': {
-        const { room_id, user_id, status, editor_type } = args as {
+        const { room_id, user_id, status, editor_type, auth_token } = args as {
           room_id: string;
           user_id: string;
           status: string;
           editor_type: string;
+          auth_token?: string;
         };
+        const actingUserId = await resolveActingUser({ user_id, auth_token });
+        await assertRoomMember(room_id, actingUserId);
 
         // Broadcast to WebSocket clients
         const message = JSON.stringify({
           type: 'status_update',
-          userId: user_id,
+          userId: actingUserId,
           editor: editor_type || 'unknown',
           status,
           timestamp: new Date().toISOString(),
@@ -424,15 +527,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }
         }
 
-        // Also store as notification
-        await supabase.from('notifications').insert({
-          user_id,
-          room_id,
-          type: 'webhook',
-          title: `Vibe Status: ${status.slice(0, 50)}${status.length > 50 ? '...' : ''}`,
-          content: { status, editor_type, timestamp: new Date().toISOString() },
-          action_url: `/dashboard/rooms/${room_id}`,
-        });
+        // Notify the rest of the room, not just the person who sent the update.
+        const { data: roomMembers } = await supabase
+          .from('room_members')
+          .select('user_id')
+          .eq('room_id', room_id)
+          .eq('status', 'active');
+
+        const recipients = (roomMembers ?? [])
+          .map((member) => member.user_id as string)
+          .filter((recipientId) => recipientId !== actingUserId);
+
+        if (recipients.length > 0) {
+          await supabase.from('notifications').insert(
+            recipients.map((recipientId) => ({
+              user_id: recipientId,
+              room_id,
+              type: 'webhook',
+              title: `Vibe Status: ${status.slice(0, 50)}${status.length > 50 ? '...' : ''}`,
+              content: {
+                status,
+                editor_type,
+                user_id: actingUserId,
+                timestamp: new Date().toISOString(),
+              },
+              action_url: `/dashboard/rooms/${room_id}`,
+            }))
+          );
+        }
 
         return {
           content: [{ type: 'text', text: `Status broadcasted to room ${room_id}` }],
@@ -440,7 +562,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'trackmywork_get_context': {
-        const { room_id, user_id } = args as { room_id: string; user_id: string };
+        const { room_id, user_id, auth_token } = args as {
+          room_id: string;
+          user_id: string;
+          auth_token?: string;
+        };
+        const actingUserId = await resolveActingUser({ user_id, auth_token });
+        await assertRoomMember(room_id, actingUserId);
 
         const { data: room } = await supabase
           .from('rooms')
@@ -474,21 +602,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'trackmywork_create_task': {
-        const { room_id, user_id, title, description, category, assigned_to } = args as {
+        const { room_id, user_id, title, description, category, assigned_to, auth_token } = args as {
           room_id: string;
           user_id: string;
           title: string;
           description?: string;
           category: string;
           assigned_to?: string;
+          auth_token?: string;
         };
+        const actingUserId = await resolveActingUser({ user_id, auth_token });
 
         // Verify permission
         const { data: member } = await supabase
           .from('room_members')
           .select('flag_can_assign_tasks, flag_is_team_leader')
           .eq('room_id', room_id)
-          .eq('user_id', user_id)
+          .eq('user_id', actingUserId)
           .eq('status', 'active')
           .single();
 
@@ -500,7 +630,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           .from('tasks')
           .insert({
             room_id,
-            created_by: user_id,
+            created_by: actingUserId,
             title,
             description,
             category,
@@ -517,20 +647,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'trackmywork_sos_debug': {
-        const { room_id, user_id, error_log, context, relevant_files } = args as {
+        const { room_id, user_id, error_log, context, relevant_files, auth_token } = args as {
           room_id: string;
           user_id: string;
           error_log: string;
           context: 'android_logcat' | 'rust_compiler' | 'flutter_build' | 'general';
           relevant_files: string[];
+          auth_token?: string;
         };
+        const actingUserId = await resolveActingUser({ user_id, auth_token });
 
         // Verify permission
         const { data: member } = await supabase
           .from('room_members')
           .select('flag_can_trigger_nim, flag_is_team_leader')
           .eq('room_id', room_id)
-          .eq('user_id', user_id)
+          .eq('user_id', actingUserId)
           .eq('status', 'active')
           .single();
 
@@ -604,7 +736,7 @@ Provide a structured debugging response.`;
         // Log the SOS request
         await supabase.from('nim_logs').insert({
           room_id,
-          triggered_by: user_id,
+          triggered_by: actingUserId,
           trigger_type: 'sos',
           model_used: DEEPSEEK_MODEL,
           prompt_tokens: nimData.usage?.prompt_tokens,

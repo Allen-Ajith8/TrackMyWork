@@ -43,14 +43,6 @@ const nextConfig = {
       },
     ];
   },
-  async rewrites() {
-    return [
-      {
-        source: '/mcp/:path*',
-        destination: process.env.MCP_SERVER_URL || 'http://localhost:3001/mcp/:path*',
-      },
-    ];
-  },
 };
  
 export default nextConfig;

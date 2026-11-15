@@ -168,12 +168,22 @@ export const useNotificationStore = create<NotificationState>()(
   )
 );
 
+export interface VibeFileLock {
+  id: string;
+  roomId: string;
+  userId: string;
+  userName: string | null;
+  filePath: string;
+  editorType: string | null;
+  expiresAt: number;
+}
+
 interface VibeState {
   heartbeats: Map<string, VibeHeartbeat>;
-  fileLocks: Map<string, { userId: string; userName: string; filePath: string; expiresAt: number }>;
+  fileLocks: Map<string, VibeFileLock>;
   updateHeartbeat: (heartbeat: VibeHeartbeat) => void;
   removeHeartbeat: (key: string) => void;
-  setFileLock: (key: string, lock: { userId: string; userName: string; filePath: string; expiresAt: number }) => void;
+  setFileLock: (key: string, lock: VibeFileLock) => void;
   removeFileLock: (key: string) => void;
   clearVibeData: () => void;
 }

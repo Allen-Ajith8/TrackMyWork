@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -14,13 +14,11 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRoomStore } from '@/lib/store';
+import type { Room } from '@/types/database';
 
 interface RoomDashboardLayoutClientProps {
-  room: {
-    id: string;
-    name: string;
-    invite_code: string;
-  };
+  room: Room;
   children: ReactNode;
 }
 
@@ -36,6 +34,13 @@ const roomNavItems = [
 export function RoomDashboardLayoutClient({ room, children }: RoomDashboardLayoutClientProps) {
   const pathname = usePathname();
   const basePath = `/dashboard/rooms/${room.id}`;
+  const setCurrentRoom = useRoomStore((state) => state.setCurrentRoom);
+
+  // Keep the active room in the store for every room sub-page so live IDE
+  // telemetry (heartbeats/file locks) is scoped to the room being viewed.
+  useEffect(() => {
+    setCurrentRoom(room);
+  }, [room, setCurrentRoom]);
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">

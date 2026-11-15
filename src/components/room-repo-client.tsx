@@ -24,6 +24,7 @@ import {
   ExternalLink,
   RefreshCw,
   ShieldCheck,
+  FileDown,
 } from 'lucide-react';
 import type { Room } from '@/types/database';
 
@@ -528,6 +529,31 @@ export function RoomRepoClient({ room, canManageRepo }: RoomRepoClientProps) {
             </div>
           </form>
         )}
+
+        <div className="border-t border-surface-100 pt-3 space-y-2">
+          <p className="text-xs font-medium text-surface-700">Agent rules</p>
+          <p className="text-xs text-surface-500">
+            Download this room&apos;s rules for your IDE agent, then commit the
+            file to the repository root.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <a href={`/api/rooms/${room.id}/agent-rules`} download>
+                <FileDown className="w-4 h-4 mr-2" />
+                AGENTS.md
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <a
+                href={`/api/rooms/${room.id}/agent-rules?format=cursorrules`}
+                download
+              >
+                <FileDown className="w-4 h-4 mr-2" />
+                .cursorrules
+              </a>
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

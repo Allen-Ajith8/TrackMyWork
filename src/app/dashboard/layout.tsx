@@ -23,6 +23,7 @@ import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { useRoomStore, useNotificationStore, useUIStore } from '@/lib/store';
 import { LoadingScreen } from '@/components/loading-screen';
 import { NotificationsBell } from '@/components/notifications-bell';
+import { VibeRealtime } from '@/components/vibe-realtime';
 import { userFromAuthUser } from '@/lib/profile';
 
 const avatarFallback = (value: string) => value.replace(/^@/, '').charAt(0).toUpperCase() || 'U';
@@ -110,6 +111,7 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-surface-50">
+      <VibeRealtime />
       {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-surface-200 transform transition-transform duration-300 lg:translate-x-0 ${

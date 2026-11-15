@@ -150,6 +150,32 @@ Add to `opencode-mcp.json`:
 | `trackmywork://user/{user_id}/permissions/{room_id}` | User permissions |
 | `trackmywork://room/{room_id}/env` | Room environment variables |
 
+## Authentication
+
+Stdio tools run with the service-role key, so the server never trusts a bare
+`user_id`. Pass your Supabase access token as `auth_token` on any tool call and
+the server verifies it belongs to the claimed user. Room-scoped tools also
+require an active `room_members` row.
+
+Set `MCP_REQUIRE_AUTH=true` to reject calls that do not include a token (use this
+whenever the machine is shared):
+
+```bash
+MCP_REQUIRE_AUTH=true
+```
+
+```typescript
+await mcp.callTool('trackmywork_heartbeat', {
+  room_id: 'room-uuid',
+  user_id: 'user-uuid',
+  auth_token: process.env.TRACKMYWORK_AUTH_TOKEN,
+  editor_type: 'cursor',
+});
+```
+
+The WebSocket server always requires a Supabase JWT and rejects connections from
+users who are not active members of the requested room.
+
 ## WebSocket Connection (Real-time)
 
 The server runs a WebSocket server on port 3003 for real-time IDE telemetry:
@@ -277,6 +303,7 @@ CMD ["node", "dist/index.js"]
 | `NIM_MODEL_DEEPSEEK_R1` | No | Default: `deepseek-ai/deepseek-r1` |
 | `MCP_HTTP_PORT` | No | Default: `3002` |
 | `MCP_WS_PORT` | No | Default: `3003` |
+| `MCP_REQUIRE_AUTH` | No | `true` rejects stdio calls without an `auth_token` |
 
 ## Troubleshooting
 
@@ -290,9 +317,10 @@ Check firewall allows port 3003. Verify `MCP_WS_PORT` matches.
 Verify `NVIDIA_NIM_API_KEY` is valid and has access to required models.
 
 ### Purple dot not showing
-1. Check heartbeat tool is being called
+1. Check heartbeat tool is being called (and passes a valid `auth_token` when `MCP_REQUIRE_AUTH=true`)
 2. Verify `vibe_heartbeats` table has recent entries
-3. Check Supabase Realtime is enabled for `vibe_heartbeats`
+3. Check Supabase Realtime is enabled for `vibe_heartbeats` and `file_locks`
+   (run `supabase/repair-production.sql`)
 
 ## License
 
