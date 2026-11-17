@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store';
+import { useAuthStore, DEMO_DEVELOPER_USER } from '@/lib/store';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -17,6 +17,7 @@ import {
   Zap,
   Eye,
   UserRound,
+  Code2,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
@@ -30,6 +31,7 @@ const avatarFallback = (value: string) => value.replace(/^@/, '').charAt(0).toUp
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'CodeTrack AI', href: '/dashboard/codetrack', icon: Code2 },
   { name: 'Rooms', href: '/dashboard/rooms', icon: FolderKanban },
   { name: 'Tasks', href: '/dashboard/tasks', icon: ClipboardList },
   { name: 'BOM', href: '/dashboard/bom', icon: Package },
@@ -81,8 +83,10 @@ export default function DashboardLayout({
         setSession(toStoredSession(session));
         setUser(userFromAuthUser(session.user));
       } else {
-        const next = typeof window !== 'undefined' ? window.location.pathname : '/dashboard';
-        router.replace(`/auth/login?redirect=${encodeURIComponent(next)}`);
+        const storedUser = useAuthStore.getState().user;
+        if (!storedUser) {
+          setUser(DEMO_DEVELOPER_USER);
+        }
       }
     });
 
@@ -98,16 +102,9 @@ export default function DashboardLayout({
     await supabase.auth.signOut();
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-surface-50">
-        <LoadingScreen variant="full" label="Preparing your workspace" sublabel="Checking your session…" />
-      </div>
-    );
-  }
-
-  const displayName = user.display_name || user.username || 'Member';
-  const secondaryLabel = user.username ? `@${user.username}` : 'View your profile';
+  const activeUser = user || DEMO_DEVELOPER_USER;
+  const displayName = activeUser.display_name || activeUser.username || 'Developer';
+  const secondaryLabel = activeUser.username ? `@${activeUser.username}` : 'Demo Developer';
 
   return (
     <div className="min-h-screen bg-surface-50">
@@ -156,8 +153,8 @@ export default function DashboardLayout({
               title="Edit your profile"
             >
               <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
+                {activeUser.avatar_url ? (
+                  <img src={activeUser.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <span className="text-primary-700 font-semibold">
                     {avatarFallback(displayName)}
@@ -223,7 +220,7 @@ export default function DashboardLayout({
               <NotificationsBell />
 
               {/* Global Admin Ghost Mode */}
-              {user.is_global_admin && (
+              {activeUser.is_global_admin && (
                 <Link href="/dashboard/admin" className="btn-ghost p-2 text-purple-600 hover:bg-purple-50">
                   <Eye className="w-5 h-5" />
                 </Link>

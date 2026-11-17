@@ -4,7 +4,8 @@ import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { Zap } from 'lucide-react';
+import { useAuthStore } from '@/lib/store';
+import { Zap, Code2 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +56,22 @@ function LoginForm() {
       setError(error.message);
       setLoading(false);
     }
+  }
+
+  function handleDemoLogin() {
+    const demoUser = {
+      id: 'demo-dev-user-001',
+      email: 'developer@codetrack.ai',
+      username: 'developer',
+      display_name: 'Developer',
+      avatar_url: null,
+      is_global_admin: false,
+      fcm_token: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    useAuthStore.getState().setUser(demoUser);
+    router.push(redirect);
   }
 
   return (
@@ -115,6 +132,16 @@ function LoginForm() {
               <span>GitHub</span>
             </button>
           </div>
+
+          {/* Quick Demo Sign In for Development */}
+          <button
+            type="button"
+            onClick={handleDemoLogin}
+            className="w-full mb-6 py-2.5 px-4 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 font-medium text-sm flex items-center justify-center gap-2 transition-all shadow-sm"
+          >
+            <Code2 className="w-4 h-4 text-purple-600" />
+            <span>Continue as Demo Developer</span>
+          </button>
 
           {/* Divider */}
           <div className="relative mb-6">

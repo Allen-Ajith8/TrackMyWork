@@ -13,10 +13,17 @@ import {
   Users,
   BarChart,
   Bell,
-  Sparkles
+  Sparkles,
+  Code2
 } from 'lucide-react';
 
 const features = [
+  {
+    icon: Code2,
+    title: 'CodeTrack AI — DSA & LeetCode Tracker',
+    description: 'Interactive curriculum across 22 concepts, genuine LeetCode problems, verified attempt tracking, and personal AI mentor guidance',
+    color: 'from-violet-500 to-indigo-500',
+  },
   {
     icon: Brain,
     title: 'NVIDIA NIM AI Engine',
@@ -84,14 +91,16 @@ export default function HomePage() {
               <Link href="#features" className="text-sm font-medium text-surface-600 hover:text-surface-900 transition-colors">
                 Features
               </Link>
-              <Link href="#integrations" className="text-sm font-medium text-surface-600 hover:text-surface-900 transition-colors">
-                Integrations
+              <Link href="/dashboard/codetrack" className="text-sm font-semibold text-purple-600 hover:text-purple-800 transition-colors flex items-center gap-1.5">
+                <Code2 className="w-4 h-4" />
+                CodeTrack AI
               </Link>
-              <Link href="/auth/login" className="text-sm font-medium text-surface-600 hover:text-surface-900 transition-colors">
-                Sign In
+              <Link href="/dashboard" className="text-sm font-medium text-surface-600 hover:text-surface-900 transition-colors">
+                Dashboard
               </Link>
-              <Link href="/auth/signup" className="btn-primary text-sm">
-                Get Started
+              <Link href="/dashboard/codetrack" className="btn-primary text-sm flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4" />
+                Open CodeTrack AI
               </Link>
             </div>
           </div>
@@ -103,25 +112,24 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-primary-50 text-primary-700 px-4 py-2 rounded-full text-sm font-medium mb-6 animate-in">
             <Sparkles className="w-4 h-4" />
-            <span>Zero-cost • Vercel Hobby Tier • Capacitor Android</span>
+            <span>Zero-cost • Instant Demo Developer Mode Enabled • CodeTrack AI</span>
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-surface-900 tracking-tight mb-6 animate-in">
-            Hackathon Management
+            Hackathon Management &amp;
             <br />
-            <span className="gradient-text">Supercharged by AI</span>
+            <span className="gradient-text">CodeTrack AI Ecosystem</span>
           </h1>
           <p className="text-lg sm:text-xl text-surface-600 max-w-3xl mx-auto mb-10 animate-in">
-            From room creation to jury alignment. AI-powered task automation, hardware budgeting, 
-            vibe coding telemetry, and native Android builds — all on Vercel's free tier.
+            Track hackathons, rooms, tasks, BOM hardware, and master Data Structures &amp; Algorithms with our brand new CodeTrack AI personal mentor — no sign-in required!
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in">
-            <Link href="/auth/signup" className="btn-primary px-8 py-3 text-base">
-              <Rocket className="w-5 h-5" />
-              Start Free
+            <Link href="/dashboard/codetrack" className="btn-primary px-8 py-3 text-base flex items-center gap-2">
+              <Code2 className="w-5 h-5" />
+              Launch CodeTrack AI
             </Link>
-            <Link href="#features" className="btn-outline px-8 py-3 text-base">
-              <Code className="w-5 h-5" />
-              View Docs
+            <Link href="/dashboard" className="btn-outline px-8 py-3 text-base flex items-center gap-2">
+              <Rocket className="w-5 h-5" />
+              Enter Dashboard
             </Link>
           </div>
           

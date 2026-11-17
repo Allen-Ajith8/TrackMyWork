@@ -19,9 +19,12 @@ export async function middleware(req: NextRequest) {
   const isAuthPath = authPaths.some((path) => req.nextUrl.pathname.startsWith(path));
 
   if (isProtectedPath && !session) {
-    const redirectUrl = new URL('/auth/login', req.url);
-    redirectUrl.searchParams.set('redirect', req.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
+    // When demo developer mode is enabled (default), allow access without sign-in
+    if (process.env.REQUIRE_AUTH === 'true') {
+      const redirectUrl = new URL('/auth/login', req.url);
+      redirectUrl.searchParams.set('redirect', req.nextUrl.pathname);
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
   if (isAuthPath && session) {
