@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+.mcp-server/node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+mcp-server/.env
+mcp-server/.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Capacitor
+android/app/google-services.json
+android/app/src/main/assets/capacitor.config.json
+android/.gradle/
+android/gradle/
+android/local.properties
+android/gradlew
+android/gradlew.bat
+android/*.iml
+android/app/build/
+android/app/*.iml
+
+# Supabase
+.supabase/
+supabase/.temp/
+
+# MCP Server
+mcp-server/dist/
+
+# Misc
+*.pem
+.vercel
+.turbo

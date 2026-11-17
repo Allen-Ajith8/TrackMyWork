@@ -1,0 +1,37 @@
+@echo off
+REM ============================================================================
+REM TrackMyWork - Run Website
+REM ============================================================================
+
+title TrackMyWork - Development Server
+color 0A
+
+echo.
+echo  ================================================================
+echo   TrackMyWork - Hackathon Management Ecosystem
+echo  ============================================================================
+echo.
+
+REM Check if node_modules exists
+if not exist "node_modules" (
+    echo Installing dependencies...
+    npm install
+    echo.
+)
+
+REM Check if .env.local exists
+if not exist ".env.local" (
+    echo WARNING: .env.local not found!
+    echo    Copy .env.example to .env.local and fill in your credentials
+    echo    Required: Supabase URL, Anon Key, Service Role Key
+    echo.
+)
+
+echo Starting Next.js development server...
+echo.
+echo Server will be available at: http://localhost:3000
+echo Press Ctrl+C to stop the server
+echo.
+
+REM Start the dev server
+npm run dev

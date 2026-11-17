@@ -1,0 +1,20 @@
+{
+  "mcp": {
+    "servers": {
+      "trackmywork": {
+        "command": "node",
+        "args": ["dist/index.js"],
+        "cwd": "${workspaceFolder}/mcp-server",
+        "env": {
+          "SUPABASE_URL": "${env:NEXT_PUBLIC_SUPABASE_URL}",
+          "SUPABASE_SERVICE_ROLE_KEY": "${env:SUPABASE_SERVICE_ROLE_KEY}",
+          "NVIDIA_NIM_API_KEY": "${env:NVIDIA_NIM_API_KEY}",
+          "NVIDIA_NIM_BASE_URL": "${env:NVIDIA_NIM_BASE_URL}",
+          "NIM_MODEL_DEEPSEEK_R1": "${env:NIM_MODEL_DEEPSEEK_R1}",
+          "MCP_HTTP_PORT": "3002",
+          "MCP_WS_PORT": "3003"
+        }
+      }
+    }
+  }
+}
