@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -19,6 +19,12 @@ function LoginForm() {
   const [error, setError] = useState(
     searchParams.get('error_description') || searchParams.get('error') || ''
   );
+  // Track client-side render to avoid hydration mismatch with dev-mode card
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const supabase = createClient();
 
@@ -141,7 +147,7 @@ function LoginForm() {
           </div>
 
           {/* Dev-only login bypass */}
-          {typeof window !== 'undefined' && process.env.NODE_ENV === 'development' && (
+          {isClient && process.env.NODE_ENV === 'development' && (
             <>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
                 <h3 className="text-sm font-medium text-amber-800 mb-2">🔧 Dev Mode</h3>
