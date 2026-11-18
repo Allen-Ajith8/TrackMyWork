@@ -57,6 +57,30 @@ function LoginForm() {
     }
   }
 
+  async function handleDevLogin() {
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/auth/dev?redirect=' + encodeURIComponent(redirect), {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setError(err.error || 'Dev login failed.');
+        setLoading(false);
+        return;
+      }
+
+      router.push(redirect);
+      router.refresh();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Dev login failed.');
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-50 px-4">
       <div className="w-full max-w-md">
@@ -115,6 +139,28 @@ function LoginForm() {
               <span>GitHub</span>
             </button>
           </div>
+
+          {/* Dev-only login bypass */}
+          {typeof window !== 'undefined' && process.env.NODE_ENV === 'development' && (
+            <>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                <h3 className="text-sm font-medium text-amber-800 mb-2">🔧 Dev Mode</h3>
+                <p className="text-xs text-amber-700 mb-3">
+                  Skip OAuth and sign in as a local development user.
+                </p>
+                <button
+                  onClick={handleDevLogin}
+                  disabled={loading}
+                  className="w-full btn-outline text-amber-700 hover:bg-amber-100 border-amber-300"
+                >
+                  {loading ? 'Signing in as dev…' : 'Sign in as Dev User'}
+                </button>
+                <p className="text-xs text-amber-500 mt-2">
+                  dev@trackmywork.local · is_global_admin
+                </p>
+              </div>
+            </>
+          )}
 
           {/* Divider */}
           <div className="relative mb-6">
