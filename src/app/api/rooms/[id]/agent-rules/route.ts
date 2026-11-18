@@ -24,6 +24,19 @@ type ProfileRow = {
   email: string | null;
 };
 
+type CourtroomOptionRow = {
+  id?: string;
+  title?: string;
+  agents_md_rules?: string[];
+};
+
+type CourtroomSessionRow = {
+  motion: string;
+  adopted_option_id: string | null;
+  decision_options: CourtroomOptionRow[] | null;
+  updated_at: string;
+};
+
 function buildAgentRules({
   roomName,
   description,
@@ -33,6 +46,7 @@ function buildAgentRules({
   rules,
   members,
   profiles,
+  courtroomRulings,
   format,
 }: {
   roomName: string;
@@ -43,6 +57,7 @@ function buildAgentRules({
   rules: RuleRow | null;
   members: MemberRow[];
   profiles: ProfileRow[];
+  courtroomRulings: CourtroomSessionRow[];
   format: 'agents' | 'cursorrules';
 }) {
   const stack = (rules?.tech_stack_locks ?? []).filter(Boolean);
@@ -105,6 +120,43 @@ function buildAgentRules({
     customInstructions ||
       '- None provided. Ask the team before making architectural or dependency changes.'
   );
+
+  sections.push(
+    '',
+    '## Active AI Courtroom Rulings (AGENTS.md Constraints)',
+    ''
+  );
+
+  if (courtroomRulings.length === 0) {
+    sections.push(
+      '- No adopted courtroom rulings yet. If a decision is contested, convene the AI Courtroom from the room workspace.'
+    );
+  } else {
+    sections.push(
+      'These architectural decisions were adopted in the AI Courtroom. Treat them as hard constraints:'
+    );
+    sections.push('');
+
+    for (const ruling of courtroomRulings) {
+      const options = Array.isArray(ruling.decision_options) ? ruling.decision_options : [];
+      const selected = options.find((option) => option?.id === ruling.adopted_option_id);
+      const title = selected?.title || ruling.adopted_option_id || 'Adopted ruling';
+      const adoptedRules = (selected?.agents_md_rules ?? []).filter(Boolean);
+
+      sections.push(`### ${title}`);
+      sections.push(`- Motion: ${ruling.motion}`);
+      sections.push(`- Adopted: ${ruling.updated_at}`);
+
+      if (adoptedRules.length > 0) {
+        sections.push('- Constraints:');
+        for (const rule of adoptedRules) {
+          sections.push(`  - ${rule}`);
+        }
+      }
+
+      sections.push('');
+    }
+  }
 
   sections.push('', '## Team', '');
   sections.push(...(team.length > 0 ? team : ['- No active members yet.']));
@@ -201,6 +253,15 @@ export async function GET(
       ? 'cursorrules'
       : 'agents';
 
+  // Courtroom rulings are adopted architectural decisions; they must travel
+  // with every AGENTS.md / .cursorrules export so IDE agents obey them.
+  const { data: courtSessions } = await admin
+    .from('court_sessions')
+    .select('motion, adopted_option_id, decision_options, updated_at')
+    .eq('room_id', roomId)
+    .eq('status', 'adopted')
+    .order('updated_at', { ascending: false });
+
   const content = buildAgentRules({
     roomName: room.name,
     description: room.description ?? null,
@@ -210,6 +271,7 @@ export async function GET(
     rules: (rules ?? null) as RuleRow | null,
     members: memberRows,
     profiles: (profiles ?? []) as ProfileRow[],
+    courtroomRulings: (courtSessions ?? []) as CourtroomSessionRow[],
     format,
   });
 

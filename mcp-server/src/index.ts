@@ -98,6 +98,87 @@ async function assertRoomMember(roomId: string, userId: string) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// AI Courtroom rulings (closed-loop Phase 6)
+// Adopted courtroom options carry `agents_md_rules`; every IDE agent that asks
+// for room context must receive them as hard architectural constraints.
+// ---------------------------------------------------------------------------
+
+interface AdoptedCourtroomRuling {
+  session_id: string;
+  motion: string;
+  adopted_option_id: string | null;
+  adopted_at: string;
+  option_title: string;
+  rules: string[];
+}
+
+interface CourtroomOptionShape {
+  id?: string;
+  title?: string;
+  agents_md_rules?: string[];
+}
+
+async function loadCourtroomRulings(roomId: string): Promise<AdoptedCourtroomRuling[]> {
+  const { data: sessions } = await supabase
+    .from('court_sessions')
+    .select('id, motion, adopted_option_id, decision_options, updated_at')
+    .eq('room_id', roomId)
+    .eq('status', 'adopted')
+    .order('updated_at', { ascending: false });
+
+  return (sessions ?? []).map((session) => {
+    const options = Array.isArray(session.decision_options)
+      ? (session.decision_options as CourtroomOptionShape[])
+      : [];
+    const selected = options.find((option) => option?.id === session.adopted_option_id);
+    const rules = Array.isArray(selected?.agents_md_rules)
+      ? selected!.agents_md_rules!.filter(Boolean)
+      : [];
+
+    return {
+      session_id: session.id as string,
+      motion: session.motion as string,
+      adopted_option_id: (session.adopted_option_id as string | null) ?? null,
+      adopted_at: session.updated_at as string,
+      option_title:
+        selected?.title || (session.adopted_option_id as string | null) || 'Adopted ruling',
+      rules,
+    };
+  });
+}
+
+function buildCourtroomRulingsSection(rulings: AdoptedCourtroomRuling[]): string {
+  const lines: string[] = ['## Active AI Courtroom Rulings (AGENTS.md Constraints)', ''];
+
+  if (rulings.length === 0) {
+    lines.push(
+      '- No adopted courtroom rulings yet. Defer to the room rules above and ask the team before architectural changes.'
+    );
+    return lines.join('\n');
+  }
+
+  lines.push(
+    'These architectural decisions were adopted in the AI Courtroom. Treat them as hard constraints:',
+    ''
+  );
+
+  for (const ruling of rulings) {
+    lines.push(`### ${ruling.option_title}`);
+    lines.push(`- Motion: ${ruling.motion}`);
+    lines.push(`- Adopted: ${ruling.adopted_at}`);
+    if (ruling.rules.length > 0) {
+      lines.push('- Constraints:');
+      for (const rule of ruling.rules) {
+        lines.push(`  - ${rule}`);
+      }
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n').trim();
+}
+
 // WebSocket server for real-time IDE connections
 const wss = new WebSocketServer({ port: MCP_WS_PORT });
 const ideConnections = new Map<string, { ws: WebSocket; roomId: string; userId: string; editor: string }>();
@@ -369,7 +450,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: 'trackmywork_get_context',
-      description: 'Get current room context including members, tasks, rules, and settings',
+      description:
+        'Get current room context including members, tasks, rules, settings, and adopted AI Courtroom rulings (AGENTS.md constraints)',
       inputSchema: {
         type: 'object',
         properties: {
@@ -596,8 +678,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           .order('created_at', { ascending: false })
           .limit(10);
 
+        const courtroomRulings = await loadCourtroomRulings(room_id);
+        const agentsMdConstraints = buildCourtroomRulingsSection(courtroomRulings);
+
         return {
-          content: [{ type: 'text', text: JSON.stringify({ room, tasks, bom, artifacts }, null, 2) }],
+          content: [
+            {
+              type: 'text',
+              text: `${agentsMdConstraints}\n\n---\n\n${JSON.stringify(
+                {
+                  room,
+                  tasks,
+                  bom,
+                  artifacts,
+                  courtroom_rulings: courtroomRulings,
+                  agents_md_constraints: agentsMdConstraints,
+                },
+                null,
+                2
+              )}`,
+            },
+          ],
         };
       }
 
@@ -798,7 +899,22 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       .eq('id', roomId)
       .single();
 
-    return { contents: [{ uri: request.params.uri, mimeType: 'application/json', text: JSON.stringify(room, null, 2) }] };
+    const courtroomRulings = await loadCourtroomRulings(roomId);
+    const agentsMdConstraints = buildCourtroomRulingsSection(courtroomRulings);
+
+    return {
+      contents: [
+        {
+          uri: request.params.uri,
+          mimeType: 'application/json',
+          text: `${agentsMdConstraints}\n\n---\n\n${JSON.stringify(
+            { room, courtroom_rulings: courtroomRulings, agents_md_constraints: agentsMdConstraints },
+            null,
+            2
+          )}`,
+        },
+      ],
+    };
   }
 
   if (url.pathname.startsWith('/room/') && url.pathname.endsWith('/env')) {
