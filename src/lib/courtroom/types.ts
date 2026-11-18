@@ -37,6 +37,13 @@ export interface POCcitation {
   relevance: string;
 }
 
+export interface EvidenceItem {
+  source: 'github' | 'arxiv' | 'web';
+  title: string;
+  url: string;
+  snippet: string;
+}
+
 export interface GeneratedTask {
   title: string;
   description: string;
