@@ -89,8 +89,8 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-white border border-surface-200 shadow-2xl">
         {/* Glow backdrop */}
         <div className="absolute -top-24 -left-24 w-72 h-72 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
@@ -102,13 +102,13 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
               <Code2 className="w-3.5 h-3.5" />
               CodeTrack AI Onboarding
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-surface-900 tracking-tight">
               Hi, Developer! Welcome to{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400">
                 CodeTrack AI
               </span>
             </h2>
-            <p className="text-zinc-400 text-xs sm:text-sm max-w-xl mx-auto">
+            <p className="text-surface-600 text-xs sm:text-sm max-w-xl mx-auto">
               What would you like to begin with today? How would you describe your current DSA level?
             </p>
           </div>
@@ -126,7 +126,7 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
                   className={`group relative flex flex-col justify-between p-5 rounded-2xl border cursor-pointer transition-all duration-200 ${
                     isCurrent
                       ? item.activeBg + ' ring-2 ring-purple-500/50 shadow-lg shadow-purple-500/10'
-                      : 'bg-zinc-900/60 border-zinc-800 hover:bg-zinc-900 ' + item.borderHover
+                      : 'bg-white border-surface-200 hover:bg-surface-50 ' + item.borderHover
                   }`}
                 >
                   <div className="space-y-3">
@@ -142,18 +142,18 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
                     </div>
 
                     <div>
-                      <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">
+                      <h3 className="text-lg font-bold text-surface-900 group-hover:text-primary-600 transition-colors">
                         {item.title}
                       </h3>
-                      <p className="text-xs font-semibold text-purple-300/90 mt-0.5">
+                      <p className="text-xs font-semibold text-primary-600 mt-0.5">
                         {item.tagline}
                       </p>
                     </div>
 
-                    <p className="text-xs text-zinc-400 leading-relaxed">{item.description}</p>
+                    <p className="text-xs text-surface-600 leading-relaxed">{item.description}</p>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-zinc-800/80 flex items-center justify-between">
+                  <div className="mt-4 pt-3 border-t border-surface-200 flex items-center justify-between">
                     <span className="text-xs text-zinc-500 font-mono">
                       {isCurrent ? 'Selected' : 'Click to select'}
                     </span>
@@ -167,9 +167,9 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
           </div>
 
           {/* Target Difficulty Selector */}
-          <div className="p-4 rounded-2xl bg-zinc-900/70 border border-zinc-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-surface-50 border border-surface-200 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-surface-800 flex items-center gap-1.5">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-purple-400" />
                 <span>Preferred Target Difficulty:</span>
               </span>
@@ -184,7 +184,7 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
                   className={`p-2 rounded-xl font-bold transition-all ${
                     selectedDiff === d
                       ? 'bg-purple-600 text-white shadow-md'
-                      : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                      : 'bg-white border border-surface-200 text-surface-700 hover:text-surface-900 shadow-xs'
                   }`}
                 >
                   {d}
@@ -194,14 +194,14 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
           </div>
 
           {/* Footer actions */}
-          <div className="pt-2 border-t border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="pt-2 border-t border-surface-200 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-zinc-500 text-center sm:text-left">
               Progress, attempts, and streaks persist across sessions and profile switches.
             </p>
             <button
               onClick={handleConfirm}
               disabled={isSubmitting}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-purple-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 text-white font-bold shadow-lg shadow-purple-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
             >
               <span>{isSubmitting ? 'Saving...' : 'Enter Learning Workspace'}</span>
               <ArrowRight className="w-4 h-4" />

@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageSquare,
+  Cpu,
 } from 'lucide-react';
 
 interface ProblemListProps {
@@ -28,7 +29,7 @@ interface ProblemListProps {
 const PROBLEMS_PER_PAGE = 8;
 
 export function ProblemList({ topicId }: ProblemListProps) {
-  const { progressMap, setActiveDebriefProblem } = useCodeTrackStore();
+  const { progressMap, setActiveDebriefProblem, setAgentProblem } = useCodeTrackStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
@@ -48,7 +49,7 @@ export function ProblemList({ topicId }: ProblemListProps) {
       const matchesSearch =
         p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.frontendQuestionId.includes(searchQuery) ||
-        p.topicTags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+        (Array.isArray(p.topicTags) && p.topicTags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())));
 
       if (!matchesSearch) return false;
 
@@ -144,8 +145,8 @@ export function ProblemList({ topicId }: ProblemListProps) {
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-900 text-zinc-400 border border-zinc-800">
-            <Circle className="w-3 h-3 text-zinc-600" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-surface-100 text-surface-600 border border-surface-200">
+            <Circle className="w-3 h-3 text-surface-400" />
             Not Started
           </span>
         );
@@ -155,24 +156,24 @@ export function ProblemList({ topicId }: ProblemListProps) {
   return (
     <div className="space-y-6">
       {/* Control Bar: Search, Filters, Sorting */}
-      <div className="p-5 rounded-3xl bg-zinc-950 border border-zinc-800/90 shadow-xl space-y-4">
+      <div className="p-5 rounded-3xl bg-white border border-surface-200 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider">
+              <span className="text-xs font-mono font-bold text-primary-700 uppercase tracking-wider">
                 LeetCode Problem Library
               </span>
-              <span className="text-zinc-600">•</span>
-              <span className="text-xs text-zinc-400 font-semibold">{topic?.name}</span>
+              <span className="text-surface-400">•</span>
+              <span className="text-xs text-surface-500 font-semibold">{topic?.name}</span>
             </div>
-            <h3 className="text-xl font-extrabold text-white mt-0.5">
+            <h3 className="text-xl font-extrabold text-surface-900 mt-0.5">
               {topic?.name} ({processedProblems.length} available)
             </h3>
           </div>
 
           {/* Search box */}
           <div className="relative w-full md:w-72">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400" />
             <input
               type="text"
               value={searchQuery}
@@ -181,16 +182,16 @@ export function ProblemList({ topicId }: ProblemListProps) {
                 setCurrentPage(1);
               }}
               placeholder="Search problem title, #, tag..."
-              className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl bg-surface-50 border border-surface-200 text-surface-900 placeholder:text-surface-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 shadow-xs"
             />
           </div>
         </div>
 
         {/* Filter & Sort Chips */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-zinc-900 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-surface-100 text-xs">
           {/* Difficulty Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-zinc-500 font-mono text-[11px] mr-1">Diff:</span>
+            <span className="text-surface-500 font-mono text-[11px] mr-1">Diff:</span>
             {['all', 'easy', 'medium', 'hard'].map((d) => (
               <button
                 key={d}
@@ -201,8 +202,8 @@ export function ProblemList({ topicId }: ProblemListProps) {
                 }}
                 className={`px-3 py-1 rounded-lg capitalize transition-all ${
                   filterDifficulty === d
-                    ? 'bg-purple-600 text-white font-bold shadow-sm'
-                    : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                    ? 'bg-primary-600 text-white font-bold shadow-xs'
+                    : 'bg-surface-50 text-surface-600 hover:text-surface-900 border border-surface-200 hover:bg-surface-100'
                 }`}
               >
                 {d}
@@ -212,7 +213,7 @@ export function ProblemList({ topicId }: ProblemListProps) {
 
           {/* Status Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-zinc-500 font-mono text-[11px] mr-1">Status:</span>
+            <span className="text-surface-500 font-mono text-[11px] mr-1">Status:</span>
             {['all', 'unsolved', 'solved', 'attempted'].map((st) => (
               <button
                 key={st}
@@ -223,8 +224,8 @@ export function ProblemList({ topicId }: ProblemListProps) {
                 }}
                 className={`px-3 py-1 rounded-lg capitalize transition-all ${
                   filterStatus === st
-                    ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                    : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                    ? 'bg-primary-600 text-white font-bold shadow-xs'
+                    : 'bg-surface-50 text-surface-600 hover:text-surface-900 border border-surface-200 hover:bg-surface-100'
                 }`}
               >
                 {st}
@@ -234,14 +235,14 @@ export function ProblemList({ topicId }: ProblemListProps) {
 
           {/* Sort Selector */}
           <div className="flex items-center gap-1.5">
-            <span className="text-zinc-500 font-mono text-[11px] mr-1 flex items-center gap-1">
+            <span className="text-surface-500 font-mono text-[11px] mr-1 flex items-center gap-1">
               <ArrowUpDown className="w-3 h-3" />
               Sort:
             </span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-200 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              className="px-2.5 py-1 rounded-lg bg-surface-50 border border-surface-200 text-surface-700 focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
               <option value="number">Problem #</option>
               <option value="difficulty">Difficulty</option>
@@ -250,7 +251,7 @@ export function ProblemList({ topicId }: ProblemListProps) {
             <button
               type="button"
               onClick={() => setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white font-mono"
+              className="px-2 py-1 rounded-lg bg-surface-50 border border-surface-200 text-surface-600 hover:text-surface-900 font-mono"
             >
               {sortOrder.toUpperCase()}
             </button>
@@ -267,65 +268,78 @@ export function ProblemList({ topicId }: ProblemListProps) {
           return (
             <div
               key={problem.id}
-              className="p-5 rounded-2xl bg-zinc-950/80 border border-zinc-800/90 hover:border-zinc-700 transition-all space-y-3 shadow-lg shadow-black/20"
+              className="p-5 rounded-2xl bg-white border border-surface-200 hover:border-surface-300 transition-all space-y-3 shadow-xs"
             >
               {/* Header row */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 font-mono text-xs font-bold text-zinc-400">
+                    <span className="px-2 py-0.5 rounded-md bg-surface-100 border border-surface-200 font-mono text-xs font-bold text-surface-700">
                       #{problem.frontendQuestionId}
                     </span>
-                    <h4 className="text-base font-bold text-white hover:text-purple-300 transition-colors">
+                    <h4 className="text-base font-bold text-surface-900 hover:text-primary-600 transition-colors">
                       {problem.title}
                     </h4>
                     <span
                       className={`px-2.5 py-0.5 rounded text-[11px] font-semibold border ${
                         problem.difficulty === 'Easy'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : problem.difficulty === 'Medium'
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                          : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
                       }`}
                     >
                       {problem.difficulty}
                     </span>
                     {problem.acceptance && (
-                      <span className="text-xs text-zinc-500 font-mono">
+                      <span className="text-xs text-surface-500 font-mono">
                         Acc: {problem.acceptance}
                       </span>
                     )}
                   </div>
 
-                  <p className="text-xs text-zinc-400 leading-relaxed max-w-3xl">
+                  <p className="text-xs text-surface-600 leading-relaxed max-w-3xl">
                     {problem.description}
                   </p>
 
                   {/* Topic Tags */}
-                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                    {problem.topicTags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-900 border border-zinc-800 text-zinc-400"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+                  {Array.isArray(problem.topicTags) && problem.topicTags.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      {problem.topicTags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-50 border border-surface-200 text-surface-600"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Status & Actions */}
                 <div className="flex items-center gap-2.5 self-start lg:self-center shrink-0">
                   {getStatusBadge(problem)}
 
+                  {/* Solve with AI Agent button */}
+                  <button
+                    type="button"
+                    onClick={() => setAgentProblem(problem)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-xl transition-all shadow-xs"
+                    title="Open in AI Coding Agent studio"
+                  >
+                    <Cpu className="w-3.5 h-3.5 text-primary-600" />
+                    <span>Agent</span>
+                  </button>
+
                   {/* Debrief button */}
                   <button
                     type="button"
                     onClick={() => setActiveDebriefProblem(problem)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-xl transition-all"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-surface-700 hover:text-surface-900 bg-surface-50 hover:bg-surface-100 border border-surface-200 rounded-xl transition-all shadow-xs"
                     title="Conduct adaptive post-problem debrief with AI mentor"
                   >
-                    <MessageSquare className="w-3.5 h-3.5 text-purple-400" />
+                    <MessageSquare className="w-3.5 h-3.5 text-primary-600" />
                     <span>{progress?.status ? 'Re-Debrief' : 'Debrief'}</span>
                   </button>
 
@@ -333,7 +347,7 @@ export function ProblemList({ topicId }: ProblemListProps) {
                   <button
                     type="button"
                     onClick={() => handleSolveOnLeetCode(problem)}
-                    className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 rounded-xl shadow-md shadow-orange-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <span>Solve on LeetCode</span>
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -342,13 +356,13 @@ export function ProblemList({ topicId }: ProblemListProps) {
               </div>
 
               {/* Hints and attempts footer */}
-              <div className="pt-2 border-t border-zinc-900 flex items-center justify-between text-xs">
+              <div className="pt-2 border-t border-surface-100 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-4">
                   {problem.hints && problem.hints.length > 0 && (
                     <button
                       type="button"
                       onClick={() => toggleHint(problem.id)}
-                      className="inline-flex items-center gap-1 text-zinc-400 hover:text-purple-400 transition-colors"
+                      className="inline-flex items-center gap-1 text-surface-500 hover:text-primary-600 transition-colors"
                     >
                       <HelpCircle className="w-3.5 h-3.5" />
                       <span>{isHintOpen ? 'Hide Hints' : 'Show Hints'}</span>
@@ -359,14 +373,14 @@ export function ProblemList({ topicId }: ProblemListProps) {
                   )}
 
                   {progress?.challengeFaced && (
-                    <span className="text-zinc-500 italic truncate max-w-md hidden sm:inline">
+                    <span className="text-surface-500 italic truncate max-w-md hidden sm:inline">
                       Hurdle: {progress.challengeFaced}
                     </span>
                   )}
                 </div>
 
                 {progress?.attempts && progress.attempts > 1 && (
-                  <span className="text-[11px] text-zinc-500 font-mono">
+                  <span className="text-[11px] text-surface-500 font-mono">
                     {progress.attempts} attempts logged
                   </span>
                 )}
@@ -374,12 +388,12 @@ export function ProblemList({ topicId }: ProblemListProps) {
 
               {/* Hints Box */}
               {isHintOpen && problem.hints && (
-                <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/20 text-xs text-purple-200 space-y-1.5 animate-in fade-in duration-150">
-                  <div className="flex items-center gap-1.5 font-bold text-purple-300">
-                    <Sparkles className="w-3.5 h-3.5" />
+                <div className="p-4 rounded-xl bg-primary-50/60 border border-primary-200 text-xs text-primary-950 space-y-1.5 animate-in fade-in duration-150">
+                  <div className="flex items-center gap-1.5 font-bold text-primary-800">
+                    <Sparkles className="w-3.5 h-3.5 text-primary-600" />
                     <span>Algorithmic Clues:</span>
                   </div>
-                  <ul className="list-disc list-inside space-y-1 pl-1 text-purple-200/90 leading-relaxed">
+                  <ul className="list-disc list-inside space-y-1 pl-1 text-surface-700 leading-relaxed">
                     {problem.hints.map((hint, i) => (
                       <li key={i}>{hint}</li>
                     ))}
@@ -391,7 +405,7 @@ export function ProblemList({ topicId }: ProblemListProps) {
         })}
 
         {processedProblems.length === 0 && (
-          <div className="p-12 text-center rounded-2xl bg-zinc-950 border border-zinc-800 text-zinc-500 text-xs space-y-2">
+          <div className="p-12 text-center rounded-2xl bg-white border border-surface-200 text-surface-500 text-xs space-y-2 shadow-xs">
             <p>No problems match the selected filter criteria.</p>
             <button
               onClick={() => {
@@ -399,7 +413,7 @@ export function ProblemList({ topicId }: ProblemListProps) {
                 setFilterDifficulty('all');
                 setFilterStatus('all');
               }}
-              className="text-purple-400 hover:underline font-semibold"
+              className="text-primary-600 hover:underline font-semibold"
             >
               Reset Filters
             </button>
@@ -409,8 +423,8 @@ export function ProblemList({ topicId }: ProblemListProps) {
 
       {/* Pagination Bar */}
       {totalPages > 1 && (
-        <div className="p-4 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-between text-xs">
-          <span className="text-zinc-500 font-mono">
+        <div className="p-4 rounded-2xl bg-white border border-surface-200 shadow-xs flex items-center justify-between text-xs">
+          <span className="text-surface-500 font-mono">
             Page {currentPage} of {totalPages} ({processedProblems.length} total)
           </span>
 
@@ -419,7 +433,7 @@ export function ProblemList({ topicId }: ProblemListProps) {
               type="button"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-40 transition-colors"
+              className="p-2 rounded-xl bg-surface-50 border border-surface-200 text-surface-600 hover:text-surface-900 disabled:opacity-40 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -438,8 +452,8 @@ export function ProblemList({ topicId }: ProblemListProps) {
                     onClick={() => setCurrentPage(pNum)}
                     className={`w-8 h-8 rounded-xl font-mono text-xs font-semibold transition-all ${
                       currentPage === pNum
-                        ? 'bg-purple-600 text-white shadow-md'
-                        : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white'
+                        ? 'bg-primary-600 text-white shadow-xs'
+                        : 'bg-surface-50 border border-surface-200 text-surface-600 hover:text-surface-900'
                     }`}
                   >
                     {pNum}
@@ -448,7 +462,7 @@ export function ProblemList({ topicId }: ProblemListProps) {
               }
               if (pNum === currentPage - 2 || pNum === currentPage + 2) {
                 return (
-                  <span key={pNum} className="text-zinc-600 font-mono">
+                  <span key={pNum} className="text-surface-400 font-mono">
                     ...
                   </span>
                 );
@@ -460,7 +474,7 @@ export function ProblemList({ topicId }: ProblemListProps) {
               type="button"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-40 transition-colors"
+              className="p-2 rounded-xl bg-surface-50 border border-surface-200 text-surface-600 hover:text-surface-900 disabled:opacity-40 transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

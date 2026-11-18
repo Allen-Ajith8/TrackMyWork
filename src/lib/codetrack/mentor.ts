@@ -358,7 +358,7 @@ export async function getMentorReply(context: MentorContext): Promise<Recommenda
       const liveDaily = await fetchLiveLeetCodeDailyChallenge();
       if (liveDaily) {
         return {
-          message: `📅 **Official LeetCode Daily Challenge — ${liveDaily.date}**\n\n**#${liveDaily.frontendQuestionId} ${liveDaily.title}**\n- **Difficulty**: ${liveDaily.difficulty}\n- **Acceptance Rate**: ${liveDaily.acRate}%\n- **Topic Tags**: ${liveDaily.topicTags.join(', ')}\n\n💡 **Tactical Mentor Strategy**:\n1. Read the constraints carefully. An N of 10⁵ implies O(N) or O(N log N); N ≤ 20 implies backtracking or bitmasking.\n2. State your brute force first before jumping to optimal data structures.\n3. Verify edge cases: empty input, minimum value, all identical elements.`,
+          message: `📅 **Official LeetCode Daily Challenge — ${liveDaily.date}**\n\n**#${liveDaily.frontendQuestionId} ${liveDaily.title}**\n- **Difficulty**: ${liveDaily.difficulty}\n- **Acceptance Rate**: ${liveDaily.acRate}%\n- **Topic Tags**: ${Array.isArray(liveDaily.topicTags) ? liveDaily.topicTags.join(', ') : 'Daily'}\n\n💡 **Tactical Mentor Strategy**:\n1. Read the constraints carefully. An N of 10⁵ implies O(N) or O(N log N); N ≤ 20 implies backtracking or bitmasking.\n2. State your brute force first before jumping to optimal data structures.\n3. Verify edge cases: empty input, minimum value, all identical elements.`,
           source: 'rule_based',
           recommendedProblem: {
             id: liveDaily.titleSlug,
@@ -461,7 +461,7 @@ export async function getMentorReply(context: MentorContext): Promise<Recommenda
     const inProgressProblem = LEETCODE_PROBLEMS.find((p) => attemptedIds.includes(p.id));
     if (inProgressProblem) {
       return {
-        message: `🔄 **Resuming Your Previous Practice**:\n\nYou were previously working on **#${inProgressProblem.frontendQuestionId} ${inProgressProblem.title}** (${inProgressProblem.difficulty}) in **${inProgressProblem.topicTags.join(', ')}**.\n\nWould you like a strategic hint or are you ready to jump back into LeetCode?`,
+        message: `🔄 **Resuming Your Previous Practice**:\n\nYou were previously working on **#${inProgressProblem.frontendQuestionId} ${inProgressProblem.title}** (${inProgressProblem.difficulty})${Array.isArray(inProgressProblem.topicTags) && inProgressProblem.topicTags.length > 0 ? ` in **${inProgressProblem.topicTags.join(', ')}**` : ''}.\n\nWould you like a strategic hint or are you ready to jump back into LeetCode?`,
         recommendedProblem: inProgressProblem,
         recommendationReason: `Resuming your active attempt from your learning history.`,
         source: 'rule_based',
@@ -628,7 +628,7 @@ export async function getMentorReply(context: MentorContext): Promise<Recommenda
     else if (query.includes('search')) matchedTopic = 'binary-search';
 
     let matchingProblems = LEETCODE_PROBLEMS.filter(
-      (p) => (p.topicId === matchedTopic || p.topicTags.some((t) => t.toLowerCase().includes(matchedTopic))) && p.difficulty === diff
+      (p) => (p.topicId === matchedTopic || (Array.isArray(p.topicTags) && p.topicTags.some((t) => t.toLowerCase().includes(matchedTopic)))) && p.difficulty === diff
     );
 
     if (matchingProblems.length === 0) {

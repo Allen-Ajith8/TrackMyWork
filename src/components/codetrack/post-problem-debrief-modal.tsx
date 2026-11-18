@@ -20,6 +20,7 @@ import {
   X,
   Send,
   ExternalLink,
+  Cpu,
 } from 'lucide-react';
 
 interface PostProblemDebriefModalProps {
@@ -39,6 +40,7 @@ export function PostProblemDebriefModal({
     addMentorMessage,
     setActiveTab,
     setActiveDebriefProblem,
+    setAgentProblem,
   } = useCodeTrackStore();
 
   const [step, setStep] = useState<number>(1);
@@ -138,23 +140,23 @@ export function PostProblemDebriefModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-10 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+      <div className="relative w-full max-w-2xl md:max-w-3xl lg:max-w-4xl rounded-3xl bg-white border border-surface-200 shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
         {/* Glow Top Bar */}
-        <div className="h-1.5 bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500" />
+        <div className="h-1.5 bg-gradient-to-r from-primary-600 via-pink-500 to-indigo-600 shrink-0" />
 
-        <div className="p-6 sm:p-7 space-y-6">
+        <div className="p-6 sm:p-8 md:p-10 space-y-6 sm:space-y-8 overflow-y-auto">
           {/* Header */}
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/30">
-                <Bot className="w-5 h-5" />
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-primary-600/30 shrink-0">
+                <Bot className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-[11px] font-mono text-purple-400 uppercase tracking-widest block font-semibold">
+                <span className="text-xs font-mono text-primary-600 uppercase tracking-widest block font-bold">
                   Adaptive AI Mentor Debrief
                 </span>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <h3 className="text-lg sm:text-2xl font-bold text-surface-900 flex items-center gap-2 mt-0.5">
                   <span>How did you find #{problem.frontendQuestionId} {problem.title}?</span>
                 </h3>
               </div>
@@ -162,23 +164,24 @@ export function PostProblemDebriefModal({
 
             <button
               onClick={onClose}
-              className="p-1 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              className="p-2 rounded-xl text-surface-400 hover:text-surface-700 hover:bg-surface-100 transition-colors shrink-0"
+              title="Close debrief"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Stepper Progress */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             {[1, 2, 3, 4].map((s) => (
               <div
                 key={s}
-                className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${
+                className={`flex-1 h-2 rounded-full transition-all duration-300 ${
                   s === step
-                    ? 'bg-purple-500 shadow-sm shadow-purple-500/50'
+                    ? 'bg-primary-600 shadow-sm shadow-primary-600/30'
                     : s < step
                     ? 'bg-emerald-500'
-                    : 'bg-zinc-800'
+                    : 'bg-surface-200'
                 }`}
               />
             ))}
@@ -186,62 +189,62 @@ export function PostProblemDebriefModal({
 
           {/* QUESTION 1: Independence */}
           {step === 1 && (
-            <div className="space-y-4 animate-in fade-in-50 duration-200">
-              <div className="space-y-1">
-                <span className="text-xs font-mono text-zinc-500">Step 1 of 4</span>
-                <h4 className="text-base font-semibold text-white">
+            <div className="space-y-5 animate-in fade-in-50 duration-200">
+              <div className="space-y-1.5">
+                <span className="text-xs font-mono text-primary-600 font-bold tracking-wider">Step 1 of 4</span>
+                <h4 className="text-lg sm:text-xl font-bold text-surface-900">
                   Did you solve this problem independently?
                 </h4>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs sm:text-sm text-surface-600">
                   Be honest! Your mentor uses this to calibrate your challenge curve.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {[
                   {
                     id: 'independent' as IndependenceLevel,
                     title: 'Yes, completely independently.',
                     desc: 'Wrote optimal code without external hints or solution lookups.',
                     icon: CheckCircle,
-                    color: 'text-emerald-400',
+                    color: 'text-emerald-600',
                   },
                   {
                     id: 'small_hint' as IndependenceLevel,
                     title: 'Yes, with a small hint.',
                     desc: 'Looked at algorithmic approach/clues but wrote the code myself.',
                     icon: Sparkles,
-                    color: 'text-amber-400',
+                    color: 'text-amber-600',
                   },
                   {
                     id: 'substantial_help' as IndependenceLevel,
                     title: 'I needed substantial help.',
                     desc: 'Read discussion solutions or tutorial walkthroughs to finish.',
                     icon: HelpCircle,
-                    color: 'text-purple-400',
+                    color: 'text-primary-600',
                   },
                   {
                     id: 'unsolved' as IndependenceLevel,
                     title: "I couldn't solve it.",
                     desc: 'Encountered test failures, TLE, or got stuck on the approach.',
                     icon: AlertTriangle,
-                    color: 'text-rose-400',
+                    color: 'text-rose-600',
                   },
                 ].map((opt) => (
                   <button
                     key={opt.id}
                     type="button"
                     onClick={() => setIndependence(opt.id)}
-                    className={`flex items-start gap-3.5 p-3.5 rounded-2xl border text-left transition-all ${
+                    className={`flex items-start gap-4 p-4 sm:p-5 rounded-2xl border text-left transition-all ${
                       independence === opt.id
-                        ? 'bg-purple-500/15 border-purple-500 text-white ring-1 ring-purple-500/40'
-                        : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                        ? 'bg-primary-50/70 border-primary-600 text-surface-900 ring-2 ring-primary-500/30 shadow-sm'
+                        : 'bg-white border-surface-200 text-surface-600 hover:border-primary-300 hover:bg-surface-50'
                     }`}
                   >
-                    <opt.icon className={`w-5 h-5 shrink-0 mt-0.5 ${opt.color}`} />
-                    <div className="flex-1">
-                      <p className="text-xs sm:text-sm font-bold text-white">{opt.title}</p>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">{opt.desc}</p>
+                    <opt.icon className={`w-6 h-6 shrink-0 mt-0.5 ${opt.color}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm sm:text-base font-bold text-surface-900">{opt.title}</p>
+                      <p className="text-xs sm:text-sm text-surface-600 mt-1 leading-relaxed">{opt.desc}</p>
                     </div>
                   </button>
                 ))}
@@ -251,18 +254,18 @@ export function PostProblemDebriefModal({
 
           {/* QUESTION 2: Biggest Challenge */}
           {step === 2 && (
-            <div className="space-y-4 animate-in fade-in-50 duration-200">
-              <div className="space-y-1">
-                <span className="text-xs font-mono text-zinc-500">Step 2 of 4</span>
-                <h4 className="text-base font-semibold text-white">
+            <div className="space-y-5 animate-in fade-in-50 duration-200">
+              <div className="space-y-1.5">
+                <span className="text-xs font-mono text-primary-600 font-bold tracking-wider">Step 2 of 4</span>
+                <h4 className="text-lg sm:text-xl font-bold text-surface-900">
                   What was the biggest challenge you faced?
                 </h4>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs sm:text-sm text-surface-600">
                   Select the primary obstacle or specify your custom takeaway.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {[
                   'Understanding the problem',
                   'Identifying the correct approach',
@@ -278,10 +281,10 @@ export function PostProblemDebriefModal({
                       setChallengeFaced(challenge);
                       setCustomChallenge('');
                     }}
-                    className={`p-3 rounded-xl border text-left text-xs font-medium transition-all ${
+                    className={`p-4 rounded-xl border text-left text-xs sm:text-sm font-medium transition-all ${
                       challengeFaced === challenge && !customChallenge
-                        ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500/50'
-                        : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
+                        ? 'bg-primary-50/70 border-primary-600 text-primary-900 ring-2 ring-primary-500/30 shadow-sm font-semibold'
+                        : 'bg-white border-surface-200 text-surface-700 hover:border-primary-300 hover:bg-surface-50'
                     }`}
                   >
                     {challenge}
@@ -289,14 +292,14 @@ export function PostProblemDebriefModal({
                 ))}
               </div>
 
-              <div className="space-y-1.5 pt-1">
-                <label className="text-xs text-zinc-400 font-medium">Or type a specific hurdle:</label>
+              <div className="space-y-2 pt-2">
+                <label className="text-xs sm:text-sm text-surface-700 font-medium">Or type a specific hurdle:</label>
                 <input
                   type="text"
                   value={customChallenge}
                   onChange={(e) => setCustomChallenge(e.target.value)}
                   placeholder="e.g. Off-by-one error when contracting the left window bound..."
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-xl bg-surface-50 border border-surface-200 text-surface-900 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white"
                 />
               </div>
             </div>
@@ -304,71 +307,73 @@ export function PostProblemDebriefModal({
 
           {/* QUESTION 3: Confidence */}
           {step === 3 && (
-            <div className="space-y-4 animate-in fade-in-50 duration-200">
-              <div className="space-y-1">
-                <span className="text-xs font-mono text-zinc-500">Step 3 of 4</span>
-                <h4 className="text-base font-semibold text-white">
+            <div className="space-y-5 animate-in fade-in-50 duration-200">
+              <div className="space-y-1.5">
+                <span className="text-xs font-mono text-primary-600 font-bold tracking-wider">Step 3 of 4</span>
+                <h4 className="text-lg sm:text-xl font-bold text-surface-900">
                   How confident are you about this concept now?
                 </h4>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs sm:text-sm text-surface-600">
                   Assessing your mastery helps decide whether to consolidate or advance.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 {[
                   {
                     id: 'high' as ConfidenceLevel,
                     title: 'Very confident.',
                     desc: 'I could code this pattern again quickly under interview pressure.',
-                    color: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400',
+                    color: 'border-emerald-300 bg-emerald-50 text-emerald-800',
                   },
                   {
                     id: 'medium' as ConfidenceLevel,
                     title: 'Somewhat confident.',
                     desc: 'I understand the logic, but might struggle if the constraints mutate.',
-                    color: 'border-amber-500/40 bg-amber-500/10 text-amber-400',
+                    color: 'border-amber-300 bg-amber-50 text-amber-800',
                   },
                   {
                     id: 'low' as ConfidenceLevel,
                     title: 'Need more practice.',
                     desc: 'I need to review similar variations before tackling harder problems.',
-                    color: 'border-rose-500/40 bg-rose-500/10 text-rose-400',
+                    color: 'border-rose-300 bg-rose-50 text-rose-800',
                   },
                 ].map((opt) => (
                   <button
                     key={opt.id}
                     type="button"
                     onClick={() => setConfidence(opt.id)}
-                    className={`flex items-start justify-between p-3.5 rounded-2xl border text-left transition-all ${
+                    className={`flex flex-col justify-between p-4 sm:p-5 rounded-2xl border text-left transition-all ${
                       confidence === opt.id
-                        ? `${opt.color} ring-1 ring-purple-500/40`
-                        : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
+                        ? `${opt.color} ring-2 ring-primary-500/40 shadow-sm`
+                        : 'bg-white border-surface-200 text-surface-600 hover:border-primary-300 hover:bg-surface-50'
                     }`}
                   >
                     <div>
-                      <p className="text-xs sm:text-sm font-bold text-white">{opt.title}</p>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">{opt.desc}</p>
+                      <p className="text-sm sm:text-base font-bold text-surface-900">{opt.title}</p>
+                      <p className="text-xs sm:text-sm text-surface-600 mt-1 leading-relaxed">{opt.desc}</p>
                     </div>
-                    <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
-                        confidence === opt.id ? 'border-purple-400 bg-purple-500' : 'border-zinc-700'
-                      }`}
-                    >
-                      {confidence === opt.id && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                    <div className="flex justify-end pt-3">
+                      <div
+                        className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+                          confidence === opt.id ? 'border-primary-600 bg-primary-600' : 'border-surface-300'
+                        }`}
+                      >
+                        {confidence === opt.id && <div className="w-2 h-2 rounded-full bg-white" />}
+                      </div>
                     </div>
                   </button>
                 ))}
               </div>
 
-              <div className="space-y-1.5 pt-1">
-                <label className="text-xs text-zinc-400 font-medium">Personal takeaway notes (optional):</label>
+              <div className="space-y-2 pt-2">
+                <label className="text-xs sm:text-sm text-surface-700 font-medium">Personal takeaway notes (optional):</label>
                 <textarea
                   value={personalNotes}
                   onChange={(e) => setPersonalNotes(e.target.value)}
                   placeholder="e.g. Always remember to check if target - current_val exists in map..."
-                  rows={2}
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-none"
+                  rows={3}
+                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-xl bg-surface-50 border border-surface-200 text-surface-900 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white resize-none"
                 />
               </div>
             </div>
@@ -376,18 +381,18 @@ export function PostProblemDebriefModal({
 
           {/* QUESTION 4: What would you like to solve next? */}
           {step === 4 && (
-            <div className="space-y-4 animate-in fade-in-50 duration-200">
-              <div className="space-y-1">
-                <span className="text-xs font-mono text-zinc-500">Step 4 of 4</span>
-                <h4 className="text-base font-semibold text-white">
+            <div className="space-y-5 animate-in fade-in-50 duration-200">
+              <div className="space-y-1.5">
+                <span className="text-xs font-mono text-primary-600 font-bold tracking-wider">Step 4 of 4</span>
+                <h4 className="text-lg sm:text-xl font-bold text-surface-900">
                   What would you like to solve next?
                 </h4>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs sm:text-sm text-surface-600">
                   Your mentor never increases difficulty automatically without your consent.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {[
                   {
                     id: 'another_easy' as NextPreference,
@@ -414,27 +419,29 @@ export function PostProblemDebriefModal({
                     title: 'Revise this topic first.',
                     desc: 'Review explanations and common pitfalls before next question.',
                   },
-                ].map((opt) => (
+                ].map((opt, idx) => (
                   <button
                     key={opt.id}
                     type="button"
                     onClick={() => setPreferredNext(opt.id)}
-                    className={`flex items-start justify-between p-3.5 rounded-2xl border text-left transition-all ${
+                    className={`flex items-start justify-between p-4 sm:p-5 rounded-2xl border text-left transition-all ${
+                      idx === 4 ? 'sm:col-span-2' : ''
+                    } ${
                       preferredNext === opt.id
-                        ? 'bg-purple-500/15 border-purple-500 text-white ring-1 ring-purple-500/40'
-                        : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
+                        ? 'bg-primary-50/70 border-primary-600 text-surface-900 ring-2 ring-primary-500/30 shadow-sm'
+                        : 'bg-white border-surface-200 text-surface-600 hover:border-primary-300 hover:bg-surface-50'
                     }`}
                   >
-                    <div>
-                      <p className="text-xs sm:text-sm font-bold text-white">{opt.title}</p>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">{opt.desc}</p>
+                    <div className="pr-3">
+                      <p className="text-sm sm:text-base font-bold text-surface-900">{opt.title}</p>
+                      <p className="text-xs sm:text-sm text-surface-600 mt-1 leading-relaxed">{opt.desc}</p>
                     </div>
                     <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
-                        preferredNext === opt.id ? 'border-purple-400 bg-purple-500' : 'border-zinc-700'
+                      className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
+                        preferredNext === opt.id ? 'border-primary-600 bg-primary-600' : 'border-surface-300'
                       }`}
                     >
-                      {preferredNext === opt.id && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                      {preferredNext === opt.id && <div className="w-2 h-2 rounded-full bg-white" />}
                     </div>
                   </button>
                 ))}
@@ -443,45 +450,59 @@ export function PostProblemDebriefModal({
           )}
 
           {/* Footer Controls */}
-          <div className="pt-3 border-t border-zinc-900 flex items-center justify-between">
+          <div className="pt-4 sm:pt-6 border-t border-surface-200 flex items-center justify-between">
             {step > 1 ? (
               <button
                 type="button"
                 onClick={() => setStep((s) => s - 1)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white hover:bg-zinc-900 flex items-center gap-1.5 transition-colors"
+                className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-surface-600 hover:text-surface-900 hover:bg-surface-100 flex items-center gap-2 transition-colors"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
+                <ArrowLeft className="w-4 h-4" />
                 <span>Back</span>
               </button>
             ) : (
-              <a
-                href={problem.leetcodeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1 underline underline-offset-4"
-              >
-                <span>Reopen Problem</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
+              <div className="flex items-center gap-3">
+                <a
+                  href={problem.leetcodeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs sm:text-sm text-surface-600 hover:text-surface-900 flex items-center gap-1.5 underline underline-offset-4"
+                >
+                  <span>Reopen Problem</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    setAgentProblem(problem);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200 text-xs font-semibold transition-all shadow-xs"
+                >
+                  <Cpu className="w-3.5 h-3.5" />
+                  <span>Open in AI Agent</span>
+                </button>
+              </div>
             )}
 
             {step < 4 ? (
               <button
                 type="button"
                 onClick={() => setStep((s) => s + 1)}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 shadow-md shadow-purple-600/30 flex items-center gap-1.5 transition-all hover:scale-[1.02]"
+                className="px-6 py-3 rounded-xl text-xs sm:text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 shadow-md shadow-primary-600/30 flex items-center gap-2 transition-all hover:scale-[1.02]"
               >
                 <span>Continue</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleFinishDebrief}
                 disabled={isSubmitting}
-                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-lg shadow-purple-600/30 flex items-center gap-1.5 transition-all hover:scale-[1.02] disabled:opacity-50"
+                className="px-7 py-3 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 shadow-lg shadow-primary-600/30 flex items-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-50"
               >
-                <Send className="w-3.5 h-3.5" />
+                <Send className="w-4 h-4" />
                 <span>{isSubmitting ? 'Consulting Mentor...' : 'Complete & Get Advice'}</span>
               </button>
             )}

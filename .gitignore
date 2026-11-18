@@ -63,3 +63,5 @@ mcp-server/dist/
 *.pem
 .vercel
 .turbo
+scratch/
+__pycache__/

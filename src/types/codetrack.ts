@@ -167,3 +167,29 @@ export interface CodeTrackAnalytics {
     independence?: IndependenceLevel;
   }>;
 }
+
+export type CodeLanguage = 'python' | 'javascript' | 'typescript' | 'java' | 'cpp';
+
+export interface TestCase {
+  id: string;
+  name: string;
+  input: string;
+  expectedOutput: string;
+  actualOutput?: string;
+  passed?: boolean;
+  executionTimeMs?: number;
+  error?: string;
+}
+
+export interface AgentActionResponse {
+  action: 'solve' | 'hint' | 'debug' | 'run_tests';
+  code?: string;
+  language?: CodeLanguage;
+  explanation: string;
+  timeComplexity?: string;
+  spaceComplexity?: string;
+  hints?: string[];
+  bugsFound?: string[];
+  testResults?: TestCase[];
+  source: 'llm' | 'rule_based';
+}

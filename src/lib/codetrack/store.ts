@@ -21,10 +21,11 @@ interface CodeTrackState {
   level: DSALevel | null;
   preferredDifficulty: PreferredDifficulty;
   selectedTopicId: string | null;
-  activeTab: 'curriculum' | 'mentor' | 'analytics' | 'daily' | 'history';
+  activeTab: 'curriculum' | 'mentor' | 'analytics' | 'daily' | 'history' | 'agent';
   progressMap: Record<string, UserProblemProgress>;
   activeModalProblem: LeetCodeProblem | null;
   activeDebriefProblem: LeetCodeProblem | null;
+  agentProblem: LeetCodeProblem | null;
   officialDaily: OfficialDailyChallenge | null;
   isMentorDrawerOpen: boolean;
   mentorMessages: AIMentorMessage[];
@@ -36,9 +37,10 @@ interface CodeTrackState {
   setLevel: (level: DSALevel) => void;
   setPreferredDifficulty: (pref: PreferredDifficulty) => void;
   setSelectedTopicId: (topicId: string | null) => void;
-  setActiveTab: (tab: 'curriculum' | 'mentor' | 'analytics' | 'daily' | 'history') => void;
+  setActiveTab: (tab: 'curriculum' | 'mentor' | 'analytics' | 'daily' | 'history' | 'agent') => void;
   setActiveModalProblem: (problem: LeetCodeProblem | null) => void;
   setActiveDebriefProblem: (problem: LeetCodeProblem | null) => void;
+  setAgentProblem: (problem: LeetCodeProblem | null) => void;
   setOfficialDaily: (challenge: OfficialDailyChallenge | null) => void;
   setIsMentorDrawerOpen: (isOpen: boolean) => void;
   updateProblemProgress: (params: {
@@ -87,6 +89,7 @@ export const useCodeTrackStore = create<CodeTrackState>()(
       progressMap: {},
       activeModalProblem: null,
       activeDebriefProblem: null,
+      agentProblem: null,
       officialDaily: null,
       isMentorDrawerOpen: false,
       mentorMessages: [INITIAL_MENTOR_MESSAGE],
@@ -123,6 +126,8 @@ export const useCodeTrackStore = create<CodeTrackState>()(
       setActiveModalProblem: (activeModalProblem) => set({ activeModalProblem }),
 
       setActiveDebriefProblem: (activeDebriefProblem) => set({ activeDebriefProblem }),
+
+      setAgentProblem: (agentProblem) => set({ agentProblem, activeTab: 'agent' }),
 
       setOfficialDaily: (officialDaily) => set({ officialDaily }),
 

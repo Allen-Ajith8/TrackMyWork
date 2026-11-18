@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useAuthStore, DEMO_DEVELOPER_USER } from '@/lib/store';
 import {
   LayoutDashboard,
@@ -63,6 +63,14 @@ export default function DashboardLayout({
   const supabase = createClient();
 
   useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      const storedUser = useAuthStore.getState().user;
+      if (!storedUser) {
+        setUser(DEMO_DEVELOPER_USER);
+      }
+      return;
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         setSession(toStoredSession(session));
@@ -73,7 +81,9 @@ export default function DashboardLayout({
         clearAuth();
         clearRoom();
         setNotifications([]);
-        router.push('/auth/login');
+        if (process.env.NEXT_PUBLIC_REQUIRE_AUTH === 'true') {
+          router.push('/auth/login');
+        }
       }
     });
 
@@ -129,7 +139,10 @@ export default function DashboardLayout({
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              const isActive =
+                item.href === '/dashboard'
+                  ? pathname === '/dashboard'
+                  : pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <Link
                   key={item.name}

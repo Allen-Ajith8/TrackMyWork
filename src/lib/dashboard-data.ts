@@ -1,51 +1,41 @@
 import { cache } from 'react';
 import { createServerClientSupabase } from '@/lib/supabase/server';
+import type { Room, RoomMember, Task, HardwareBomItem, Artifact, User } from '@/types/database';
+import { DEMO_DEVELOPER_USER } from '@/lib/store';
 
-/**
- * Guarantee the signed-in user has a public.users profile row.
- *
- * The database trigger that normally mirrors auth.users into public.users is
- * not always present in older deployments. Without this row, team pages and
- * invites cannot resolve the user, so we create it on first dashboard visit.
- */
-async function ensureUserProfile(
-  supabase: ReturnType<typeof createServerClientSupabase>,
-  user: {
-    id: string;
-    email?: string | null;
-    user_metadata?: Record<string, any>;
-  }
-) {
-  const { data: existing } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (existing) return;
-
-  const metadata = user.user_metadata ?? {};
-  const email = user.email ?? '';
-  const username = metadata.username || email.split('@')[0] || null;
-  const displayName =
-    metadata.display_name ||
-    metadata.full_name ||
-    metadata.name ||
-    username;
-
-  const { error } = await supabase.from('users').insert({
-    id: user.id,
-    email,
-    username,
-    display_name: displayName,
-    avatar_url: metadata.avatar_url || metadata.picture || null,
-  });
-
-  // 23505 = unique violation: another request created the row first.
-  if (error && error.code !== '23505') {
-    console.error('Could not create user profile:', error);
-  }
+export function isAuthRequired(): boolean {
+  return process.env.REQUIRE_AUTH === 'true' || process.env.NEXT_PUBLIC_REQUIRE_AUTH === 'true';
 }
+
+export function isSupabaseConfigured(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return false;
+  if (url.includes('your-project-id') || anonKey === 'your-anon-key') return false;
+  return true;
+}
+
+export const DEMO_SERVER_USER: User & { aud: string; role: string; last_sign_in_at: string; app_metadata: any; user_metadata: any } = {
+  id: 'demo-dev-user-001',
+  email: 'developer@codetrack.ai',
+  username: 'developer',
+  display_name: 'Developer',
+  avatar_url: null,
+  is_global_admin: true,
+  fcm_token: null,
+  aud: 'authenticated',
+  role: 'authenticated',
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z',
+  last_sign_in_at: '2026-01-01T00:00:00.000Z',
+  app_metadata: { provider: 'email' },
+  user_metadata: {
+    username: 'developer',
+    display_name: 'Developer',
+    full_name: 'Developer',
+    is_global_admin: true,
+  },
+};
 
 export interface DashboardRoom {
   id: string;
@@ -58,11 +48,267 @@ export interface DashboardRoom {
   [key: string]: unknown;
 }
 
+export const DEMO_ROOMS: DashboardRoom[] = [
+  {
+    id: 'demo-room-001',
+    name: 'Algorithm Mastery & CodeTrack',
+    description: 'Competitive programming, LeetCode sprints, and algorithm practice room.',
+    invite_code: 'CODE-2026',
+    project_type: 'software',
+    team_size: 4,
+    created_at: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'demo-room-002',
+    name: 'Hardware & IoT Track',
+    description: 'Embedded systems, BOM planning, and sensor telemetry room.',
+    invite_code: 'HARD-2026',
+    project_type: 'hardware',
+    team_size: 3,
+    created_at: '2026-01-02T00:00:00.000Z',
+  },
+];
+
+export function getFallbackDemoRoom(roomId: string = 'demo-room-001'): {
+  room: Room;
+  members: (RoomMember & { user: User })[];
+  tasks: (Task & { assignee?: User | null })[];
+  bom: HardwareBomItem[];
+  artifacts: (Artifact & { uploader?: User | null })[];
+} {
+  const matching = DEMO_ROOMS.find((r) => r.id === roomId) || DEMO_ROOMS[0];
+  const room: Room = {
+    id: roomId,
+    name: matching.name,
+    description: matching.description,
+    invite_code: matching.invite_code,
+    project_type: (matching.project_type as any) || 'software',
+    team_size: matching.team_size,
+    hackathon_sheet_row_id: null,
+    github_repo: 'codetrack/trackmywork',
+    github_installation_id: null,
+    is_setup_complete: true,
+    jury_expectations: 'Seamless LeetCode integration, automated agent workflows, and real-time collaboration.',
+    created_by: 'demo-dev-user-001',
+    created_at: matching.created_at,
+    updated_at: '2026-01-01T00:00:00.000Z',
+  };
+
+  const members: (RoomMember & { user: User })[] = [
+    {
+      id: 'demo-member-001',
+      room_id: roomId,
+      user_id: 'demo-dev-user-001',
+      role_title: 'Team Leader',
+      custom_role_name: null,
+      flag_is_team_leader: true,
+      flag_can_edit_repo: true,
+      flag_can_trigger_nim: true,
+      flag_can_assign_tasks: true,
+      flag_can_upload_assets: true,
+      flag_can_manage_bom: true,
+      flag_can_invite_members: true,
+      flag_can_edit_rules: true,
+      status: 'active',
+      joined_at: '2026-01-01T00:00:00.000Z',
+      invited_by: null,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      user: DEMO_DEVELOPER_USER,
+    },
+    {
+      id: 'demo-member-002',
+      room_id: roomId,
+      user_id: 'demo-dev-user-002',
+      role_title: 'AI/ML',
+      custom_role_name: 'Agent Engineer',
+      flag_is_team_leader: false,
+      flag_can_edit_repo: true,
+      flag_can_trigger_nim: true,
+      flag_can_assign_tasks: false,
+      flag_can_upload_assets: true,
+      flag_can_manage_bom: false,
+      flag_can_invite_members: false,
+      flag_can_edit_rules: false,
+      status: 'active',
+      joined_at: '2026-01-02T00:00:00.000Z',
+      invited_by: 'demo-dev-user-001',
+      created_at: '2026-01-02T00:00:00.000Z',
+      updated_at: '2026-01-02T00:00:00.000Z',
+      user: {
+        id: 'demo-dev-user-002',
+        email: 'mentor@codetrack.ai',
+        username: 'mentorbot',
+        display_name: 'AI Mentor Agent',
+        avatar_url: null,
+        is_global_admin: false,
+        fcm_token: null,
+        created_at: '2026-01-02T00:00:00.000Z',
+        updated_at: '2026-01-02T00:00:00.000Z',
+      },
+    },
+  ];
+
+  const tasks: (Task & { assignee?: User | null })[] = [
+    {
+      id: 'demo-task-001',
+      room_id: roomId,
+      title: 'LeetCode GraphQL Integration & Runner',
+      description: 'Fetch official code snippets, parse test cases, and verify deterministic code execution.',
+      status: 'done',
+      priority: 1,
+      category: 'code',
+      assigned_to: 'demo-dev-user-001',
+      created_by: 'demo-dev-user-001',
+      github_issue_number: null,
+      github_pr_number: null,
+      related_asset_ids: [],
+      due_date: null,
+      completed_at: '2026-01-01T00:00:00.000Z',
+      nim_summary: 'Optimized runner completed with sub-50ms execution.',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      assignee: DEMO_DEVELOPER_USER,
+    },
+    {
+      id: 'demo-task-002',
+      room_id: roomId,
+      title: 'Adaptive AI Mentor Debrief Experience',
+      description: 'Expand debrief modal to 4xl layout with multi-column questions and telemetry sync.',
+      status: 'in_progress',
+      priority: 2,
+      category: 'design',
+      assigned_to: 'demo-dev-user-001',
+      created_by: 'demo-dev-user-001',
+      github_issue_number: null,
+      github_pr_number: null,
+      related_asset_ids: [],
+      due_date: null,
+      completed_at: null,
+      nim_summary: null,
+      created_at: '2026-01-02T00:00:00.000Z',
+      updated_at: '2026-01-02T00:00:00.000Z',
+      assignee: DEMO_DEVELOPER_USER,
+    },
+  ];
+
+  const bom: HardwareBomItem[] = [
+    {
+      id: 'demo-bom-001',
+      room_id: roomId,
+      component: 'ESP32-S3 DevKit',
+      quantity: 2,
+      unit_est_cost: 8.5,
+      unit_actual_cost: 8.5,
+      total_est_cost: 17.0,
+      total_actual_cost: 17.0,
+      buyer_id: 'demo-dev-user-001',
+      status: 'received',
+      prototype_cost: 17.0,
+      mass_prod_cost: null,
+      supplier_url: 'https://espressif.com',
+      notes: 'Configured and tested with local firmware.',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  const artifacts: (Artifact & { uploader?: User | null })[] = [
+    {
+      id: 'demo-art-001',
+      room_id: roomId,
+      uploaded_by: 'demo-dev-user-001',
+      name: 'Architecture Diagram v1',
+      type: 'image',
+      file_url: '/placeholder.png',
+      file_size: 1048576,
+      mime_type: 'image/png',
+      tags: ['architecture', 'diagram'],
+      version: '1.0',
+      is_final: false,
+      canva_design_id: null,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      uploader: DEMO_DEVELOPER_USER,
+    },
+  ];
+
+  return { room, members, tasks, bom, artifacts };
+}
+
+export async function getServerAuthUser(client?: ReturnType<typeof createServerClientSupabase>) {
+  if (!isSupabaseConfigured()) {
+    if (isAuthRequired()) return null;
+    return DEMO_SERVER_USER;
+  }
+
+  const supabase = client ?? createServerClientSupabase();
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) return user;
+  } catch {
+    // Supabase unreachable
+  }
+
+  if (isAuthRequired()) {
+    return null;
+  }
+
+  return DEMO_SERVER_USER;
+}
+
+/**
+ * Guarantee the signed-in user has a public.users profile row.
+ */
+async function ensureUserProfile(
+  supabase: ReturnType<typeof createServerClientSupabase>,
+  user: {
+    id: string;
+    email?: string | null;
+    user_metadata?: Record<string, any>;
+  }
+) {
+  if (!isSupabaseConfigured()) return;
+
+  try {
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (existing) return;
+
+    const metadata = user.user_metadata ?? {};
+    const email = user.email ?? '';
+    const username = metadata.username || email.split('@')[0] || null;
+    const displayName =
+      metadata.display_name ||
+      metadata.full_name ||
+      metadata.name ||
+      username;
+
+    const { error } = await supabase.from('users').insert({
+      id: user.id,
+      email,
+      username,
+      display_name: displayName,
+      avatar_url: metadata.avatar_url || metadata.picture || null,
+    });
+
+    if (error && error.code !== '23505') {
+      console.warn('Could not create user profile:', error.message);
+    }
+  } catch {
+    // Database connection or table unavailable in offline demo mode
+  }
+}
+
 export const getDashboardContext = cache(async () => {
   const supabase = createServerClientSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerAuthUser(supabase);
 
   if (!user) {
     return {
@@ -73,17 +319,45 @@ export const getDashboardContext = cache(async () => {
     };
   }
 
+  if (!isSupabaseConfigured()) {
+    return {
+      supabase,
+      user,
+      rooms: DEMO_ROOMS,
+      roomIds: DEMO_ROOMS.map((r) => r.id),
+    };
+  }
+
   await ensureUserProfile(supabase, user);
 
-  const { data: memberships } = await supabase
-    .from('room_members')
-    .select('room_id, role_title, flag_is_team_leader, rooms(*)')
-    .eq('user_id', user.id)
-    .eq('status', 'active');
+  let rooms: DashboardRoom[] = [];
+  try {
+    const { data: memberships } = await supabase
+      .from('room_members')
+      .select('room_id, role_title, flag_is_team_leader, rooms(*)')
+      .eq('user_id', user.id)
+      .eq('status', 'active');
 
-  const rooms = (memberships || [])
-    .map((membership: any) => membership.rooms)
-    .filter(Boolean) as DashboardRoom[];
+    rooms = (memberships || [])
+      .map((membership: any) => membership.rooms)
+      .filter(Boolean) as DashboardRoom[];
+
+    if (rooms.length === 0) {
+      const { data: allRooms } = await supabase
+        .from('rooms')
+        .select('*')
+        .limit(10);
+      if (allRooms && allRooms.length > 0) {
+        rooms = allRooms as DashboardRoom[];
+      }
+    }
+  } catch {
+    // Ignore database query failures in demo mode
+  }
+
+  if (rooms.length === 0) {
+    rooms = DEMO_ROOMS;
+  }
 
   return {
     supabase,

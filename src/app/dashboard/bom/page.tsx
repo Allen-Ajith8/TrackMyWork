@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getDashboardContext } from '@/lib/dashboard-data';
+import { getDashboardContext, isSupabaseConfigured, getFallbackDemoRoom } from '@/lib/dashboard-data';
 import { BomOverviewClient } from '@/components/bom-overview-client';
 import type { HardwareBomItem } from '@/types/database';
 
@@ -14,18 +14,30 @@ export default async function BomPage() {
 
   let items: (HardwareBomItem & { roomName: string })[] = [];
 
-  if (roomIds.length > 0) {
-    const { data } = await supabase
-      .from('hardware_bom')
-      .select('*')
-      .in('room_id', roomIds)
-      .order('created_at', { ascending: false })
-      .limit(300);
+  if (isSupabaseConfigured() && roomIds.length > 0) {
+    try {
+      const { data } = await supabase
+        .from('hardware_bom')
+        .select('*')
+        .in('room_id', roomIds)
+        .order('created_at', { ascending: false })
+        .limit(300);
 
-    const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
-    items = (data || []).map((item: HardwareBomItem) => ({
-      ...item,
-      roomName: roomNames.get(item.room_id) || 'Unknown room',
+      const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
+      items = (data || []).map((item: HardwareBomItem) => ({
+        ...item,
+        roomName: roomNames.get(item.room_id) || 'Unknown room',
+      }));
+    } catch {
+      // Supabase query error
+    }
+  }
+
+  if (items.length === 0) {
+    const demo = getFallbackDemoRoom();
+    items = demo.bom.map((b) => ({
+      ...b,
+      roomName: rooms[1]?.name || 'Hardware & IoT Track',
     }));
   }
 
