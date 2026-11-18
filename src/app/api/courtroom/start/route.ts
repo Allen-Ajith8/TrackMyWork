@@ -1,0 +1,118 @@
+// ============================================================================
+// TrackMyWork - AI Courtroom: Start Trial
+// Phase 4: POST /api/courtroom/start
+// Kicks off a LangGraph courtroom trial asynchronously and returns immediately.
+// ============================================================================
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClientSupabase } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { runCourtroomSession } from '@/lib/courtroom/graph';
+
+export const dynamic = 'force-dynamic';
+
+type StartBody = {
+  roomId: string;
+  motion: string;
+  repoContext?: Record<string, unknown>;
+  fastDemoMode?: boolean;
+};
+
+export async function POST(req: NextRequest) {
+  const supabase = createServerClientSupabase();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  }
+
+  const body = (await req.json().catch(() => null)) as StartBody | null;
+  const roomId = typeof body?.roomId === 'string' ? body.roomId.trim() : '';
+  const motion = typeof body?.motion === 'string' ? body.motion.trim() : '';
+  const repoContext =
+    body?.repoContext && typeof body.repoContext === 'object'
+      ? body.repoContext
+      : {};
+  const fastDemoMode = typeof body?.fastDemoMode === 'boolean' ? body.fastDemoMode : false;
+
+  if (!roomId) {
+    return NextResponse.json({ error: 'roomId is required.' }, { status: 400 });
+  }
+
+  if (!motion) {
+    return NextResponse.json({ error: 'motion is required.' }, { status: 400 });
+  }
+
+  if (motion.length > 4000) {
+    return NextResponse.json({ error: 'motion must be at most 4,000 characters.' }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+
+  // Verify room membership
+  const [{ data: membership }, { data: profile }, { data: room }] = await Promise.all([
+    admin
+      .from('room_members')
+      .select('status')
+      .eq('room_id', roomId)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle(),
+    admin.from('users').select('is_global_admin').eq('id', user.id).maybeSingle(),
+    admin.from('rooms').select('id, created_by').eq('id', roomId).maybeSingle(),
+  ]);
+
+  const isMember =
+    membership?.status === 'active' ||
+    room?.created_by === user.id ||
+    Boolean(profile?.is_global_admin);
+
+  if (!isMember || !room) {
+    return NextResponse.json({ error: 'You do not have access to this room.' }, { status: 403 });
+  }
+
+  // Insert court_sessions row
+  const { data: session, error: sessionError } = await admin
+    .from('court_sessions')
+    .insert({
+      room_id: roomId,
+      created_by: user.id,
+      motion,
+      repo_context: repoContext,
+      status: 'routing',
+    })
+    .select('id, room_id, motion, status, created_at')
+    .single();
+
+  if (sessionError || !session) {
+    return NextResponse.json(
+      { error: 'Could not create court session.' },
+      { status: 500 }
+    );
+  }
+
+  // Kick off LangGraph trial in the background (non-blocking).
+  // Next.js 14.2.7 does not have next/after(), so we use an unawaited promise
+  // with a .catch() fallback that marks the session as failed.
+  void runCourtroomSession({
+    sessionId: session.id,
+    roomId,
+    motion,
+    repoContext,
+    fastDemoMode,
+  }).catch(async (err) => {
+    console.error('[Courtroom] Trial failed:', err);
+    await admin
+      .from('court_sessions')
+      .update({ status: 'failed', error_message: String(err), updated_at: new Date().toISOString() })
+      .eq('id', session.id);
+  });
+
+  return NextResponse.json({
+    sessionId: session.id,
+    status: 'routing',
+  });
+}
