@@ -12,6 +12,7 @@ import {
   Settings,
   HelpCircle,
   ArrowLeft,
+  Gavel,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRoomStore } from '@/lib/store';
@@ -27,6 +28,7 @@ const roomNavItems = [
   { name: 'Tasks', href: 'tasks', icon: Kanban },
   { name: 'BOM', href: 'bom', icon: Package },
   { name: 'Artifacts', href: 'artifacts', icon: FileImage },
+  { name: 'AI Courtroom', href: 'courtroom', icon: Gavel },
   { name: 'Team', href: 'team', icon: Users },
   { name: 'Settings', href: 'settings', icon: Settings },
 ];
