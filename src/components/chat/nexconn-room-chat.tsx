@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
+  COURTROOM_BOT_NAME,
   COURTROOM_BOT_USER_ID,
   getNexconnChannelId,
 } from '@/lib/nexconn/shared';
@@ -60,6 +61,7 @@ interface ChatMessage {
 let sdkPromise: Promise<NexconnSdk> | null = null;
 let sdkInitialized = false;
 let connectPromise: Promise<{ ok: boolean; error?: string }> | null = null;
+let connectedToken: string | null = null;
 let handlersRegistered = false;
 
 const messageListeners = new Set<(messages: Message<any>[]) => void>();
@@ -116,6 +118,18 @@ async function ensureConnected(
   sdk: NexconnSdk,
   token: string
 ): Promise<{ ok: boolean; error?: string }> {
+  // Same user already connected: the SDK owns reconnection from here.
+  if (connectedToken === token) {
+    return { ok: true };
+  }
+
+  // A different Supabase user signed in on this browser session.
+  if (connectedToken && connectedToken !== token) {
+    await sdk.NCEngine.disconnect().catch(() => undefined);
+    connectedToken = null;
+    connectPromise = null;
+  }
+
   if (!connectPromise) {
     connectPromise = sdk.NCEngine.connect({ token })
       .then((result) =>
@@ -130,7 +144,9 @@ async function ensureConnected(
   }
 
   const result = await connectPromise;
-  if (!result.ok) {
+  if (result.ok) {
+    connectedToken = token;
+  } else {
     connectPromise = null;
   }
   return result;
@@ -153,14 +169,17 @@ function toChatMessage(message: Message<any>): ChatMessage {
         ? content.content
         : '[Unsupported message type]';
 
+  const isBot = message.senderUserId === COURTROOM_BOT_USER_ID;
+
   return {
     id: message.messageId,
     senderId: message.senderUserId,
-    senderName:
-      senderInfo?.name || senderInfo?.alias || message.senderUserId || 'Unknown',
+    senderName: isBot
+      ? COURTROOM_BOT_NAME
+      : senderInfo?.name || senderInfo?.alias || message.senderUserId || 'Unknown',
     text,
     sentTime: message.sentTime,
-    isBot: message.senderUserId === COURTROOM_BOT_USER_ID,
+    isBot,
   };
 }
 
@@ -262,6 +281,7 @@ export function NexconnRoomChat({
         sdkRef.current = sdk;
         initSdk(sdk);
         registerHandlers(sdk);
+        setConnectionStatus(sdk.NCEngine.getConnectionStatus());
 
         const tokenResponse = await fetch('/api/nexconn/token', {
           method: 'POST',
@@ -336,10 +356,13 @@ export function NexconnRoomChat({
         }
         setHasOlder(query.hasNext);
 
-        // Snapshot the unread badge before marking this channel as read.
+        // Show unread activity from other channels, then mark this one read.
+        const channelUnread = channel.unreadCount;
         const unread = await sdk.BaseChannel.getTotalUnreadCount();
         if (!disposed && unread.isOk) {
-          setTotalUnread(unread.data ?? 0);
+          setTotalUnread(
+            Math.max(0, (unread.data ?? 0) - channelUnread)
+          );
         }
 
         await channel.clearUnreadCount();
@@ -525,7 +548,7 @@ export function NexconnRoomChat({
         <div className="flex items-center gap-2">
           {totalUnread > 0 && (
             <span className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700">
-              {totalUnread} unread
+              {totalUnread} unread elsewhere
             </span>
           )}
           <span

@@ -8,7 +8,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import {
   COURTROOM_BOT_NAME,
   COURTROOM_BOT_USER_ID,
-} from '@/lib/nexconn/shared';
+} from './shared';
 
 const DEFAULT_BASE_URL = 'https://api.sg-light-api.com';
 
