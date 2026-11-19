@@ -289,12 +289,16 @@ export function NexconnRoomChat({
           );
         }
 
+        // 25412 means the user is already a member, which is a success for us.
+        const ALREADY_MEMBER = 25412;
+
         const channel = new sdk.GroupChannel(channelId);
         let joinResult = await channel.join();
 
         // First visitor provisions the room channel. Join permission is FREE
-        // so every teammate can join without an approval flow.
-        if (!joinResult.isOk) {
+        // so every teammate can join without an approval flow. Creating the
+        // group also makes its creator a member.
+        if (!joinResult.isOk && joinResult.code !== ALREADY_MEMBER) {
           await sdk.GroupChannel.createGroup({
             groupId: channelId,
             groupName: `TrackMyWork · ${roomName}`.slice(0, 64),
@@ -306,7 +310,7 @@ export function NexconnRoomChat({
 
         if (disposed) return;
 
-        if (!joinResult.isOk) {
+        if (!joinResult.isOk && joinResult.code !== ALREADY_MEMBER) {
           throw new Error(
             `Could not join the room channel (${joinResult.code}: ${joinResult.msg}).`
           );
