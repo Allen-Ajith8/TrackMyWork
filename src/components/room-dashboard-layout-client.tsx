@@ -13,6 +13,7 @@ import {
   HelpCircle,
   ArrowLeft,
   Gavel,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRoomStore } from '@/lib/store';
@@ -26,6 +27,7 @@ interface RoomDashboardLayoutClientProps {
 const roomNavItems = [
   { name: 'Dashboard', href: 'dashboard', icon: LayoutDashboard },
   { name: 'Tasks', href: 'tasks', icon: Kanban },
+  { name: 'Team Chat', href: 'chat', icon: MessageSquare },
   { name: 'BOM', href: 'bom', icon: Package },
   { name: 'Artifacts', href: 'artifacts', icon: FileImage },
   { name: 'AI Courtroom', href: 'courtroom', icon: Gavel },

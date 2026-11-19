@@ -8,6 +8,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  COURTROOM_BOT_USER_ID,
+  getNexconnChannelId,
+} from '@/lib/nexconn/shared';
+import {
+  ensureCourtroomBotRegistered,
+  isNexconnConfigured,
+  sendNexconnGroupText,
+} from '@/lib/nexconn/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -189,6 +198,35 @@ export async function POST(req: NextRequest) {
     citations: [],
     turn_index: nextTurnIndex,
   });
+
+  // 5. Broadcast the adopted ruling into the room's Team Chat channel.
+  // Non-fatal: a chat outage must never block task creation.
+  if (isNexconnConfigured()) {
+    try {
+      await ensureCourtroomBotRegistered();
+
+      const taskLines = createdTasks
+        .map((task) => `• ${task.title}`)
+        .join('\n');
+
+      await sendNexconnGroupText({
+        fromUserId: COURTROOM_BOT_USER_ID,
+        channelId: getNexconnChannelId(session.room_id),
+        text: [
+          `⚖️ Court ruling adopted: ${selectedOption.title}`,
+          '',
+          `Created ${createdTasks.length} task${createdTasks.length === 1 ? '' : 's'}:`,
+          taskLines,
+          '',
+          `Synced ${selectedOption.agents_md_rules.length} rule${
+            selectedOption.agents_md_rules.length === 1 ? '' : 's'
+          } to AGENTS.md.`,
+        ].join('\n'),
+      });
+    } catch (error) {
+      console.error('[Nexconn] Failed to broadcast adopted ruling:', error);
+    }
+  }
 
   return NextResponse.json({
     success: true,
