@@ -3,6 +3,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User, Room, RoomMember, Task, Notification, VibeHeartbeat } from '@/types/database';
+import { DEMO_DEVELOPER_USER } from '@/lib/constants';
+
+export { DEMO_DEVELOPER_USER };
 
 interface AuthState {
   user: User | null;
@@ -12,26 +15,14 @@ interface AuthState {
   clearAuth: () => void;
 }
 
-export const DEMO_DEVELOPER_USER: User = {
-  id: 'demo-dev-user-001',
-  email: 'developer@codetrack.ai',
-  username: 'developer',
-  display_name: 'Developer',
-  avatar_url: null,
-  is_global_admin: false,
-  fcm_token: null,
-  created_at: '2026-01-01T00:00:00.000Z',
-  updated_at: '2026-01-01T00:00:00.000Z',
-};
-
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      user: DEMO_DEVELOPER_USER,
+      user: null,
       session: null,
       setUser: (user) => set({ user }),
       setSession: (session) => set({ session }),
-      clearAuth: () => set({ user: DEMO_DEVELOPER_USER, session: null }),
+      clearAuth: () => set({ user: null, session: null }),
     }),
     {
       name: 'trackmywork-auth',
@@ -65,7 +56,21 @@ export const useRoomStore = create<RoomState>()(
       roomRules: null,
       isTeamLeader: false,
       isGlobalAdmin: false,
-      setCurrentRoom: (room) => set({ currentRoom: room }),
+      setCurrentRoom: (room) =>
+        set((state) => {
+          if (!state.currentRoom && !room) return state;
+          if (
+            state.currentRoom &&
+            room &&
+            state.currentRoom.id === room.id &&
+            (state.currentRoom.github_repo || null) === (room.github_repo || null) &&
+            state.currentRoom.name === room.name &&
+            state.currentRoom.project_type === room.project_type
+          ) {
+            return state;
+          }
+          return { currentRoom: room };
+        }),
       setRoomMembers: (members) => set({ roomMembers: members }),
       setRoomRules: (rules) => set({ roomRules: rules }),
       setPermissions: (isTeamLeader, isGlobalAdmin) =>

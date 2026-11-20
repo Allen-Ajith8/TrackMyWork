@@ -2,6 +2,7 @@ import { createServerClientSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { RoomsListClient } from '@/components/rooms-list-client';
 import { getServerAuthUser, DEMO_ROOMS, isSupabaseConfigured } from '@/lib/dashboard-data';
+import { getAllCustomRooms } from '@/lib/room-storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,14 +12,24 @@ async function getUserRooms() {
   
   if (!user) return { user: null, rooms: [] };
 
+  const customRooms = getAllCustomRooms();
+  const mappedCustom = customRooms.map((r) => ({
+    ...r,
+    user_role: 'Team Leader',
+    is_team_leader: true,
+  }));
+
   if (!isSupabaseConfigured()) {
     return {
       user,
-      rooms: DEMO_ROOMS.map((r) => ({
-        ...r,
-        user_role: 'Team Leader',
-        is_team_leader: true,
-      })),
+      rooms: [
+        ...mappedCustom,
+        ...DEMO_ROOMS.map((r) => ({
+          ...r,
+          user_role: 'Team Leader',
+          is_team_leader: true,
+        })),
+      ],
     };
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Plus, FolderKanban, Users, Lock, ArrowRight, Zap } from 'lucide-react';
+import { Plus, FolderKanban, Users, Lock, ArrowRight, Zap, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,12 +35,20 @@ export function RoomsListClient({ user, rooms }: RoomsListClientProps) {
           <h1 className="text-2xl font-bold">Your Rooms</h1>
           <p className="text-muted-foreground">Manage your hackathon projects and teams</p>
         </div>
-        <Link href="/dashboard/rooms/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Room
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2.5">
+          <Link href="/dashboard/rooms/join">
+            <Button variant="outline">
+              <Key className="w-4 h-4 mr-2 text-brand-600" />
+              Join with Code
+            </Button>
+          </Link>
+          <Link href="/dashboard/rooms/new">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Room
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {rooms.length === 0 ? (
@@ -50,15 +58,22 @@ export function RoomsListClient({ user, rooms }: RoomsListClientProps) {
             <FolderKanban className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
             <h3 className="text-lg font-medium mb-2">No rooms yet</h3>
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Create your first hackathon room to start collaborating with your team.
-              Set up roles, track tasks, manage hardware BOM, and more.
+              Create your first hackathon room or join an existing team room using an invitation link or 6-digit code.
             </p>
-            <Link href="/dashboard/rooms/new">
-              <Button size="lg">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Your First Room
-              </Button>
-            </Link>
+            <div className="flex items-center justify-center gap-3">
+              <Link href="/dashboard/rooms/join">
+                <Button variant="outline" size="lg">
+                  <Key className="w-4 h-4 mr-2" />
+                  Join with Code
+                </Button>
+              </Link>
+              <Link href="/dashboard/rooms/new">
+                <Button size="lg">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Your First Room
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -75,7 +90,10 @@ export function RoomsListClient({ user, rooms }: RoomsListClientProps) {
                       </div>
                       <div>
                         <CardTitle className="text-lg">{room.name}</CardTitle>
-                        <p className="text-sm text-muted-foreground">{room.project_type} • {room.team_size} members</p>
+                        <p className="text-sm text-muted-foreground">
+                          {(room as any).hackathon_name ? `${(room as any).hackathon_name} • ` : ''}
+                          {room.project_type} • {room.team_size} members
+                        </p>
                       </div>
                     </div>
                     <Badge variant="role" role={room.user_role}>{room.user_role}</Badge>

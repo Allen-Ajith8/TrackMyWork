@@ -1,7 +1,9 @@
 import { cache } from 'react';
+import { cookies, headers } from 'next/headers';
 import { createServerClientSupabase } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { Room, RoomMember, Task, HardwareBomItem, Artifact, User } from '@/types/database';
-import { DEMO_DEVELOPER_USER } from '@/lib/store';
+import { DEMO_DEVELOPER_USER } from '@/lib/constants';
 
 export function isAuthRequired(): boolean {
   return process.env.REQUIRE_AUTH === 'true' || process.env.NEXT_PUBLIC_REQUIRE_AUTH === 'true';
@@ -85,9 +87,10 @@ export function getFallbackDemoRoom(roomId: string = 'demo-room-001'): {
     project_type: (matching.project_type as any) || 'software',
     team_size: matching.team_size,
     hackathon_sheet_row_id: null,
-    github_repo: 'codetrack/trackmywork',
+    github_repo: null,
     github_installation_id: null,
     is_setup_complete: true,
+    submission_deadline: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
     jury_expectations: 'Seamless LeetCode integration, automated agent workflows, and real-time collaboration.',
     created_by: 'demo-dev-user-001',
     created_at: matching.created_at,
@@ -115,37 +118,6 @@ export function getFallbackDemoRoom(roomId: string = 'demo-room-001'): {
       created_at: '2026-01-01T00:00:00.000Z',
       updated_at: '2026-01-01T00:00:00.000Z',
       user: DEMO_DEVELOPER_USER,
-    },
-    {
-      id: 'demo-member-002',
-      room_id: roomId,
-      user_id: 'demo-dev-user-002',
-      role_title: 'AI/ML',
-      custom_role_name: 'Agent Engineer',
-      flag_is_team_leader: false,
-      flag_can_edit_repo: true,
-      flag_can_trigger_nim: true,
-      flag_can_assign_tasks: false,
-      flag_can_upload_assets: true,
-      flag_can_manage_bom: false,
-      flag_can_invite_members: false,
-      flag_can_edit_rules: false,
-      status: 'active',
-      joined_at: '2026-01-02T00:00:00.000Z',
-      invited_by: 'demo-dev-user-001',
-      created_at: '2026-01-02T00:00:00.000Z',
-      updated_at: '2026-01-02T00:00:00.000Z',
-      user: {
-        id: 'demo-dev-user-002',
-        email: 'mentor@codetrack.ai',
-        username: 'mentorbot',
-        display_name: 'AI Mentor Agent',
-        avatar_url: null,
-        is_global_admin: false,
-        fcm_token: null,
-        created_at: '2026-01-02T00:00:00.000Z',
-        updated_at: '2026-01-02T00:00:00.000Z',
-      },
     },
   ];
 
@@ -237,19 +209,56 @@ export function getFallbackDemoRoom(roomId: string = 'demo-room-001'): {
 }
 
 export async function getServerAuthUser(client?: ReturnType<typeof createServerClientSupabase>) {
-  if (!isSupabaseConfigured()) {
-    if (isAuthRequired()) return null;
-    return DEMO_SERVER_USER;
+  if (isSupabaseConfigured()) {
+    const supabase = client ?? createServerClientSupabase();
+    // 1. Try session cookies
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) return user;
+    } catch {
+      // Supabase unreachable or cookie invalid
+    }
+
+    // 2. Try Authorization: Bearer <token> (JWT)
+    try {
+      const headerList = headers();
+      const authHeader = headerList.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.substring(7).trim();
+        if (token) {
+          const { data: { user } } = await supabase.auth.getUser(token);
+          if (user) return user;
+        }
+      }
+    } catch {
+      // Outside request context
+    }
   }
 
-  const supabase = client ?? createServerClientSupabase();
+  // 3. Fallback: Check for custom personal user cookie in development/offline mode
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) return user;
+    const cookieStore = cookies();
+    const customUserCookie = cookieStore.get('trackmywork_user')?.value;
+    if (customUserCookie) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(customUserCookie));
+        if (parsed && (parsed.email || parsed.id)) {
+          return {
+            ...DEMO_SERVER_USER,
+            ...parsed,
+            id: parsed.id || DEMO_SERVER_USER.id,
+            email: parsed.email || DEMO_SERVER_USER.email,
+            display_name: parsed.display_name || parsed.username || (parsed.email ? parsed.email.split('@')[0] : 'User'),
+          };
+        }
+      } catch {
+        // Bad cookie format
+      }
+    }
   } catch {
-    // Supabase unreachable
+    // Outside request context
   }
 
   if (isAuthRequired()) {
@@ -263,7 +272,7 @@ export async function getServerAuthUser(client?: ReturnType<typeof createServerC
  * Guarantee the signed-in user has a public.users profile row.
  */
 async function ensureUserProfile(
-  supabase: ReturnType<typeof createServerClientSupabase>,
+  _client: ReturnType<typeof createServerClientSupabase>,
   user: {
     id: string;
     email?: string | null;
@@ -273,7 +282,8 @@ async function ensureUserProfile(
   if (!isSupabaseConfigured()) return;
 
   try {
-    const { data: existing } = await supabase
+    const admin = createAdminClient();
+    const { data: existing } = await admin
       .from('users')
       .select('id')
       .eq('id', user.id)
@@ -283,26 +293,31 @@ async function ensureUserProfile(
 
     const metadata = user.user_metadata ?? {};
     const email = user.email ?? '';
-    const username = metadata.username || email.split('@')[0] || null;
+    const rawUsername =
+      metadata.user_name ||
+      metadata.preferred_username ||
+      metadata.username ||
+      (email ? email.split('@')[0] : `user_${user.id.slice(0, 8)}`);
+    const username = String(rawUsername).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20);
     const displayName =
       metadata.display_name ||
       metadata.full_name ||
       metadata.name ||
-      username;
+      rawUsername;
 
-    const { error } = await supabase.from('users').insert({
-      id: user.id,
-      email,
-      username,
-      display_name: displayName,
-      avatar_url: metadata.avatar_url || metadata.picture || null,
-    });
-
-    if (error && error.code !== '23505') {
-      console.warn('Could not create user profile:', error.message);
-    }
-  } catch {
-    // Database connection or table unavailable in offline demo mode
+    await admin.from('users').upsert(
+      {
+        id: user.id,
+        email,
+        username: username || null,
+        display_name: displayName,
+        avatar_url: metadata.avatar_url || metadata.picture || null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' }
+    );
+  } catch (err: any) {
+    console.warn('[ensureUserProfile] Error ensuring user profile row:', err?.message);
   }
 }
 

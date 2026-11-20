@@ -3,10 +3,17 @@ import { redirect, notFound } from 'next/navigation';
 import { RoomDashboardClient } from '@/components/room-dashboard-client';
 import { attachUser, loadRoomMembers } from '@/lib/room-relations';
 import { getServerAuthUser, getFallbackDemoRoom, isAuthRequired, isSupabaseConfigured } from '@/lib/dashboard-data';
+import { getStoredRoomBundle } from '@/lib/room-storage';
 
 export const dynamic = 'force-dynamic';
 
 async function getRoomData(roomId: string) {
+  // Check if room was created and stored in local persistent storage
+  const customBundle = getStoredRoomBundle(roomId);
+  if (customBundle) {
+    return customBundle;
+  }
+
   if (!isSupabaseConfigured() || roomId.startsWith('demo-')) {
     return getFallbackDemoRoom(roomId);
   }

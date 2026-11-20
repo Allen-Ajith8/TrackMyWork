@@ -35,12 +35,19 @@ export function RoomDashboardLayoutClient({ room, children }: RoomDashboardLayou
   const pathname = usePathname();
   const basePath = `/dashboard/rooms/${room.id}`;
   const setCurrentRoom = useRoomStore((state) => state.setCurrentRoom);
+  const isHardware = room.project_type === 'hardware';
+  const visibleNavItems = roomNavItems.filter((item) => item.href !== 'bom' || isHardware);
 
   // Keep the active room in the store for every room sub-page so live IDE
   // telemetry (heartbeats/file locks) is scoped to the room being viewed.
   useEffect(() => {
+    if (!room?.id) return;
+    const current = useRoomStore.getState().currentRoom;
+    if (current?.id === room.id && (current?.github_repo || null) === (room.github_repo || null)) {
+      return;
+    }
     setCurrentRoom(room);
-  }, [room, setCurrentRoom]);
+  }, [room?.id, room?.github_repo, setCurrentRoom]);
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
@@ -57,7 +64,7 @@ export function RoomDashboardLayoutClient({ room, children }: RoomDashboardLayou
             </div>
           </div>
           <div className="flex items-center gap-1 overflow-x-auto pb-1">
-            {roomNavItems.map(item => {
+            {visibleNavItems.map(item => {
               const href = item.href === 'dashboard' ? basePath : `${basePath}/${item.href}`;
               const isActive = item.href === 'dashboard'
                 ? pathname === basePath

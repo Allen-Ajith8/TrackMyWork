@@ -9,7 +9,7 @@ import {
   diagnoseTestFailure,
   getProblemTestCases,
 } from '@/lib/codetrack/agent';
-import { executeCodeTests } from '@/lib/codetrack/code-runner';
+import { executeCodeTests, resolveEffectiveLanguage } from '@/lib/codetrack/code-runner';
 import { runLangGraphCodingAgent } from '@/lib/codetrack/langgraph-agent';
 import { repairStrandedCode } from '@/lib/codetrack/indentation';
 import type { CodeLanguage, LeetCodeProblem, TestCase } from '@/types/codetrack';
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       LEETCODE_PROBLEMS[0];
 
     const targetCases = testCases.length > 0 ? testCases : getProblemTestCases(problem);
+    const activeLang = resolveEffectiveLanguage(userCode, language);
 
     // =========================================================================
     // ACTION 1: SOLVE (LangGraph Framework Stateful Agent Workflow)
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
       try {
         const graphResult = await runLangGraphCodingAgent({
           problem,
-          language,
+          language: activeLang,
           userCode,
           testCases: targetCases,
           maxIterations: 2,
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           action: 'solve',
           code: graphResult.code,
-          language,
+          language: activeLang,
           explanation: graphResult.explanation?.coreInvariant || '',
           structuredExplanation: graphResult.explanation,
           timeComplexity: graphResult.explanation?.timeComplexity || 'O(N)',
@@ -72,11 +73,11 @@ export async function POST(req: NextRequest) {
         });
       } catch (graphError: any) {
         console.warn('[CodeTrack Agent] LangGraph fallback:', graphError);
-        const sol = generateDeterministicSolution(problem, language);
+        const sol = generateDeterministicSolution(problem, activeLang);
         return NextResponse.json({
           action: 'solve',
           code: sol.code,
-          language,
+          language: activeLang,
           explanation: sol.explanation,
           structuredExplanation: sol.structuredExplanation,
           timeComplexity: sol.timeComplexity,
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
     // ACTION 2.5: NEXT LINE GUIDANCE (Interactive Agent Help for Next Line)
     // =========================================================================
     if (action === 'next_line_hint') {
-      const guidance = generateNextLineGuidance(problem, userCode, language);
+      const guidance = generateNextLineGuidance(problem, userCode, activeLang);
       return NextResponse.json({
         action: 'next_line_hint',
         guidance,
@@ -120,11 +121,11 @@ export async function POST(req: NextRequest) {
     // ACTION 3: DEBUG (Real execution diagnosis, bug finding & auto-correct fix)
     // =========================================================================
     if (action === 'debug') {
-      const repairedUserCode = repairStrandedCode(userCode, language);
-      const executionResults = await executeCodeTests(repairedUserCode, language, problem, targetCases);
+      const repairedUserCode = repairStrandedCode(userCode, activeLang);
+      const executionResults = await executeCodeTests(repairedUserCode, activeLang, problem, targetCases);
       const allPassed = executionResults.length > 0 && executionResults.every((t) => t.passed === true);
       const failed = executionResults.find((t) => !t.passed);
-      const diagnostic = diagnoseTestFailure(problem, repairedUserCode, language, executionResults);
+      const diagnostic = diagnoseTestFailure(problem, repairedUserCode, activeLang, executionResults);
 
       let bugsFound: string[] = [];
       let explanation = '';
@@ -143,7 +144,7 @@ export async function POST(req: NextRequest) {
           bugsFound.push(`Output mismatch on ${failed.name}: expected ${failed.expectedOutput}, received ${failed.actualOutput}`);
         }
 
-        const deterministic = generateDeterministicSolution(problem, language);
+        const deterministic = generateDeterministicSolution(problem, activeLang);
         recommendedFixCode = deterministic.code;
         explanation = diagnostic.whatYouShouldDo || 'Algorithm adjustments required to satisfy test cases.';
       }
@@ -157,6 +158,7 @@ export async function POST(req: NextRequest) {
         allPassed,
         diagnostic,
         explanation,
+        language: activeLang,
         source: 'langgraph_diagnostics',
       });
     }
@@ -165,15 +167,16 @@ export async function POST(req: NextRequest) {
     // ACTION 4: RUN TESTS (Genuine Execution against Real Test Runner)
     // =========================================================================
     if (action === 'run_tests') {
-      const repairedUserCode = repairStrandedCode(userCode, language);
-      const results = await executeCodeTests(repairedUserCode, language, problem, targetCases);
+      const repairedUserCode = repairStrandedCode(userCode, activeLang);
+      const results = await executeCodeTests(repairedUserCode, activeLang, problem, targetCases);
       const allPassed = results.length > 0 && results.every((tc) => tc.passed === true);
-      const diagnostic = diagnoseTestFailure(problem, repairedUserCode, language, results);
+      const diagnostic = diagnoseTestFailure(problem, repairedUserCode, activeLang, results);
       return NextResponse.json({
         action: 'run_tests',
         testResults: results,
         allPassed,
         diagnostic,
+        language: activeLang,
         explanation: allPassed
           ? `All ${results.length} test cases passed successfully! Ready for LeetCode!`
           : diagnostic.whatIsWrong,

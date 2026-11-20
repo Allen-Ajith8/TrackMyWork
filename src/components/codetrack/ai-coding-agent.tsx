@@ -491,12 +491,15 @@ export function AICodingAgent() {
 
       if (res.ok) {
         const data = await res.json();
+        if (data.language && data.language !== language) {
+          setLanguage(data.language);
+        }
         setDebugIssues(data.bugsFound || []);
         setAgentExplanation(data.explanation || data.recommendedFix || '');
         if (data.diagnostic) {
           setDiagnostic(data.diagnostic);
         } else if (data.testResults && data.testResults.length > 0) {
-          setDiagnostic(diagnoseTestFailure(selectedProblem, cleanUserCode, language, data.testResults));
+          setDiagnostic(diagnoseTestFailure(selectedProblem, cleanUserCode, data.language || language, data.testResults));
         }
         if (data.recommendedFixCode) {
           setRecommendedFixCode(data.recommendedFixCode);
@@ -583,9 +586,12 @@ export function AICodingAgent() {
 
       if (res.ok) {
         const data = await res.json();
+        if (data.language && data.language !== language) {
+          setLanguage(data.language);
+        }
         if (data.testResults && data.testResults.length > 0) {
           setTestCases(data.testResults);
-          const diag = data.diagnostic || diagnoseTestFailure(selectedProblem, cleanUserCode, language, data.testResults);
+          const diag = data.diagnostic || diagnoseTestFailure(selectedProblem, cleanUserCode, data.language || language, data.testResults);
           setDiagnostic(diag);
         }
       } else {

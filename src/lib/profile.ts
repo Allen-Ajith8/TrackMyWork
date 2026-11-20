@@ -85,34 +85,42 @@ export function getDisplayName(
   metadata: ProfileMetadata,
   fallback = 'Member'
 ): string {
-  return (
-    metadata.display_name?.trim() ||
-    metadata.full_name?.trim() ||
-    metadata.name?.trim() ||
-    metadata.username?.trim() ||
-    fallback
+  const custom = (
+    metadata.display_name ||
+    metadata.full_name ||
+    metadata.name ||
+    (typeof metadata.user_name === 'string' ? metadata.user_name : '') ||
+    (typeof metadata.preferred_username === 'string' ? metadata.preferred_username : '') ||
+    metadata.username
   );
+  return typeof custom === 'string' && custom.trim() ? custom.trim() : fallback;
 }
 
 export function getAvatarUrl(metadata: ProfileMetadata): string | null {
-  return metadata.avatar_url || metadata.picture || null;
+  const url = metadata.avatar_url || metadata.picture;
+  return typeof url === 'string' && url.trim() ? url.trim() : null;
 }
 
 export function getHeadline(metadata: ProfileMetadata): string {
-  return metadata.headline?.trim() || '';
+  return typeof metadata.headline === 'string' ? metadata.headline.trim() : '';
 }
 
 export function getUsername(metadata: ProfileMetadata): string {
-  return metadata.username?.trim() || '';
+  const raw =
+    metadata.username ||
+    metadata.user_name ||
+    metadata.preferred_username;
+  return typeof raw === 'string' && raw.trim() ? sanitizeUsername(raw.trim()) : '';
 }
 
 export function profileValuesFromUser(
   user: AuthUser | null | undefined
 ): ProfileValues {
   const metadata = getProfileMetadata(user);
+  const emailPrefix = user?.email ? user.email.split('@')[0] : '';
   return {
-    displayName: getDisplayName(metadata, ''),
-    username: getUsername(metadata),
+    displayName: getDisplayName(metadata, emailPrefix || 'Member'),
+    username: getUsername(metadata) || sanitizeUsername(emailPrefix),
     headline: getHeadline(metadata),
     avatarUrl: getAvatarUrl(metadata) || '',
   };
@@ -125,14 +133,16 @@ export function profileValuesFromUser(
  */
 export function userFromAuthUser(authUser: AuthUser): User {
   const metadata = getProfileMetadata(authUser);
-  const displayName = getDisplayName(metadata, '');
-  const username = getUsername(metadata);
+  const email = authUser.email ?? '';
+  const emailPrefix = email ? email.split('@')[0] : '';
+  const username = getUsername(metadata) || sanitizeUsername(emailPrefix);
+  const displayName = getDisplayName(metadata, emailPrefix || 'Member');
 
   return {
     id: authUser.id,
-    email: authUser.email ?? '',
+    email,
     username: username || null,
-    display_name: displayName || username || null,
+    display_name: displayName,
     avatar_url: getAvatarUrl(metadata),
     is_global_admin: Boolean(metadata.is_global_admin),
     fcm_token: null,

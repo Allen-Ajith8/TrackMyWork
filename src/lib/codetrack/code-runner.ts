@@ -595,6 +595,25 @@ export function cppToJs(cppCode: string): string {
 }
 
 /**
+ * Automatically detects the programming language if the code strongly exhibits
+ * language-specific idioms (e.g. Java 'public void', 'int[][]', C++ '#include', Python 'def')
+ */
+export function resolveEffectiveLanguage(code: string, declaredLang: CodeLanguage): CodeLanguage {
+  if (!code || typeof code !== 'string') return declaredLang;
+
+  const isJava = /(?:public\s+(?:static\s+)?(?:void|int|long|double|boolean|String|char|int\[\]|int\[\]\[\]|List<|Map<)|System\.out\.println|\bint\[\]\[\]|\bint\[\])/.test(code);
+  if (isJava) return 'java';
+
+  const isCpp = /(?:#include\s*<|\bstd::|\bvector\s*<|\bcout\s*<<)/.test(code);
+  if (isCpp) return 'cpp';
+
+  const isPython = /(?:def\s+[a-zA-Z_]\w*\s*\(|\bself\s*,|\belif\s+)/.test(code);
+  if (isPython) return 'python';
+
+  return declaredLang;
+}
+
+/**
  * Universal code runner that performs genuine verification for the given language
  */
 export async function executeCodeTests(
@@ -603,20 +622,22 @@ export async function executeCodeTests(
   problem: LeetCodeProblem,
   testCases: TestCase[]
 ): Promise<TestCase[]> {
-  if (language === 'python') {
+  const effectiveLang = resolveEffectiveLanguage(code, language);
+
+  if (effectiveLang === 'python') {
     return executePythonTests(code, problem, testCases);
   }
 
-  if (language === 'javascript' || language === 'typescript') {
-    return executeJsTsTests(code, language, problem, testCases);
-  }
-
-  if (language === 'java') {
+  if (effectiveLang === 'java') {
     return executeJavaTests(code, problem, testCases);
   }
 
-  if (language === 'cpp') {
+  if (effectiveLang === 'cpp') {
     return executeCppTests(code, problem, testCases);
+  }
+
+  if (effectiveLang === 'typescript') {
+    return executeJsTsTests(code, 'typescript', problem, testCases);
   }
 
   return executeJsTsTests(code, 'javascript', problem, testCases);

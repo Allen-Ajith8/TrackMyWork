@@ -47,6 +47,16 @@ export interface Room {
   name: string;
   description: string | null;
   invite_code: string;
+  hackathon_name?: string | null;
+  problem_statement?: string | null;
+  start_date?: string | null;
+  deadline?: string | null;
+  submission_deadline?: string | null;
+  hackathon_url?: string | null;
+  submission_format?: string | null;
+  rules_text?: string | null;
+  judging_rubric?: string | null;
+  allowed_tech?: string | null;
   hackathon_sheet_row_id: string | null;
   github_repo: string | null;
   github_installation_id: number | null;
@@ -64,6 +74,10 @@ export interface RoomRules {
   tech_stack_locks: string[]; // JSONB array of strings
   budget_cap: number | null;
   custom_agent_instructions: string | null;
+  rules_text?: string | null;
+  judging_rubric?: string | null;
+  allowed_tech?: string | null;
+  submission_format?: string | null;
   nim_auto_broadcast: boolean;
   auto_task_progression: boolean;
   non_tech_translation: boolean;

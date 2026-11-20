@@ -65,3 +65,4 @@ mcp-server/dist/
 .turbo
 scratch/
 __pycache__/
+data/

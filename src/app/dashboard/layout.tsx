@@ -3,7 +3,8 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import { useAuthStore, DEMO_DEVELOPER_USER } from '@/lib/store';
+import { useAuthStore } from '@/lib/store';
+import { DEMO_DEVELOPER_USER } from '@/lib/constants';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -71,16 +72,37 @@ export default function DashboardLayout({
       return;
     }
 
+    const syncUserProfile = async (authUser: import('@supabase/supabase-js').User) => {
+      const base = userFromAuthUser(authUser);
+      try {
+        const { data: dbUser } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', authUser.id)
+          .maybeSingle();
+        if (dbUser) {
+          setUser({ ...base, ...dbUser });
+          return;
+        }
+      } catch {
+        // Keep base user from auth metadata
+      }
+      setUser(base);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         setSession(toStoredSession(session));
         if (session?.user) {
-          setUser(userFromAuthUser(session.user));
+          syncUserProfile(session.user);
         }
       } else if (event === 'SIGNED_OUT') {
         clearAuth();
         clearRoom();
         setNotifications([]);
+        if (typeof document !== 'undefined') {
+          document.cookie = 'trackmywork_user=; path=/; max-age=0; SameSite=Lax';
+        }
         if (process.env.NEXT_PUBLIC_REQUIRE_AUTH === 'true') {
           router.push('/auth/login');
         }
@@ -89,9 +111,9 @@ export default function DashboardLayout({
 
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
-      if (session) {
+      if (session?.user) {
         setSession(toStoredSession(session));
-        setUser(userFromAuthUser(session.user));
+        syncUserProfile(session.user);
       } else {
         const storedUser = useAuthStore.getState().user;
         if (!storedUser) {
@@ -109,12 +131,23 @@ export default function DashboardLayout({
   }, [router, setUser, setSession, clearAuth, clearRoom, setNotifications, setSidebarOpen]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn('Sign out error:', err);
+    }
+    clearAuth();
+    clearRoom();
+    setNotifications([]);
+    if (typeof document !== 'undefined') {
+      document.cookie = 'trackmywork_user=; path=/; max-age=0; SameSite=Lax';
+    }
+    router.push('/auth/login');
   };
 
   const activeUser = user || DEMO_DEVELOPER_USER;
-  const displayName = activeUser.display_name || activeUser.username || 'Developer';
-  const secondaryLabel = activeUser.username ? `@${activeUser.username}` : 'Demo Developer';
+  const displayName = activeUser.display_name || activeUser.username || activeUser.email?.split('@')[0] || 'User';
+  const secondaryLabel = activeUser.email || (activeUser.username ? `@${activeUser.username}` : 'Member');
 
   return (
     <div className="min-h-screen bg-surface-50">

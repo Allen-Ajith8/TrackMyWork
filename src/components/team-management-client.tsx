@@ -454,8 +454,10 @@ export function TeamManagementClient({ room, initialMembers }: {
       setMembers((prev) => [...prev, { ...payload.member, user: payload.user }]);
       setToast({
         type: 'success',
-        title: 'Invite Sent',
-        message: `Invitation sent to ${data.email}`,
+        title: payload.emailSent ? 'Invite Email Sent' : 'Teammate Invited',
+        message: payload.emailSent
+          ? `Invitation email dispatched to ${data.email}`
+          : `Teammate added to room. Share room code: ${room.invite_code}`,
       });
     } catch (error) {
       setToast({
