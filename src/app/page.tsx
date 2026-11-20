@@ -179,7 +179,7 @@ export default function HomePage() {
                   CodeTrack AI
                 </Link>
                 <Link 
-                  href="/dashboard" 
+                  href="/auth/login?redirect=/dashboard" 
                   className={`text-sm font-semibold transition-colors ${
                     isLight ? 'text-neutral-800 hover:text-red-600' : 'text-neutral-300 hover:text-red-400'
                   }`}
@@ -266,7 +266,7 @@ export default function HomePage() {
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link 
-              href="/dashboard" 
+              href="/auth/login?redirect=/dashboard" 
               className={`w-full sm:w-auto px-8 py-3.5 text-base rounded-lg flex items-center justify-center gap-2 border font-bold transition-all backdrop-blur-md ${
                 isLight 
                   ? 'border-neutral-300 bg-white/90 text-black hover:bg-neutral-100 hover:border-red-300 hover:text-red-600 shadow-sm' 
@@ -514,7 +514,7 @@ export default function HomePage() {
               © {new Date().getFullYear()} TrackMyWork. Built for hackathons &amp; developers.
             </p>
             <div className="flex items-center gap-4 text-sm font-semibold">
-              <Link href="/dashboard" className="hover:text-red-600 transition-colors">Dashboard</Link>
+              <Link href="/auth/login?redirect=/dashboard" className="hover:text-red-600 transition-colors">Dashboard</Link>
               <Link href="/dashboard/codetrack" className="hover:text-red-600 transition-colors">CodeTrack AI</Link>
               <Link href="/auth/login" className="hover:text-red-600 transition-colors">Sign In</Link>
             </div>
