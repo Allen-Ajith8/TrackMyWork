@@ -18,6 +18,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import Galaxy from '@/components/ui/galaxy';
+import CurvedLoop from '@/components/ui/curved-loop';
 
 const features = [
   {
@@ -297,6 +298,25 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* Curved Loop Marquee Section */}
+      <section className="relative z-10 w-full overflow-hidden py-4 sm:py-8 pointer-events-auto">
+        <CurvedLoop
+          marqueeText="TRACKMYWORK"
+          speed={2.2}
+          curveAmount={340}
+          direction="left"
+          interactive={true}
+          color={isLight ? '#000000' : '#ffffff'}
+          separator="✦"
+          separatorColor={isLight ? '#dc2626' : '#ef4444'}
+          fontSize={82}
+          fontWeight={900}
+          letterSpacing={3}
+          edgeFade={0.25}
+          scrollBoost={0.6}
+        />
       </section>
 
       {/* Features Section */}
