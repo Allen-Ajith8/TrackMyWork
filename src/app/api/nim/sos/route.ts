@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 const NIM_API_KEY = process.env.NVIDIA_NIM_API_KEY!;
 const NIM_BASE_URL = process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const DEEPSEEK_MODEL = process.env.NIM_MODEL_DEEPSEEK_R1 || 'deepseek-ai/deepseek-r1';
+const DEEPSEEK_MODEL = process.env.NIM_MODEL_DEEPSEEK_R1 || 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning';
 
 interface SosRequest {
   room_id: string;

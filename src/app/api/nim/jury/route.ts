@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 const NIM_API_KEY = process.env.NVIDIA_NIM_API_KEY!;
 const NIM_BASE_URL = process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const LLAMA_MODEL = process.env.NIM_MODEL_LLAMA_3_3_70B || 'meta/llama-3.3-70b-instruct';
+const LLAMA_MODEL = process.env.NIM_MODEL_LLAMA_3_3_70B || 'nvidia/nemotron-3.5-lightning-30b-a3b';
 
 interface JuryRequest {
   room_id: string;

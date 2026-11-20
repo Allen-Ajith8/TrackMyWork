@@ -9,13 +9,41 @@ import type { CourtRole } from './types';
 const NIM_BASE_URL = process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1';
 const NIM_API_KEY = process.env.NVIDIA_NIM_API_KEY;
 
-if (!NIM_API_KEY) {
+/**
+ * Catch the usual key mistakes before burning a request:
+ *  - missing key
+ *  - the `your-nim-api-key` placeholder from .env.example
+ *  - a truncated / non-JWT paste (NIM keys are `nvapi-...` and long)
+ * Returns a human-readable reason, or null when the key looks usable.
+ */
+function describeKeyProblem(key: string | undefined): string | null {
+  if (!key || !key.trim()) return 'NVIDIA_NIM_API_KEY is not set in .env.local';
+  const value = key.trim();
+  if (/^your[-_]/i.test(value) || value === 'your-nim-api-key') {
+    return 'NVIDIA_NIM_API_KEY still holds the .env.example placeholder';
+  }
+  if (!value.startsWith('nvapi-')) {
+    return 'NVIDIA_NIM_API_KEY does not look like an NVIDIA key (expected an `nvapi-...` value)';
+  }
+  if (value.length < 40) {
+    return `NVIDIA_NIM_API_KEY looks truncated (${value.length} chars, expected ~70)`;
+  }
+  return null;
+}
+
+const NIM_KEY_PROBLEM = describeKeyProblem(NIM_API_KEY);
+
+if (NIM_KEY_PROBLEM) {
   // Lazy throw at call time so module import doesn't fail during build.
-  console.warn('[Courtroom NIM] NVIDIA_NIM_API_KEY not configured — NIM calls will fail.');
+  console.warn(`[Courtroom NIM] ${NIM_KEY_PROBLEM} — NIM calls will fail.`);
 }
 
 // ---------------------------------------------------------------------------
-// Role-to-model routing table (exact free-tier NIM slugs from spec)
+// Role-to-model routing table
+//
+// Every slug below is verified against GET /v1/models for this NVIDIA account.
+// Retired slugs return HTTP 410 with an empty body, which used to surface as a
+// blank trial failure — so keep this list in sync with the live catalogue.
 // ---------------------------------------------------------------------------
 
 type ModelPair = { primary: string; fallback: string };
@@ -27,27 +55,27 @@ const ROLE_MODEL_MAP: Record<CourtRole, ModelPair> = {
   },
   'Visionary Counsel': {
     primary: 'moonshotai/kimi-k3.1-pro',
-    fallback: 'mistralai/mistral-large-4',
+    fallback: 'mistralai/mistral-large-4-1t-a52b',
   },
   'Feasibility Prosecutor': {
     primary: 'nvidia/nemotron-3-ultra-550b-a55b',
-    fallback: 'nvidia/nemotron-3.5-super-vl-120b-a12b',
+    fallback: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
   },
   'Architect Counsel': {
     primary: 'nvidia/nemotron-3.5-super-vl-120b-a12b',
-    fallback: 'mistralai/mistral-large-4',
+    fallback: 'mistralai/mistral-large-4-1t-a52b',
   },
   'Security Witness': {
     primary: 'minimaxai/minimax-m3.1-flash',
     fallback: 'nvidia/nemotron-3.5-lightning-30b-a3b',
   },
   'UX Witness': {
-    primary: 'z-ai/glm-5-3-flash',
+    primary: 'z-ai/glm-5.3-flash',
     fallback: 'nvidia/nemotron-3.5-lightning-30b-a3b',
   },
   'Presiding Judge': {
-    primary: 'deepseek-ai/deepseek-v4.1-flash',
-    fallback: 'nvidia/nemotron-3.5-super-vl-120b-a12b',
+    primary: 'nvidia/nemotron-3-ultra-550b-a55b',
+    fallback: 'moonshotai/kimi-k3.1-pro',
   },
 } as const;
 
@@ -88,6 +116,15 @@ interface NimRawResponse {
   model: string;
 }
 
+/** Account-level NIM problem (bad/expired key). Never retried, never fallen back. */
+export class FatalNimConfigError extends Error {
+  readonly status = 503;
+  constructor(message: string) {
+    super(message);
+    this.name = 'FatalNimConfigError';
+  }
+}
+
 /**
  * Single NIM chat/completions request with timeout + retry/backoff on 429/5xx.
  * Tries `primary` model first; on 429/5xx or timeout, fails over to `fallback`.
@@ -109,8 +146,8 @@ async function callNimWithFallback({
   timeoutMs?: number;
   responseFormat?: { type: 'json_object' };
 }): Promise<{ text: string; modelUsed: string }> {
-  if (!NIM_API_KEY) {
-    throw new Error('NVIDIA_NIM_API_KEY not configured — set it in .env.local');
+  if (NIM_KEY_PROBLEM) {
+    throw new Error(`${NIM_KEY_PROBLEM}. Add a valid key from build.nvidia.com and restart the dev server.`);
   }
 
   const pair = modelOverride
@@ -161,10 +198,25 @@ async function callNimWithFallback({
         continue; // try fallback
       }
 
+      if (response.status === 401 || response.status === 403) {
+        const body = await response.text().catch(() => '');
+        // Auth problems are account-level: a fallback model will fail the same
+        // way, so surface the real cause instead of a raw provider blob.
+        throw new FatalNimConfigError(
+          `NVIDIA_NIM_API_KEY was rejected by NVIDIA (${response.status}). ` +
+            `Replace it in .env.local with a valid key from build.nvidia.com and restart the dev server. ` +
+            `Provider said: ${body.slice(0, 160)}`
+        );
+      }
+
       if (!response.ok) {
         const body = await response.text().catch(() => '');
+        const hint =
+          response.status === 404 || response.status === 410
+            ? ` (model "${attempt.model}" is not available on this account — retired or unlisted)`
+            : '';
         throw new Error(
-          `NIM API error: ${response.status} - ${body.slice(0, 200)}`
+          `NIM API error: ${response.status}${hint} - ${body.slice(0, 200) || 'empty response body'}`
         );
       }
 
@@ -172,6 +224,7 @@ async function callNimWithFallback({
       const content = json.choices[0]?.message?.content || '';
       return { text: content, modelUsed: json.model || attempt.model };
     } catch (error) {
+      if (error instanceof FatalNimConfigError) throw error;
       if (error instanceof Error && error.name === 'AbortError') {
         lastError = new Error(
           `NIM ${attempt.kind} model ${attempt.model} timed out after ${timeoutMs}ms`

@@ -41,10 +41,13 @@ interface StreamChunk {
 const NIM_BASE_URL = process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1';
 const NIM_API_KEY = process.env.NVIDIA_NIM_API_KEY;
 
+// Slugs must be currently listed by GET /v1/models for this NVIDIA account.
+// Retired slugs answer HTTP 410 with an empty body, which surfaces as a blank
+// failure, so these defaults are kept on models that are live today.
 const MODELS = {
-  llama33_70b: process.env.NIM_MODEL_LLAMA_3_3_70B || 'meta/llama-3.3-70b-instruct',
-  deepseek_r1: process.env.NIM_MODEL_DEEPSEEK_R1 || 'deepseek-ai/deepseek-r1',
-  qwen_coder: process.env.NIM_MODEL_QWEN_CODER || 'qwen/qwen2.5-coder-32b-instruct',
+  llama33_70b: process.env.NIM_MODEL_LLAMA_3_3_70B || 'nvidia/nemotron-3.5-lightning-30b-a3b',
+  deepseek_r1: process.env.NIM_MODEL_DEEPSEEK_R1 || 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
+  qwen_coder: process.env.NIM_MODEL_QWEN_CODER || 'poolside/laguna-xs-2.1',
 } as const;
 
 async function fetchNim(request: NimRequest): Promise<NimResponse> {
