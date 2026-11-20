@@ -4,7 +4,6 @@ import React, { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, us
 import './CurvedLoop.css';
 
 const VIEW_WIDTH = 1440;
-const VIEW_HEIGHT = 120;
 const MAX_FLING = 4000;
 const WAVE_LENGTH = 960;
 const RING_RADIUS = 2.2;
@@ -64,11 +63,21 @@ const getGeometry = (shape: string, curveAmount: number, fontSize: number, spaci
       span: Math.min(1, (fontSize * (RING_RADIUS + 1) * 2) / VIEW_WIDTH)
     };
   }
-  const flat = { viewBox: `0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`, radius: 0, repeats: 0, span: 1 };
-  const baseline = VIEW_HEIGHT / 2 + fontSize * 0.36;
+
+  // Calculate needed viewBox height to completely enclose the curve and text
+  const curveDip = Math.max(0, curveAmount * 0.5);
+  const neededHeight = Math.max(160, Math.round(50 + curveDip + fontSize * 1.2));
+  const flat = { viewBox: `0 0 ${VIEW_WIDTH} ${neededHeight}`, radius: 0, repeats: 0, span: 1 };
+  const baseline = neededHeight / 2 + fontSize * 0.36;
+
   if (shape === 'line') return { ...flat, d: `M-100,${baseline} L${VIEW_WIDTH + 100},${baseline}` };
   if (shape === 'wave') return { ...flat, d: wavePath(curveAmount * 0.25, baseline) };
-  return { ...flat, d: `M-100,40 Q500,${40 + curveAmount} 1540,40` };
+
+  // Perfectly symmetrical arch centered at x = 720 (VIEW_WIDTH / 2)
+  return { 
+    ...flat, 
+    d: `M-100,40 Q${VIEW_WIDTH / 2},${40 + curveAmount} ${VIEW_WIDTH + 100},40` 
+  };
 };
 
 export interface CurvedLoopProps {
@@ -98,15 +107,15 @@ const CurvedLoop: React.FC<CurvedLoopProps> = ({
   speed = 2,
   className,
   containerClassName,
-  curveAmount = 400,
+  curveAmount = 280,
   direction = 'left',
   interactive = true,
   pauseOnHover = false,
   color = 'currentColor',
   edgeFade = 0,
   shape = 'arc',
-  fontSize = 96,
-  fontWeight = 700,
+  fontSize = 72,
+  fontWeight = 900,
   letterSpacing = 0,
   outline = false,
   separator = '',
@@ -125,11 +134,13 @@ const CurvedLoop: React.FC<CurvedLoopProps> = ({
   const pathRef = useRef<SVGPathElement | null>(null);
   const textPathsRef = useRef<SVGTextPathElement[]>([]);
 
-  const [spacing, setSpacing] = useState(0);
-  const [pathLength, setPathLength] = useState(0);
+  // Initialize with a reliable fallback measurement so it is visible immediately without delay
+  const initialEstimate = Math.max(100, Math.round(text.length * (fontSize * 0.65)));
+  const [spacing, setSpacing] = useState(initialEstimate);
+  const [pathLength, setPathLength] = useState(1800);
   const [dragging, setDragging] = useState(false);
 
-  const spacingRef = useRef(0);
+  const spacingRef = useRef(initialEstimate);
   const offsetRef = useRef(0);
   const velocityRef = useRef(0);
   const directionRef = useRef(direction);
@@ -163,7 +174,7 @@ const CurvedLoop: React.FC<CurvedLoopProps> = ({
   const ring = shape === 'circle';
   const geometry = getGeometry(shape, curveAmount, fontSize, spacing);
   const ready = spacing > 0;
-  const copies = ready ? (ring ? geometry.repeats + 1 : Math.ceil((pathLength || 1800) / spacing) + 2) : 1;
+  const copies = ready ? (ring ? geometry.repeats + 1 : Math.ceil((pathLength || 1800) / spacing) + 3) : 1;
   const mask = edgeMask(edgeFade, geometry.span);
 
   const maskId = `${pathId}-outline`;
@@ -180,7 +191,9 @@ const CurvedLoop: React.FC<CurvedLoopProps> = ({
 
   const applyOffset = () => {
     const value = `${offsetRef.current}px`;
-    for (const node of textPathsRef.current) node.setAttribute('startOffset', value);
+    for (const node of textPathsRef.current) {
+      if (node) node.setAttribute('startOffset', value);
+    }
   };
 
   useEffect(() => {
@@ -193,7 +206,10 @@ const CurvedLoop: React.FC<CurvedLoopProps> = ({
 
   useIsomorphicLayoutEffect(() => {
     const measure = () => {
-      if (measureRef.current) setSpacing(measureRef.current.getComputedTextLength());
+      if (measureRef.current) {
+        const len = measureRef.current.getComputedTextLength();
+        if (len > 0) setSpacing(len);
+      }
     };
     measure();
     let active = true;
@@ -210,7 +226,10 @@ const CurvedLoop: React.FC<CurvedLoopProps> = ({
   }, [text, className, fontSize, fontWeight, letterSpacing]);
 
   useIsomorphicLayoutEffect(() => {
-    if (pathRef.current) setPathLength(pathRef.current.getTotalLength());
+    if (pathRef.current) {
+      const len = pathRef.current.getTotalLength();
+      if (len > 0) setPathLength(len);
+    }
   }, [geometry.d]);
 
   useIsomorphicLayoutEffect(() => {
@@ -222,7 +241,9 @@ const CurvedLoop: React.FC<CurvedLoopProps> = ({
   useIsomorphicLayoutEffect(() => {
     textPathsRef.current = svgRef.current ? Array.from(svgRef.current.querySelectorAll('textPath')) : [];
     const value = `${offsetRef.current}px`;
-    for (const node of textPathsRef.current) node.setAttribute('startOffset', value);
+    for (const node of textPathsRef.current) {
+      if (node) node.setAttribute('startOffset', value);
+    }
   });
 
   useEffect(() => {
@@ -266,7 +287,9 @@ const CurvedLoop: React.FC<CurvedLoopProps> = ({
         const step = (velocityRef.current + extra) * dt;
         if (Math.abs(step) > 0.0001) {
           offsetRef.current = wrapOffset(offsetRef.current + step, spacingRef.current);
-          for (const node of textPathsRef.current) node.setAttribute('startOffset', `${offsetRef.current}px`);
+          for (const node of textPathsRef.current) {
+            if (node) node.setAttribute('startOffset', `${offsetRef.current}px`);
+          }
         }
       }
       frame = requestAnimationFrame(tick);
@@ -353,7 +376,7 @@ const CurvedLoop: React.FC<CurvedLoopProps> = ({
       ref={jacketRef}
       className={`curved-loop-jacket ${containerClassName || ''}`.trim()}
       style={{
-        visibility: ready ? 'visible' : 'hidden',
+        visibility: 'visible',
         cursor: interactive ? (dragging ? 'grabbing' : 'grab') : 'auto',
         touchAction: interactive ? 'pan-y' : 'auto',
         maskImage: mask,
@@ -393,7 +416,7 @@ const CurvedLoop: React.FC<CurvedLoopProps> = ({
         </text>
         <defs>
           <path ref={pathRef} id={pathId} d={geometry.d} fill="none" stroke="transparent" />
-          {ready && outline && (
+          {outline && (
             <mask
               id={maskId}
               maskUnits="userSpaceOnUse"
@@ -404,38 +427,37 @@ const CurvedLoop: React.FC<CurvedLoopProps> = ({
             >
               <rect x={-VIEW_WIDTH} y={-VIEW_WIDTH} width={VIEW_WIDTH * 3} height={VIEW_WIDTH * 3} fill="#fff" />
               <text xmlSpace="preserve" className={className} fill="#000">
-                <textPath href={`#${pathId}`} xmlSpace="preserve">
+                <textPath href={`#${pathId}`} xlinkHref={`#${pathId}`} xmlSpace="preserve">
                   {plain}
                 </textPath>
               </text>
             </mask>
           )}
         </defs>
-        {ready &&
-          (outline ? (
-            <text
-              xmlSpace="preserve"
-              className={className}
-              fill="none"
-              stroke={color}
-              strokeWidth={typeof fontSize === 'number' ? fontSize * 0.05 : 4}
-              strokeLinejoin="round"
-              mask={`url(#${maskId})`}
-            >
-              <textPath href={`#${pathId}`} xmlSpace="preserve">
-                {accent ? repeat({ stroke: 'none' }) : plain}
-              </textPath>
-            </text>
-          ) : (
-            <text xmlSpace="preserve" className={className} fill={color}>
-              <textPath href={`#${pathId}`} xmlSpace="preserve">
-                {accent ? repeat({ fill: separatorColor }) : plain}
-              </textPath>
-            </text>
-          ))}
-        {ready && outline && accent && (
+        {outline ? (
+          <text
+            xmlSpace="preserve"
+            className={className}
+            fill="none"
+            stroke={color}
+            strokeWidth={typeof fontSize === 'number' ? fontSize * 0.05 : 4}
+            strokeLinejoin="round"
+            mask={`url(#${maskId})`}
+          >
+            <textPath href={`#${pathId}`} xlinkHref={`#${pathId}`} xmlSpace="preserve">
+              {accent ? repeat({ stroke: 'none' }) : plain}
+            </textPath>
+          </text>
+        ) : (
+          <text xmlSpace="preserve" className={className} fill={color}>
+            <textPath href={`#${pathId}`} xlinkHref={`#${pathId}`} xmlSpace="preserve">
+              {accent ? repeat({ fill: separatorColor }) : plain}
+            </textPath>
+          </text>
+        )}
+        {outline && accent && (
           <text xmlSpace="preserve" className={className} fill="none" aria-hidden="true">
-            <textPath href={`#${pathId}`} xmlSpace="preserve">
+            <textPath href={`#${pathId}`} xlinkHref={`#${pathId}`} xmlSpace="preserve">
               {repeat({ fill: separatorColor })}
             </textPath>
           </text>
