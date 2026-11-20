@@ -39,7 +39,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 # NVIDIA NIM (required for SOS debugging)
 NVIDIA_NIM_API_KEY=your-nim-api-key
 NVIDIA_NIM_BASE_URL=https://integrate.api.nvidia.com/v1
-NIM_MODEL_DEEPSEEK_R1=deepseek-ai/deepseek-r1
+NIM_MODEL_DEEPSEEK_R1=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
 
 # Server ports
 MCP_HTTP_PORT=3002
@@ -300,7 +300,7 @@ CMD ["node", "dist/index.js"]
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role key |
 | `NVIDIA_NIM_API_KEY` | Yes | NIM API key |
 | `NVIDIA_NIM_BASE_URL` | No | Default: `https://integrate.api.nvidia.com/v1` |
-| `NIM_MODEL_DEEPSEEK_R1` | No | Default: `deepseek-ai/deepseek-r1` |
+| `NIM_MODEL_DEEPSEEK_R1` | No | Default: `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` |
 | `MCP_HTTP_PORT` | No | Default: `3002` |
 | `MCP_WS_PORT` | No | Default: `3003` |
 | `MCP_REQUIRE_AUTH` | No | `true` rejects stdio calls without an `auth_token` |

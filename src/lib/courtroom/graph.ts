@@ -454,7 +454,7 @@ async function judgePetitionReview(state: typeof CourtroomState.State) {
       sessionId: state.sessionId,
       phase: 'judge_gavel',
       speakerRole: 'Presiding Judge',
-      modelId: 'deepseek-ai/deepseek-v4.1-flash',
+      modelId: 'nvidia/nemotron-3-ultra-550b-a55b',
       content: `⚖️ The Court grants the floor to ${grantedSpeaker} for Rebuttal ${roundNumber}/${state.maxPhase2Grants}: ${gavelReason}`,
       citations: [],
       turnIndex: state.transcript.length,

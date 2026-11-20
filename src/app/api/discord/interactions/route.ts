@@ -250,13 +250,13 @@ async function processAskNim(
   }
 
   let answer: string;
-  let model = 'meta/llama-3.3-70b-instruct';
+  let model = 'nvidia/nemotron-3.5-lightning-30b-a3b';
 
   try {
     if (context === 'debug' || context === 'code') {
-      model = 'qwen/qwen2.5-coder-32b-instruct';
+      model = 'poolside/laguna-xs-2.1';
     } else if (context === 'hardware') {
-      model = 'meta/llama-3.3-70b-instruct';
+      model = 'nvidia/nemotron-3.5-lightning-30b-a3b';
     }
 
     const systemPrompts: Record<string, string> = {

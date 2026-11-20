@@ -185,7 +185,7 @@ async function generatePresentationSummary(design: CanvaPresentation, accessToke
         role: 'user',
         content: slideTexts.slice(0, 8000),
       },
-    ], 'meta/llama-3.3-70b-instruct', 0.3, 300);
+    ], 'nvidia/nemotron-3.5-lightning-30b-a3b', 0.3, 300);
 
     return response.choices[0]?.message?.content?.trim() || 'Summary generation failed';
   } catch {

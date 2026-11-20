@@ -774,7 +774,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         // Call NIM API (same logic as /api/nim/sos)
         const NIM_API_KEY = process.env.NVIDIA_NIM_API_KEY!;
         const NIM_BASE_URL = process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-        const DEEPSEEK_MODEL = process.env.NIM_MODEL_DEEPSEEK_R1 || 'deepseek-ai/deepseek-r1';
+        const DEEPSEEK_MODEL = process.env.NIM_MODEL_DEEPSEEK_R1 || 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning';
 
         const systemPrompts: Record<string, string> = {
           android_logcat: `You are an expert Android developer debugging Logcat output. Analyze the error log and provide:
