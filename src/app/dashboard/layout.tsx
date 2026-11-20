@@ -27,6 +27,7 @@ import { LoadingScreen } from '@/components/loading-screen';
 import { NotificationsBell } from '@/components/notifications-bell';
 import { VibeRealtime } from '@/components/vibe-realtime';
 import { userFromAuthUser } from '@/lib/profile';
+import GlassSurface from '@/components/ui/glass-surface';
 
 const avatarFallback = (value: string) => value.replace(/^@/, '').charAt(0).toUpperCase() || 'U';
 
@@ -154,86 +155,99 @@ export default function DashboardLayout({
       <VibeRealtime />
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-surface-200 transform transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center gap-2 h-16 px-4 border-b border-surface-200">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-                <Zap className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-xl text-surface-900">TrackMyWork</span>
-            </Link>
-          </div>
+        <GlassSurface
+          width="100%"
+          height="100%"
+          borderRadius={0}
+          blur={16}
+          borderWidth={0.06}
+          brightness={60}
+          opacity={0.88}
+          backgroundOpacity={0.65}
+          saturation={1.2}
+          className="h-full w-full border-r border-surface-200/70 shadow-lg"
+        >
+          <div className="flex flex-col h-full w-full min-h-0">
+            {/* Logo */}
+            <div className="flex items-center gap-2 h-16 px-4 border-b border-surface-200/60 shrink-0">
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center shadow-sm">
+                  <Zap className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-bold text-xl text-surface-900 tracking-tight">TrackMyWork</span>
+              </Link>
+            </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
-              const isActive =
-                item.href === '/dashboard'
-                  ? pathname === '/dashboard'
-                  : pathname === item.href || pathname.startsWith(item.href + '/');
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
-                >
-                  <item.icon className="w-5 h-5" />
-                  {item.name}
+            {/* Navigation */}
+            <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin min-h-0">
+              {navigation.map((item) => {
+                const isActive =
+                  item.href === '/dashboard'
+                    ? pathname === '/dashboard'
+                    : pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* User Menu */}
+            <div className="p-4 border-t border-surface-200/60 shrink-0">
+              <Link
+                href="/dashboard/profile"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-3 rounded-lg p-1.5 -m-1 hover:bg-surface-900/5 transition-colors"
+                title="Edit your profile"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
+                  {activeUser.avatar_url ? (
+                    <img src={activeUser.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="text-primary-700 font-semibold">
+                      {avatarFallback(displayName)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-surface-900 truncate">
+                    {displayName}
+                  </p>
+                  <p className="text-xs text-surface-500 truncate">{secondaryLabel}</p>
+                </div>
+              </Link>
+              <div className="mt-3 space-y-1">
+                <Link href="/dashboard/profile" onClick={() => setSidebarOpen(false)} className="sidebar-link">
+                  <UserRound className="w-5 h-5" />
+                  Profile
                 </Link>
-              );
-            })}
-          </nav>
-
-          {/* User Menu */}
-          <div className="p-4 border-t border-surface-200">
-            <Link
-              href="/dashboard/profile"
-              onClick={() => setSidebarOpen(false)}
-              className="flex items-center gap-3 rounded-lg p-1 -m-1 hover:bg-surface-100 transition-colors"
-              title="Edit your profile"
-            >
-              <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
-                {activeUser.avatar_url ? (
-                  <img src={activeUser.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <span className="text-primary-700 font-semibold">
-                    {avatarFallback(displayName)}
-                  </span>
-                )}
+                <Link href="/dashboard/settings" onClick={() => setSidebarOpen(false)} className="sidebar-link">
+                  <Settings className="w-5 h-5" />
+                  Settings
+                </Link>
+                <Link href="/dashboard/help" onClick={() => setSidebarOpen(false)} className="sidebar-link">
+                  <HelpCircle className="w-5 h-5" />
+                  Help & Docs
+                </Link>
+                <button onClick={handleSignOut} className="sidebar-link w-full text-red-600 hover:bg-red-50/80">
+                  <LogOut className="w-5 h-5" />
+                  Sign Out
+                </button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-surface-900 truncate">
-                  {displayName}
-                </p>
-                <p className="text-xs text-surface-500 truncate">{secondaryLabel}</p>
-              </div>
-            </Link>
-            <div className="mt-3 space-y-1">
-              <Link href="/dashboard/profile" onClick={() => setSidebarOpen(false)} className="sidebar-link">
-                <UserRound className="w-5 h-5" />
-                Profile
-              </Link>
-              <Link href="/dashboard/settings" onClick={() => setSidebarOpen(false)} className="sidebar-link">
-                <Settings className="w-5 h-5" />
-                Settings
-              </Link>
-              <Link href="/dashboard/help" onClick={() => setSidebarOpen(false)} className="sidebar-link">
-                <HelpCircle className="w-5 h-5" />
-                Help & Docs
-              </Link>
-              <button onClick={handleSignOut} className="sidebar-link w-full text-red-600 hover:bg-red-50">
-                <LogOut className="w-5 h-5" />
-                Sign Out
-              </button>
             </div>
           </div>
-        </div>
+        </GlassSurface>
       </aside>
 
       {/* Mobile Overlay */}
