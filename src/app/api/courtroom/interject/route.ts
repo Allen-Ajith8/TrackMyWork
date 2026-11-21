@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isSupabaseConfigured } from '@/lib/dashboard-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,11 +17,30 @@ type InterjectBody = {
 };
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClientSupabase();
+  // Check for dev mode cookie
+  const cookieHeader = req.headers.get('cookie') || '';
+  const isDevMode = cookieHeader.includes('trackmywork_dev_user=true') || !isSupabaseConfigured();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  if (isSupabaseConfigured()) {
+    const supabase = createServerClientSupabase();
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    if (authUser) user = authUser;
+  }
+
+  // Demo mode: allow anonymous access when Supabase is not configured or dev cookie is set
+  if (!user && isDevMode) {
+    user = {
+      id: 'demo-dev-user-001',
+      email: 'dev@trackmywork.local',
+      app_metadata: {},
+      user_metadata: {},
+      aud: 'authenticated',
+      created_at: new Date().toISOString(),
+    };
+  }
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
