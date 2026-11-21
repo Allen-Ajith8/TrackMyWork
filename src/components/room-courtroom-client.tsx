@@ -652,6 +652,7 @@ export function RoomCourtroomClient({
   initialSessions,
   demoMode = false,
 }: RoomCourtroomClientProps) {
+  const [supabase] = React.useState(() => createClient());
   const [sessions, setSessions] = React.useState<CourtSessionSummary[]>(initialSessions);
   const [selectedSessionId, setSelectedSessionId] = React.useState<string | null>(
     initialSessions[0]?.id ?? null
@@ -759,7 +760,6 @@ export function RoomCourtroomClient({
   React.useEffect(() => {
     if (!selectedSessionId) return;
 
-    const supabase = createClient();
     setRealtimeState('connecting');
 
     const refresh = () => {
@@ -832,7 +832,6 @@ export function RoomCourtroomClient({
     if (demoMode) return;
     if (!selectedSessionId) return;
 
-    const supabase = createClient();
     setRealtimeState('connecting');
 
     const refresh = () => {

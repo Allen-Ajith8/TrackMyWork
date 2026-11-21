@@ -361,6 +361,7 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
   initialMembers: (RoomMember & { user: User })[];
 }) {
   const { user } = useAuthStore();
+  const [supabase] = React.useState(() => createClient());
   const [tasks, setTasks] = React.useState(initialTasks);
   const [taskDialogOpen, setTaskDialogOpen] = React.useState(false);
   const [editingTask, setEditingTask] = React.useState<Task | null>(null);
@@ -383,7 +384,6 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
 
   // Realtime subscription for room tasks
   React.useEffect(() => {
-    const supabase = createClient();
     const channel = supabase
       .channel(`room-tasks-${room.id}`)
       .on(
@@ -412,7 +412,7 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [room.id]);
+  }, [room.id, supabase]);
 
   const baseTasks = isPanicMode ? panicTasks : tasks;
 
@@ -431,7 +431,6 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
   const handleUpdateTask = async (id: string, updates: Partial<Task>) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t));
     try {
-      const supabase = createClient();
       const { error } = await supabase.from('tasks').update(updates).eq('id', id);
       if (error) throw error;
     } catch (error) {
@@ -444,7 +443,6 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
     if (!confirm('Delete this task?')) return;
     setTasks(prev => prev.filter(t => t.id !== id));
     try {
-      const supabase = createClient();
       await supabase.from('tasks').delete().eq('id', id);
     } catch (error) {
       console.error('Failed to delete task:', error);
@@ -463,7 +461,6 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
     } as Task;
     setTasks(prev => [newTask, ...prev]);
     try {
-      const supabase = createClient();
       const { error } = await supabase.from('tasks').insert(newTask);
       if (error) throw error;
     } catch (error) {

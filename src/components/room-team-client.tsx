@@ -350,6 +350,7 @@ export function RoomTeamClient({ room, initialMembers }: {
   initialMembers: (RoomMember & { user: User })[];
 }) {
   const { user } = useAuthStore();
+  const [supabase] = React.useState(() => createClient());
   const [members, setMembers] = React.useState(initialMembers);
   const [inviteDialogOpen, setInviteDialogOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -375,7 +376,6 @@ export function RoomTeamClient({ room, initialMembers }: {
   const handleUpdateMember = async (memberId: string, updates: Partial<RoomMember>) => {
     setMembers(prev => prev.map(m => m.id === memberId ? { ...m, ...updates } : m));
     try {
-      const supabase = createClient();
       const { error } = await supabase.from('room_members').update(updates).eq('id', memberId);
       if (error) throw error;
     } catch (error) {
@@ -387,7 +387,6 @@ export function RoomTeamClient({ room, initialMembers }: {
     if (!confirm('Are you sure you want to remove this member?')) return;
     setMembers(prev => prev.filter(m => m.id !== memberId));
     try {
-      const supabase = createClient();
       const { error } = await supabase.from('room_members').delete().eq('id', memberId);
       if (error) throw error;
       setToast({ type: 'success', title: 'Removed', message: 'Member has been removed from the room' });

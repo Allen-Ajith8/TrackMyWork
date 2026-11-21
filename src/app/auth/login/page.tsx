@@ -558,7 +558,10 @@ function LoginForm() {
             <span className={isLight ? 'text-neutral-500' : 'text-neutral-400'}>Quick access:</span>
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
+                if (typeof document !== 'undefined') {
+                  document.cookie = 'trackmywork_dev_user=true; path=/; max-age=2592000; SameSite=Lax';
+                }
                 completeLogin({
                   email: 'dev@trackmywork.local',
                   display_name: 'Dev User',
@@ -568,7 +571,7 @@ function LoginForm() {
                   is_global_admin: true,
                   roomPermissions: {},
                 })
-              }
+              }}
               className="text-red-600 dark:text-red-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
             >
               <span>Sign in as Dev</span>
