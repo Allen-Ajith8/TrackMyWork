@@ -46,7 +46,7 @@ const MAX_AVATAR_BYTES = 3 * 1024 * 1024;
 
 export function ProfileClient({ authUser, initialProfile }: ProfileClientProps) {
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const { user, setUser } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 

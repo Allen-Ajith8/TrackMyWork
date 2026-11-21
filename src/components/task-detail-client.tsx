@@ -36,7 +36,7 @@ export function TaskDetailClient({
   members: MemberOption[];
 }) {
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
   const [status, setStatus] = useState<TaskStatus>(task.status);

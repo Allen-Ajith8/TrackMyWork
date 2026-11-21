@@ -32,7 +32,7 @@ export function HackTimer() {
   const [isPending, startTransition] = useTransition();
   const [showToast, setShowToast] = useState(false);
 
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const currentRoom = useRoomStore((state) => state.currentRoom);
   const setCurrentRoom = useRoomStore((state) => state.setCurrentRoom);
   const isTeamLeader = useRoomStore((state) => state.isTeamLeader);
@@ -98,7 +98,7 @@ export function HackTimer() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentRoom?.id, supabase, currentRoom, setCurrentRoom]);
+  }, [currentRoom?.id, currentRoom, setCurrentRoom]);
 
   // Calculate remaining time
   const deadlineMs = currentRoom?.submission_deadline

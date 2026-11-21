@@ -32,7 +32,7 @@ export function NewTaskClient({
   membersByRoom: Record<string, RoomMemberOption[]>;
 }) {
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [roomId, setRoomId] = useState(rooms[0]?.id || '');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');

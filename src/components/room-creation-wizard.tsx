@@ -160,7 +160,7 @@ export function RoomCreationWizard() {
   const [copiedCode, setCopiedCode] = React.useState(false);
   const [toast, setToast] = React.useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
 
-  const supabase = createClient();
+  const [supabase] = React.useState(() => createClient());
   const { setCurrentRoom } = useRoomStore();
 
   const form = useForm<FullFormData>({

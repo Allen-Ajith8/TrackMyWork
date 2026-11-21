@@ -41,7 +41,7 @@ export function NotificationsClient({
 }: {
   initialNotifications: NotificationWithRoom[];
 }) {
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const { user } = useAuthStore();
   const { setNotifications, markAsRead, markAllAsRead, removeNotification } = useNotificationStore();
   const [notifications, setLocalNotifications] = useState(initialNotifications);
