@@ -22,12 +22,16 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
-import { useRoomStore, useNotificationStore, useUIStore } from '@/lib/store';
+import { useRoomStore, useNotificationStore, useUIStore, useTaskStore } from '@/lib/store';
 import { LoadingScreen } from '@/components/loading-screen';
 import { NotificationsBell } from '@/components/notifications-bell';
 import { VibeRealtime } from '@/components/vibe-realtime';
+import { HackTimer } from '@/components/hack-timer';
+import { PanicModeToggle } from '@/components/panic-mode-toggle';
+import { PanicModeBanner } from '@/components/panic-mode-banner';
 import { userFromAuthUser } from '@/lib/profile';
 import GlassSurface from '@/components/ui/glass-surface';
+import { DUMMY_USER, DUMMY_ROOM, DUMMY_MEMBERS, DUMMY_TASKS } from '@/lib/dummy-data';
 
 const avatarFallback = (value: string) => value.replace(/^@/, '').charAt(0).toUpperCase() || 'U';
 
@@ -119,6 +123,25 @@ export default function DashboardLayout({
         const storedUser = useAuthStore.getState().user;
         if (!storedUser) {
           setUser(DEMO_DEVELOPER_USER);
+          const currentRoom = useRoomStore.getState().currentRoom;
+          if (!currentRoom) {
+            setCurrentRoom(DUMMY_ROOM);
+            useRoomStore.getState().setRoomMembers(DUMMY_MEMBERS);
+            useRoomStore.getState().setPermissions(true, true);
+            useTaskStore.getState().setTasks(DUMMY_TASKS);
+          }
+        }
+      }
+    }).catch(() => {
+      const storedUser = useAuthStore.getState().user;
+      if (!storedUser) {
+        setUser(DEMO_DEVELOPER_USER);
+        const currentRoom = useRoomStore.getState().currentRoom;
+        if (!currentRoom) {
+          setCurrentRoom(DUMMY_ROOM);
+          useRoomStore.getState().setRoomMembers(DUMMY_MEMBERS);
+          useRoomStore.getState().setPermissions(true, true);
+          useTaskStore.getState().setTasks(DUMMY_TASKS);
         }
       }
     });
@@ -262,18 +285,26 @@ export default function DashboardLayout({
       <main className="lg:ml-64 min-h-screen">
         {/* Top Bar */}
         <header className="sticky top-0 z-20 glass border-b border-surface-200/50">
-          <div className="flex items-center justify-between h-16 px-4 sm:px-6">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden btn-ghost p-2"
-              aria-label="Open menu"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+          <div className="flex items-center justify-between h-16 px-4 sm:px-6 gap-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden btn-ghost p-2"
+                aria-label="Open menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
 
-            <div className="flex-1 lg:flex-none" />
+              {/* Hack-Timer and Panic Mode Toggle */}
+              <div className="flex items-center gap-1.5 sm:gap-2.5">
+                <HackTimer />
+                <PanicModeToggle />
+              </div>
+            </div>
+
+            <div className="flex-1" />
 
             <div className="flex items-center gap-3">
               {/* Notifications */}
@@ -287,6 +318,7 @@ export default function DashboardLayout({
               )}
             </div>
           </div>
+          <PanicModeBanner />
         </header>
 
         {/* Page Content */}

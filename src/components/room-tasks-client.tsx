@@ -37,6 +37,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Toast, ToastProvider, ToastViewport, ToastTitle, ToastDescription } from '@/components/ui/toast';
 import { cn, formatRelativeTime, getTaskStatusColor, getRoleColor } from '@/lib/utils';
+import { usePanicTasks } from '@/hooks/usePanicTasks';
+import { useTaskStore } from '@/lib/store';
 import type { Task, TaskStatus, TaskCategory, RoomMember, User, Room } from '@/types/database';
 
 const STATUS_COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
@@ -79,9 +81,19 @@ function TaskCard({ task, members, onUpdate, onDelete }: TaskCardProps) {
   const assignee = task.assigned_to ? members.find(m => m.user_id === task.assigned_to) : null;
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm p-3 hover:shadow-md transition-shadow">
+    <div className={cn(
+      "bg-white rounded-lg border shadow-sm p-3 hover:shadow-md transition-shadow",
+      (task.is_blocker || task.status === 'blocked') && "border-red-300 ring-1 ring-red-300/50"
+    )}>
       <div className="flex items-start justify-between mb-2">
-        <span className={cn('badge', getTaskStatusColor(task.status))}>{task.status.replace('_', ' ')}</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={cn('badge', getTaskStatusColor(task.status))}>{task.status.replace('_', ' ')}</span>
+          {(task.is_blocker || task.status === 'blocked') && (
+            <span className="badge bg-red-600 text-white font-bold tracking-wider text-[10px]">
+              BLOCKER
+            </span>
+          )}
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="p-1 rounded hover:bg-muted">
@@ -89,6 +101,10 @@ function TaskCard({ task, members, onUpdate, onDelete }: TaskCardProps) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onUpdate(task.id, { is_blocker: !task.is_blocker })}>
+              {task.is_blocker ? 'Unflag Blocker' : 'Flag as Blocker'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onUpdate(task.id, { status: 'todo' })}>Mark as To Do</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onUpdate(task.id, { status: 'in_progress' })}>Mark In Progress</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onUpdate(task.id, { status: 'review' })}>Mark for Review</DropdownMenuItem>
@@ -180,6 +196,7 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
     assigned_to: '',
     priority: 0,
     due_date: '',
+    is_blocker: false,
   });
 
   React.useEffect(() => {
@@ -192,6 +209,7 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
         assigned_to: editingTask.assigned_to || '',
         priority: editingTask.priority,
         due_date: editingTask.due_date ? new Date(editingTask.due_date).toISOString().split('T')[0] : '',
+        is_blocker: Boolean(editingTask.is_blocker),
       });
     } else {
       setFormData({
@@ -202,6 +220,7 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
         assigned_to: '',
         priority: 0,
         due_date: '',
+        is_blocker: false,
       });
     }
   }, [editingTask, open]);
@@ -313,6 +332,19 @@ function TaskDialog({ open, onOpenChange, members, roomId, onSubmit, editingTask
             </div>
           </div>
 
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="is_blocker"
+              checked={formData.is_blocker}
+              onChange={(e) => setFormData({ ...formData, is_blocker: e.target.checked })}
+              className="rounded border-surface-300 text-red-600 focus:ring-red-500 h-4 w-4"
+            />
+            <Label htmlFor="is_blocker" className="text-sm font-medium text-red-700 cursor-pointer">
+              Flag as Blocker (shows prominently & prioritizes in Panic Mode)
+            </Label>
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit">{editingTask ? 'Save' : 'Create'}</Button>
@@ -338,7 +370,53 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
   const [viewMode, setViewMode] = React.useState<'kanban' | 'list'>('kanban');
   const [toast, setToast] = React.useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
 
-  const filteredTasks = tasks.filter(task => {
+  const { isPanicMode, panicTasks, blockerCount, urgentCount } = usePanicTasks({
+    tasks,
+    roomId: room.id,
+  });
+
+  // Sync tasks with global task store for header countdown and badges
+  const setStoreTasks = useTaskStore((state) => state.setTasks);
+  React.useEffect(() => {
+    setStoreTasks(tasks);
+  }, [tasks, setStoreTasks]);
+
+  // Realtime subscription for room tasks
+  React.useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`room-tasks-${room.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+          filter: `room_id=eq.${room.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const inserted = payload.new as Task;
+            setTasks((prev) => [inserted, ...prev.filter((t) => t.id !== inserted.id)]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as Task;
+            setTasks((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
+          } else if (payload.eventType === 'DELETE') {
+            const old = payload.old as { id: string };
+            setTasks((prev) => prev.filter((t) => t.id !== old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [room.id]);
+
+  const baseTasks = isPanicMode ? panicTasks : tasks;
+
+  const filteredTasks = baseTasks.filter(task => {
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (filterStatus !== 'all' && task.status !== filterStatus) return false;
     if (filterCategory !== 'all' && task.category !== filterCategory) return false;
@@ -455,7 +533,19 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
 
         {/* Content */}
         <div className="flex-1 overflow-hidden">
-          {viewMode === 'kanban' ? (
+          {isPanicMode && filteredTasks.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-surface-50/50">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 shadow-sm">
+                <CheckCircle className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-bold text-surface-900 mb-1">
+                No blockers, nothing due in the next 2h
+              </h3>
+              <p className="text-sm text-surface-500 max-w-sm">
+                All critical work is resolved or not urgently due. Take a breath, you are on track!
+              </p>
+            </div>
+          ) : viewMode === 'kanban' ? (
             <ScrollArea className="h-full p-4">
               <div className="flex gap-4 h-full pb-4">
                 {STATUS_COLUMNS.map(col => (

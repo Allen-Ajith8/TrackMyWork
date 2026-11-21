@@ -61,6 +61,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { formatRelativeTime, cn, getTaskStatusColor, getBomStatusColor, getRoleColor } from '@/lib/utils';
+import { usePanicTasks } from '@/hooks/usePanicTasks';
 import type { Task, TaskStatus, TaskCategory, HardwareBomItem, BomStatus, Artifact, RoomMember, User, Room } from '@/types/database';
 
 const STATUS_COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
@@ -101,9 +102,19 @@ function TaskCard({ task, members, onUpdate, onDelete }: TaskCardProps) {
   const assignee = task.assigned_to ? members.find(m => m.user_id === task.assigned_to) : null;
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm p-3 hover:shadow-md transition-shadow">
+    <div className={cn(
+      "bg-white rounded-lg border shadow-sm p-3 hover:shadow-md transition-shadow",
+      (task.is_blocker || task.status === 'blocked') && "border-red-300 ring-1 ring-red-300/50"
+    )}>
       <div className="flex items-start justify-between mb-2">
-        <span className={cn('badge', getTaskStatusColor(task.status))}>{task.status.replace('_', ' ')}</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={cn('badge', getTaskStatusColor(task.status))}>{task.status.replace('_', ' ')}</span>
+          {(task.is_blocker || task.status === 'blocked') && (
+            <span className="badge bg-red-600 text-white font-bold text-[10px]">
+              BLOCKER
+            </span>
+          )}
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="p-1 rounded hover:bg-muted">
@@ -111,6 +122,10 @@ function TaskCard({ task, members, onUpdate, onDelete }: TaskCardProps) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onUpdate(task.id, { is_blocker: !task.is_blocker })}>
+              {task.is_blocker ? 'Unflag Blocker' : 'Flag as Blocker'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onUpdate(task.id, { status: 'todo' })}>Mark as To Do</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onUpdate(task.id, { status: 'in_progress' })}>Mark In Progress</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onUpdate(task.id, { status: 'review' })}>Mark for Review</DropdownMenuItem>
@@ -1283,7 +1298,14 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
     return () => clearInterval(interval);
   }, [deadlineTimestamp]);
 
-  const filteredTasks = tasks.filter(task => {
+  const { isPanicMode, panicTasks } = usePanicTasks({
+    tasks,
+    roomId: room.id,
+  });
+
+  const baseTasks = isPanicMode ? panicTasks : tasks;
+
+  const filteredTasks = baseTasks.filter(task => {
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (filterStatus !== 'all' && task.status !== filterStatus) return false;
     if (filterCategory !== 'all' && task.category !== filterCategory) return false;
@@ -1618,21 +1640,35 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
 
             {/* Kanban Board */}
             <div className="flex-1 overflow-x-auto">
-              <ScrollArea className="h-full">
-                <div className="flex gap-4 h-full pb-4">
-                  {STATUS_COLUMNS.map(col => (
-                    <KanbanColumn
-                      key={col.id}
-                      status={col.id}
-                      label={col.label}
-                      tasks={tasksByStatus[col.id]}
-                      members={initialMembers}
-                      onUpdateTask={handleUpdateTask}
-                      onDeleteTask={handleDeleteTask}
-                    />
-                  ))}
+              {isPanicMode && filteredTasks.length === 0 ? (
+                <div className="h-full min-h-[300px] flex flex-col items-center justify-center p-8 text-center bg-surface-50/50 rounded-xl border">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 shadow-sm">
+                    <CheckCircle className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-lg font-bold text-surface-900 mb-1">
+                    No blockers, nothing due in the next 2h
+                  </h3>
+                  <p className="text-sm text-surface-500 max-w-sm">
+                    All critical work is resolved or not urgently due. Take a breath, you are on track!
+                  </p>
                 </div>
-              </ScrollArea>
+              ) : (
+                <ScrollArea className="h-full">
+                  <div className="flex gap-4 h-full pb-4">
+                    {STATUS_COLUMNS.map(col => (
+                      <KanbanColumn
+                        key={col.id}
+                        status={col.id}
+                        label={col.label}
+                        tasks={tasksByStatus[col.id]}
+                        members={initialMembers}
+                        onUpdateTask={handleUpdateTask}
+                        onDeleteTask={handleDeleteTask}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
             </div>
           </div>
         </TabsContent>

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "test": "node --import tsx --test src/lib/__tests__/*.test.ts",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "cap:add": "cap add android",

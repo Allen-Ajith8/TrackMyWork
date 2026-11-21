@@ -122,6 +122,7 @@ export interface Task {
   due_date: string | null;
   completed_at: string | null;
   nim_summary: string | null;
+  is_blocker?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -352,6 +353,7 @@ export interface CreateTaskData {
   category: TaskCategory;
   priority?: number;
   due_date?: string;
+  is_blocker?: boolean;
   github_issue_number?: number;
 }
 
@@ -363,6 +365,7 @@ export interface UpdateTaskData {
   category?: TaskCategory;
   priority?: number;
   due_date?: string | null;
+  is_blocker?: boolean;
   github_pr_number?: number;
 }
 

@@ -27,6 +27,36 @@
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 271 81% 56%;
+
+    /* Accent color palette */
+    --accent-50: 288 100% 98%;
+    --accent-100: 291 100% 95%;
+    --accent-200: 292 94% 91%;
+    --accent-300: 293 93% 83%;
+    --accent-400: 294 89% 73%;
+    --accent-500: 292 84% 61%;
+    --accent-600: 293 69% 49%;
+    --accent-700: 295 72% 40%;
+    --accent-800: 296 70% 32%;
+    --accent-900: 297 64% 28%;
+  }
+
+  :root[data-panic="true"],
+  [data-panic="true"] {
+    /* High-visibility neon orange Panic Mode theme (#FF6A00 / 25 100% 50%) */
+    --accent: 25 100% 50%;
+    --accent-foreground: 24 100% 5%; /* WCAG AA compliant dark text on bright neon orange */
+    --accent-50: 33 100% 96%;
+    --accent-100: 34 100% 92%;
+    --accent-200: 32 100% 83%;
+    --accent-300: 30 100% 71%;
+    --accent-400: 27 100% 60%;
+    --accent-500: 25 100% 50%;
+    --accent-600: 22 100% 45%;
+    --accent-700: 18 100% 38%;
+    --accent-800: 15 95% 31%;
+    --accent-900: 15 88% 25%;
+    --ring: 25 100% 50%;
   }
 
   * {
@@ -204,5 +234,16 @@
     border-radius: inherit;
     position: relative;
     z-index: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

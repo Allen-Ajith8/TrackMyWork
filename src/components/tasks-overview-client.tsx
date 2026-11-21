@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { cn, formatRelativeTime, getTaskStatusColor } from '@/lib/utils';
+import { usePanicTasks } from '@/hooks/usePanicTasks';
 import type { Task, TaskStatus } from '@/types/database';
 
 interface TasksOverviewClientProps {
@@ -53,18 +54,20 @@ export function TasksOverviewClient({
       : 'all'
   );
   const [query, setQuery] = useState('');
+  const { isPanicMode, panicTasks } = usePanicTasks({ tasks });
+  const baseTasks = isPanicMode ? panicTasks : tasks;
 
   const counts = useMemo(() => {
-    const result: Record<string, number> = { all: tasks.length };
-    for (const task of tasks) {
+    const result: Record<string, number> = { all: baseTasks.length };
+    for (const task of baseTasks) {
       result[task.status] = (result[task.status] || 0) + 1;
     }
     return result;
-  }, [tasks]);
+  }, [baseTasks]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return tasks.filter((task) => {
+    return baseTasks.filter((task) => {
       const matchesStatus = status === 'all' || task.status === status;
       const matchesQuery =
         !needle ||
@@ -73,7 +76,7 @@ export function TasksOverviewClient({
         task.category.toLowerCase().includes(needle);
       return matchesStatus && matchesQuery;
     });
-  }, [tasks, status, query]);
+  }, [baseTasks, status, query]);
 
   const activeCount = tasks.filter((task) => task.status !== 'done').length;
   const overdueCount = tasks.filter(
@@ -167,22 +170,38 @@ export function TasksOverviewClient({
 
       {filtered.length === 0 ? (
         <div className="card p-12 text-center">
-          <ClipboardList className="w-14 h-14 mx-auto text-surface-300" />
-          <h3 className="mt-4 text-lg font-semibold text-surface-900">
-            {rooms.length === 0 ? 'No rooms yet' : 'No tasks found'}
-          </h3>
-          <p className="text-surface-500 mt-1 max-w-md mx-auto">
-            {rooms.length === 0
-              ? 'Create a room first, then start adding tasks for your team.'
-              : 'Try a different filter or create a new task.'}
-          </p>
-          <Link
-            href={rooms.length === 0 ? '/dashboard/rooms/new' : '/dashboard/tasks/new'}
-            className="btn-primary mt-6"
-          >
-            <Plus className="w-4 h-4" />
-            {rooms.length === 0 ? 'Create a room' : 'New task'}
-          </Link>
+          {isPanicMode ? (
+            <>
+              <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                <CheckCircle className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-bold text-surface-900">
+                No blockers, nothing due in the next 2h
+              </h3>
+              <p className="text-surface-500 mt-1 max-w-md mx-auto text-sm">
+                All critical work is resolved or outside the urgent 2-hour window.
+              </p>
+            </>
+          ) : (
+            <>
+              <ClipboardList className="w-14 h-14 mx-auto text-surface-300" />
+              <h3 className="mt-4 text-lg font-semibold text-surface-900">
+                {rooms.length === 0 ? 'No rooms yet' : 'No tasks found'}
+              </h3>
+              <p className="text-surface-500 mt-1 max-w-md mx-auto">
+                {rooms.length === 0
+                  ? 'Create a room first, then start adding tasks for your team.'
+                  : 'Try a different filter or create a new task.'}
+              </p>
+              <Link
+                href={rooms.length === 0 ? '/dashboard/rooms/new' : '/dashboard/tasks/new'}
+                className="btn-primary mt-6"
+              >
+                <Plus className="w-4 h-4" />
+                {rooms.length === 0 ? 'Create a room' : 'New task'}
+              </Link>
+            </>
+          )}
         </div>
       ) : (
         <div className="card divide-y divide-surface-200 overflow-hidden">
@@ -207,6 +226,11 @@ export function TasksOverviewClient({
                   <span className={cn('badge', getTaskStatusColor(task.status))}>
                     {task.status.replace('_', ' ')}
                   </span>
+                  {(task.is_blocker || task.status === 'blocked') && (
+                    <span className="badge bg-red-600 text-white font-bold text-[10px]">
+                      BLOCKER
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-surface-500 mt-1 truncate">
                   {task.roomName} · {task.category} · {PRIORITY_LABELS[task.priority] || 'Low'} priority

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getDashboardContext, isSupabaseConfigured, getFallbackDemoRoom } from '@/lib/dashboard-data';
 import { TasksOverviewClient } from '@/components/tasks-overview-client';
+import { DUMMY_TASKS, DUMMY_ROOM } from '@/lib/dummy-data';
 import type { Task } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
@@ -45,10 +46,17 @@ export default async function TasksPage({
     }));
   }
 
+  if (tasks.length === 0) {
+    tasks = DUMMY_TASKS.map((task) => ({
+      ...task,
+      roomName: DUMMY_ROOM.name,
+    }));
+  }
+
   return (
     <TasksOverviewClient
       tasks={tasks}
-      rooms={rooms.map((room) => ({ id: room.id, name: room.name }))}
+      rooms={rooms.length > 0 ? rooms.map((room) => ({ id: room.id, name: room.name })) : [{ id: DUMMY_ROOM.id, name: DUMMY_ROOM.name }]}
       initialStatus={searchParams?.status || 'all'}
     />
   );
