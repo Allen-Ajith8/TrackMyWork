@@ -8,6 +8,7 @@ import { useAuthStore } from '@/lib/store';
 import { createSessionJWT } from '@/lib/jwt';
 import { Zap, ArrowRight, Sparkles, Check, X, Sun, Moon } from 'lucide-react';
 import Galaxy from '@/components/ui/galaxy';
+import { setCachedPermissions, type CachedPermissions } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,7 +81,7 @@ function LoginForm() {
     username: string;
     avatar_url?: string | null;
     provider?: string;
-  }) {
+  }, permissions?: Omit<CachedPermissions, 'userId' | 'cachedAt'>) {
     const userId = userData.id || `usr_${Date.now()}`;
     const cleanEmail = userData.email.trim();
     const cleanName = userData.display_name.trim() || cleanEmail.split('@')[0];
@@ -100,7 +101,7 @@ function LoginForm() {
       username: cleanUsername,
       display_name: cleanName,
       avatar_url: userData.avatar_url || null,
-      is_global_admin: true,
+      is_global_admin: permissions?.is_global_admin ?? true,
       fcm_token: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -112,6 +113,11 @@ function LoginForm() {
       access_token: jwtToken,
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30, // 30 days
     });
+
+    // Cache permissions for fast reads without Supabase queries
+    if (permissions) {
+      setCachedPermissions(userId, permissions);
+    }
 
     // Store in cookie for server-side route handling
     if (typeof document !== 'undefined') {
@@ -172,7 +178,7 @@ function LoginForm() {
     setOauthModal(provider);
   }
 
-  function handleOAuthModalSubmit(e: React.FormEvent) {
+  async function handleOAuthModalSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!oauthEmail.trim()) return;
 
@@ -185,13 +191,60 @@ function LoginForm() {
       ? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(oauthName || 'User')}`
       : `https://github.com/${cleanUsername}.png`;
 
-    completeLogin({
-      email: oauthEmail.trim(),
-      display_name: oauthName.trim() || oauthEmail.split('@')[0],
-      username: cleanUsername,
-      avatar_url: avatarUrl,
-      provider: isGoogle ? 'google' : 'github',
-    });
+    // Fetch user profile and room memberships from Supabase to cache permissions
+    let isGlobalAdmin = false;
+    const roomPermissions: Record<string, any> = {};
+    if (supabaseReady) {
+      try {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('is_global_admin')
+          .eq('email', oauthEmail.trim())
+          .maybeSingle();
+        isGlobalAdmin = Boolean(profile?.is_global_admin);
+
+        // Get the user id from auth to look up memberships
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user) {
+          const { data: memberships } = await supabase
+            .from('room_members')
+            .select('*')
+            .eq('user_id', authData.user.id);
+
+          if (memberships) {
+            for (const m of memberships) {
+              roomPermissions[m.room_id] = {
+                role_title: m.role_title,
+                flag_is_team_leader: Boolean(m.flag_is_team_leader),
+                flag_can_edit_repo: Boolean(m.flag_can_edit_repo),
+                flag_can_trigger_nim: Boolean(m.flag_can_trigger_nim),
+                flag_can_assign_tasks: Boolean(m.flag_can_assign_tasks),
+                flag_can_upload_assets: Boolean(m.flag_can_upload_assets),
+                flag_can_manage_bom: Boolean(m.flag_can_manage_bom),
+                flag_can_invite_members: Boolean(m.flag_can_invite_members),
+                flag_can_edit_rules: Boolean(m.flag_can_edit_rules),
+              };
+            }
+          }
+        }
+      } catch {
+        // If fetching permissions fails, defaults apply
+      }
+    }
+
+    completeLogin(
+      {
+        email: oauthEmail.trim(),
+        display_name: oauthName.trim() || oauthEmail.split('@')[0],
+        username: cleanUsername,
+        avatar_url: avatarUrl,
+        provider: isGoogle ? 'google' : 'github',
+      },
+      {
+        is_global_admin: isGlobalAdmin,
+        roomPermissions,
+      }
+    );
   }
 
   async function handleEmailLogin(e: React.FormEvent) {
@@ -216,16 +269,62 @@ function LoginForm() {
         setError(error.message);
         setLoading(false);
       } else if (data?.user) {
-        completeLogin({
-          id: data.user.id,
-          email: data.user.email || email,
-          display_name:
-            data.user.user_metadata?.display_name ||
-            data.user.user_metadata?.full_name ||
-            email.split('@')[0],
-          username: data.user.user_metadata?.username || email.split('@')[0],
-          avatar_url: data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture || null,
-        });
+        // Fetch user profile for is_global_admin and all room memberships
+        // so permissions are cached and don't require Supabase queries on every page load.
+        let isGlobalAdmin = false;
+        const roomPermissions: Record<string, any> = {};
+
+        try {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('is_global_admin')
+            .eq('id', data.user.id)
+            .maybeSingle();
+          isGlobalAdmin = Boolean(profile?.is_global_admin);
+
+          const { data: memberships } = await supabase
+            .from('room_members')
+            .select('*')
+            .eq('user_id', data.user.id);
+
+          if (memberships) {
+            for (const m of memberships) {
+              roomPermissions[m.room_id] = {
+                role_title: m.role_title,
+                flag_is_team_leader: Boolean(m.flag_is_team_leader),
+                flag_can_edit_repo: Boolean(m.flag_can_edit_repo),
+                flag_can_trigger_nim: Boolean(m.flag_can_trigger_nim),
+                flag_can_assign_tasks: Boolean(m.flag_can_assign_tasks),
+                flag_can_upload_assets: Boolean(m.flag_can_upload_assets),
+                flag_can_manage_bom: Boolean(m.flag_can_manage_bom),
+                flag_can_invite_members: Boolean(m.flag_can_invite_members),
+                flag_can_edit_rules: Boolean(m.flag_can_edit_rules),
+              };
+            }
+          }
+        } catch {
+          // If fetching permissions fails, defaults apply
+        }
+
+        completeLogin(
+          {
+            id: data.user.id,
+            email: data.user.email || email,
+            display_name:
+              data.user.user_metadata?.display_name ||
+              data.user.user_metadata?.full_name ||
+              email.split('@')[0],
+            username: data.user.user_metadata?.username || email.split('@')[0],
+            avatar_url:
+              data.user.user_metadata?.avatar_url ||
+              data.user.user_metadata?.picture ||
+              null,
+          },
+          {
+            is_global_admin: isGlobalAdmin,
+            roomPermissions,
+          }
+        );
       }
     } catch (err: any) {
       setError(err?.message || 'Login failed. Please check your credentials.');

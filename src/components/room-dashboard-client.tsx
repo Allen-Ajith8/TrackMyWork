@@ -5,6 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore, useRoomStore, useTaskStore, useVibeStore } from '@/lib/store';
+import { useCachedPermissions, canUserInRoom } from '@/lib/permissions';
 import {
   Plus,
   Search,
@@ -1167,6 +1168,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
   initialMembers: (RoomMember & { user: User })[];
 }) {
   const { user } = useAuthStore();
+  const cachedPermissions = useCachedPermissions(user?.id ?? null);
   const { currentRoom, setCurrentRoom, setRoomMembers } = useRoomStore();
   const { tasks, setTasks, addTask, updateTask, removeTask } = useTaskStore();
   const { heartbeats, fileLocks } = useVibeStore();
@@ -1209,23 +1211,22 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
     ? { ...room, ...currentRoom, github_repo: connectedRepo ?? currentRoom.github_repo ?? room.github_repo }
     : { ...room, github_repo: connectedRepo ?? room.github_repo };
 
-  const canManageRepo = Boolean(
-    user &&
-      (room.created_by === user.id ||
-        membersList.some(
-          (member) =>
-            member.user_id === user.id && member.flag_is_team_leader
-        ))
+  const canManageRepo = canUserInRoom(
+    room.id,
+    user?.id,
+    room.created_by,
+    cachedPermissions,
+    membersList,
+    'can_edit_repo'
   );
 
-  const canInvite = Boolean(
-    user &&
-      ((user as any).is_global_admin ||
-        room.created_by === user.id ||
-        membersList.some(
-          (member) =>
-            member.user_id === user.id && (member.flag_is_team_leader || member.flag_can_invite_members)
-        ))
+  const canInvite = canUserInRoom(
+    room.id,
+    user?.id,
+    room.created_by,
+    cachedPermissions,
+    membersList,
+    'can_invite_members'
   );
 
   const deadlineTimestamp =
