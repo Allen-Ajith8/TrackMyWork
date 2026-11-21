@@ -70,6 +70,7 @@ export default async function RoomCourtroomPage({
       room={room}
       currentUserId={user.id}
       initialSessions={sessions}
+      demoMode={demoMode}
     />
   );
 }

@@ -42,6 +42,11 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { cn, formatRelativeTime } from '@/lib/utils';
+import {
+  createDemoCourtroomState,
+  adoptDemoOption,
+  type DemoCourtroomState,
+} from '@/lib/courtroom/demo';
 
 // ---------------------------------------------------------------------------
 // Types (mirroring the Phase 4 API contract)
@@ -68,20 +73,20 @@ interface KeyTension {
   tension: string;
 }
 
-interface POCcitation {
+export interface POCcitation {
   title: string;
   url: string;
   relevance: string;
 }
 
-interface GeneratedTask {
+export interface GeneratedTask {
   title: string;
   description: string;
   priority: 'P0' | 'P1' | 'P2';
   estimate: string;
 }
 
-interface OptionCard {
+export interface OptionCard {
   id: string;
   title: string;
   recommended_for: string;
@@ -92,7 +97,7 @@ interface OptionCard {
   agents_md_rules: string[];
 }
 
-interface CourtSession {
+export interface CourtSession {
   id: string;
   room_id: string;
   created_by: string;
@@ -114,18 +119,18 @@ interface CourtSession {
   updated_at: string;
 }
 
-interface Transcript {
+export interface Transcript {
   id: string;
   phase: 'phase1_opening' | 'judge_gavel' | 'phase2_rebuttal' | 'human_interjection';
   speakerRole: string;
   modelId: string | null;
   content: string;
-  citations: Array<{ title: string; url: string; snippet: string }>;
+  citations: POCcitation[];
   turnIndex: number;
   createdAt: string;
 }
 
-interface Petition {
+export interface Petition {
   id: string;
   roundNumber: number;
   speakerRole: string;
@@ -142,6 +147,7 @@ interface RoomCourtroomClientProps {
   room: { id: string; name: string; description?: string | null };
   currentUserId: string;
   initialSessions: CourtSessionSummary[];
+  demoMode?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -644,6 +650,7 @@ export function RoomCourtroomClient({
   room,
   currentUserId,
   initialSessions,
+  demoMode = false,
 }: RoomCourtroomClientProps) {
   const [sessions, setSessions] = React.useState<CourtSessionSummary[]>(initialSessions);
   const [selectedSessionId, setSelectedSessionId] = React.useState<string | null>(
@@ -652,13 +659,16 @@ export function RoomCourtroomClient({
   const [session, setSession] = React.useState<CourtSession | null>(null);
   const [transcripts, setTranscripts] = React.useState<Transcript[]>([]);
   const [petitions, setPetitions] = React.useState<Petition[]>([]);
+  const [demoState, setDemoState] = React.useState<DemoCourtroomState | null>(null);
   const [hydrating, setHydrating] = React.useState(false);
   const [realtimeState, setRealtimeState] = React.useState<'connecting' | 'live' | 'polling'>(
-    'connecting'
+    demoMode ? 'live' : 'connecting'
   );
 
   // Docket launcher state
-  const [launcherOpen, setLauncherOpen] = React.useState(initialSessions.length === 0);
+  const [launcherOpen, setLauncherOpen] = React.useState(
+    demoMode || initialSessions.length === 0
+  );
   const [motion, setMotion] = React.useState('');
   const [repoContextText, setRepoContextText] = React.useState('');
   const [fastDemoMode, setFastDemoMode] = React.useState(true);
@@ -696,6 +706,16 @@ export function RoomCourtroomClient({
 
   const loadSession = React.useCallback(
     async (sessionId: string, options?: { silent?: boolean }) => {
+      // Demo mode: state lives client-side, no API needed.
+      if (demoMode) {
+        const d = demoState;
+        if (!d || d.sessionId !== sessionId) return;
+        setSession(d as unknown as CourtSession);
+        setTranscripts(d.transcripts);
+        setPetitions([]);
+        if (!options?.silent) setHydrating(false);
+        return;
+      }
       if (!options?.silent) setHydrating(true);
       try {
         const response = await fetch(`/api/courtroom/${sessionId}`, { cache: 'no-store' });
@@ -718,7 +738,7 @@ export function RoomCourtroomClient({
         if (!options?.silent) setHydrating(false);
       }
     },
-    [showNotice]
+    [showNotice, demoMode, demoState]
   );
 
   React.useEffect(() => {
@@ -790,6 +810,77 @@ export function RoomCourtroomClient({
 
   const isActive = session ? ACTIVE_STATUSES.includes(session.status) : false;
 
+  // -------------------------------------------------------------------------
+  // Demo-mode polling (replaces Supabase Realtime when no backend is configured)
+  // -------------------------------------------------------------------------
+
+  React.useEffect(() => {
+    if (!selectedSessionId) return;
+    if (!demoMode) return; // Supabase Realtime handles the live mode below
+
+    const timer = setInterval(() => {
+      void loadSession(selectedSessionId, { silent: true });
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [selectedSessionId, demoMode, loadSession]);
+
+  // -------------------------------------------------------------------------
+  // Supabase Realtime subscription (+ polling fallback for safety)
+  // -------------------------------------------------------------------------
+
+  React.useEffect(() => {
+    if (demoMode) return;
+    if (!selectedSessionId) return;
+
+    const supabase = createClient();
+    setRealtimeState('connecting');
+
+    const refresh = () => {
+      void loadSession(selectedSessionId, { silent: true });
+    };
+
+    const channel = supabase
+      .channel(`courtroom:${selectedSessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'court_sessions',
+          filter: `id=eq.${selectedSessionId}`,
+        },
+        refresh
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'court_transcripts',
+          filter: `session_id=eq.${selectedSessionId}`,
+        },
+        refresh
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'court_petitions',
+          filter: `session_id=eq.${selectedSessionId}`,
+        },
+        refresh
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') setRealtimeState('live');
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setRealtimeState('polling');
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [selectedSessionId, demoMode, loadSession]);
+
   React.useEffect(() => {
     if (!selectedSessionId || !isActive) return;
     const timer = setInterval(() => {
@@ -836,6 +927,26 @@ export function RoomCourtroomClient({
       } catch {
         repoContext = { notes: rawContext };
       }
+    }
+
+    if (demoMode) {
+      const d = createDemoCourtroomState(room.id, trimmedMotion);
+      setDemoState(d);
+      const newSession: CourtSessionSummary = {
+        id: d.sessionId,
+        motion: trimmedMotion,
+        status: d.status,
+        created_at: d.createdAt,
+        adopted_option_id: null,
+      };
+      setSessions((current) => [newSession, ...current]);
+      setSelectedSessionId(d.sessionId);
+      setMotion('');
+      setRepoContextText('');
+      setLauncherOpen(false);
+      setStarting(false);
+      showNotice('success', 'Court is now in session. The Clerk is routing the docket…');
+      return;
     }
 
     try {
@@ -909,10 +1020,37 @@ export function RoomCourtroomClient({
   }
 
   async function handleAdopt(option: OptionCard) {
-    if (!session || adoptingOptionId) return;
+    const d = demoMode ? demoState : null;
+    const s = d || session;
+    if (!s || adoptingOptionId) return;
 
     setAdoptingOptionId(option.id);
+
+    if (demoMode && d) {
+      const result = adoptDemoOption(d, option.id);
+      if (!result.ok) {
+        setLauncherError(result.error || 'Could not adopt this option.');
+        setAdoptingOptionId(null);
+        return;
+      }
+      setSessions((current) =>
+        current.map((entry) =>
+          entry.id === d.sessionId
+            ? { ...entry, status: 'adopted', adopted_option_id: option.id }
+            : entry
+        )
+      );
+      showNotice(
+        'success',
+        `Adopted “${option.title}” — created ${option.generated_tasks.length} tasks and synced ${option.agents_md_rules.length} rules to AGENTS.md.`
+      );
+      void loadSession(d.sessionId, { silent: true });
+      setAdoptingOptionId(null);
+      return;
+    }
+
     try {
+      if (!session) return;
       const response = await fetch('/api/courtroom/adopt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -921,7 +1059,7 @@ export function RoomCourtroomClient({
       const payload = await response.json().catch(() => null);
 
       if (!response.ok) {
-        showNotice('error', payload?.error || 'Could not adopt this option.');
+        setLauncherError(payload?.error || 'Could not adopt this option.');
         return;
       }
 
