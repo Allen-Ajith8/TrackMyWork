@@ -137,13 +137,13 @@ function SignupForm() {
     }
 
     if (provider === 'google') {
-      setOauthEmail('deebiga@gmail.com');
-      setOauthName('Deebiga');
-      setOauthUsername('deebiga');
+      setOauthEmail('dev@gmail.com');
+      setOauthName('Dev User');
+      setOauthUsername('dev');
     } else {
-      setOauthEmail('deebiga@users.noreply.github.com');
-      setOauthName('Deebiga');
-      setOauthUsername('deebiga');
+      setOauthEmail('dev@users.noreply.github.com');
+      setOauthName('Dev User');
+      setOauthUsername('dev');
     }
     setOauthModal(provider);
   }
@@ -416,7 +416,7 @@ function SignupForm() {
                       ? 'border-neutral-300 bg-white text-black focus:border-red-500 placeholder:text-neutral-400' 
                       : 'border-neutral-800 bg-neutral-900/90 text-white focus:border-red-500 placeholder:text-neutral-500'
                   }`}
-                  placeholder="deebiga"
+                  placeholder="dev"
                   disabled={loading}
                   maxLength={20}
                 />
@@ -435,7 +435,7 @@ function SignupForm() {
                     ? 'border-neutral-300 bg-white text-black focus:border-red-500 placeholder:text-neutral-400' 
                     : 'border-neutral-800 bg-neutral-900/90 text-white focus:border-red-500 placeholder:text-neutral-500'
                 }`}
-                placeholder="deebiga@example.com"
+                placeholder="dev@trackmywork.local"
                 required
                 disabled={loading}
               />
@@ -564,15 +564,15 @@ function SignupForm() {
                   onClick={() =>
                     completeRegistration({
                       email: oauthEmail,
-                      display_name: oauthName || 'Deebiga',
-                      username: oauthUsername || 'deebiga',
+                      display_name: oauthName || 'Dev User',
+                      username: oauthUsername || 'dev',
                       avatar_url:
                         oauthModal === 'google'
-                          ? 'https://api.dicebear.com/7.x/initials/svg?seed=Deebiga'
-                          : 'https://github.com/deebiga.png',
+                          ? 'https://api.dicebear.com/7.x/initials/svg?seed=Dev'
+                          : 'https://github.com/dev.png',
                     })
                   }
-                  className={`w-full flex items-center justify-between p-2 rounded-lg border shadow-xs text-left cursor-pointer transition-all ${
+                  className={`w-full flex items-center justify-between p-2 rounded-xl border shadow-xs text-left cursor-pointer transition-all ${
                     isLight 
                       ? 'bg-white border-red-200 hover:border-red-300' 
                       : 'bg-neutral-900 border-neutral-700 hover:border-red-500/50'
@@ -583,7 +583,7 @@ function SignupForm() {
                       D
                     </div>
                     <div className="truncate">
-                      <p className={`font-semibold text-xs ${isLight ? 'text-black' : 'text-white'}`}>Deebiga</p>
+                      <p className={`font-semibold text-xs ${isLight ? 'text-black' : 'text-white'}`}>Dev User</p>
                       <p className={`text-[11px] truncate ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>{oauthEmail}</p>
                     </div>
                   </div>

@@ -167,13 +167,13 @@ function LoginForm() {
 
     // Seamless in-app Google/GitHub OAuth modal
     if (provider === 'google') {
-      setOauthEmail('deebiga@gmail.com');
-      setOauthName('Deebiga');
-      setOauthUsername('deebiga');
+      setOauthEmail('dev@gmail.com');
+      setOauthName('Dev User');
+      setOauthUsername('dev');
     } else {
-      setOauthEmail('deebiga@users.noreply.github.com');
-      setOauthName('Deebiga');
-      setOauthUsername('deebiga');
+      setOauthEmail('dev@users.noreply.github.com');
+      setOauthName('Dev User');
+      setOauthUsername('dev');
     }
     setOauthModal(provider);
   }
@@ -560,15 +560,18 @@ function LoginForm() {
               type="button"
               onClick={() =>
                 completeLogin({
-                  email: 'deebiga@example.com',
-                  display_name: 'Deebiga',
-                  username: 'deebiga',
-                  avatar_url: 'https://api.dicebear.com/7.x/initials/svg?seed=Deebiga',
+                  email: 'dev@trackmywork.local',
+                  display_name: 'Dev User',
+                  username: 'dev',
+                  avatar_url: 'https://api.dicebear.com/7.x/initials/svg?seed=Dev',
+                }, {
+                  is_global_admin: true,
+                  roomPermissions: {},
                 })
               }
               className="text-red-600 dark:text-red-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <span>Sign in as Deebiga</span>
+              <span>Sign in as Dev</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
