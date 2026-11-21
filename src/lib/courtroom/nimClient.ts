@@ -7,7 +7,9 @@
 import type { CourtRole } from './types';
 
 const NIM_BASE_URL = process.env.NVIDIA_NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const NIM_API_KEY = process.env.NVIDIA_NIM_API_KEY;
+const NIM_API_KEY =
+  process.env.NVIDIA_NIM_API_KEY ||
+  process.env.NIM_API_KEY;
 
 /**
  * Catch the usual key mistakes before burning a request:

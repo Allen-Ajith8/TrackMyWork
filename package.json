@@ -47,6 +47,7 @@
     "@supabase/supabase-js": "^2.45.0",
     "@types/nodemailer": "^8.0.2",
     "@upstash/qstash": "^2.3.0",
+    "@vercel/functions": "^3.11.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^10.12.0",

@@ -3,6 +3,8 @@ import { createServerClientSupabase } from '@/lib/supabase/server';
 import { LEETCODE_PROBLEMS, DSA_TOPICS } from '@/lib/codetrack/data';
 import type { CodeTrackAnalytics, Difficulty } from '@/types/codetrack';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const supabase = createServerClientSupabase();

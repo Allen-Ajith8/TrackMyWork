@@ -9,8 +9,10 @@ import { createServerClientSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runCourtroomSession } from '@/lib/courtroom/graph';
 import { isSupabaseConfigured } from '@/lib/dashboard-data';
+import { waitUntil } from '@vercel/functions';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 type StartBody = {
   roomId: string;
@@ -130,21 +132,21 @@ export async function POST(req: NextRequest) {
   }
 
   // Kick off LangGraph trial in the background (non-blocking).
-  // Next.js 14.2.7 does not have next/after(), so we use an unawaited promise
-  // with a .catch() fallback that marks the session as failed.
-  void runCourtroomSession({
-    sessionId: session.id,
-    roomId,
-    motion,
-    repoContext,
-    fastDemoMode,
-  }).catch(async (err) => {
-    console.error('[Courtroom] Trial failed:', err);
-    await admin
-      .from('court_sessions')
-      .update({ status: 'failed', error_message: String(err), updated_at: new Date().toISOString() })
-      .eq('id', session.id);
-  });
+  waitUntil(
+    runCourtroomSession({
+      sessionId: session.id,
+      roomId,
+      motion,
+      repoContext,
+      fastDemoMode,
+    }).catch(async (err) => {
+      console.error('[Courtroom] Trial failed:', err);
+      await admin
+        .from('court_sessions')
+        .update({ status: 'failed', error_message: String(err), updated_at: new Date().toISOString() })
+        .eq('id', session.id);
+    })
+  );
 
   return NextResponse.json({
     sessionId: session.id,
