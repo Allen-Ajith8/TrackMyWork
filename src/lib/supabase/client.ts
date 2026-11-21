@@ -25,12 +25,18 @@ export function isSupabaseConfigured(): boolean {
   }
 }
 
+let supabaseClient: ReturnType<typeof createClientComponentClient> | null = null;
+
 export function createClient() {
+  if (supabaseClient) return supabaseClient;
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || fallbackUrl;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || fallbackKey;
 
-  return createClientComponentClient({
+  supabaseClient = createClientComponentClient({
     supabaseUrl,
     supabaseKey,
   });
+
+  return supabaseClient;
 }
