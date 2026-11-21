@@ -24,10 +24,8 @@ type StartBody = {
 export async function POST(req: NextRequest) {
   // Check for dev mode cookie
   const cookieHeader = req.headers.get('cookie') || '';
-  console.log('[API courtroom/start] Cookie header:', cookieHeader);
   const isDevMode = cookieHeader.includes('trackmywork_dev_user=true') || !isSupabaseConfigured();
-  console.log('[API courtroom/start] isDevMode:', isDevMode, 'isSupabaseConfigured:', isSupabaseConfigured());
-  
+
   let user = null;
   if (isSupabaseConfigured()) {
     const supabase = createServerClientSupabase();
@@ -36,17 +34,17 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
     if (authUser) user = authUser;
   }
-  
+
   // Demo mode: allow anonymous access when Supabase is not configured or dev cookie is set
   if (!user && isDevMode) {
     // Create a demo user for the trial
-    user = { 
-      id: 'demo-dev-user-001', 
+    user = {
+      id: 'demo-dev-user-001',
       email: 'dev@trackmywork.local',
       app_metadata: {},
       user_metadata: {},
       aud: 'authenticated',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     };
   }
 
@@ -75,7 +73,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'motion must be at most 4,000 characters.' }, { status: 400 });
   }
 
-  // In dev mode, skip Supabase room membership checks
+  // In demo mode, skip Supabase room membership checks
   let room: { id: string; created_by: string } | null = null;
   const admin = createAdminClient();
   if (!isDevMode) {
@@ -132,6 +130,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Kick off LangGraph trial in the background (non-blocking).
+  // Next.js 14.2.7 does not have next/after(), so we use waitUntil to keep the
+  // serverless function alive while the LangGraph trial runs.
   waitUntil(
     runCourtroomSession({
       sessionId: session.id,
