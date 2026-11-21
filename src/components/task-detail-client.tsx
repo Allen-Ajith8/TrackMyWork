@@ -46,6 +46,7 @@ export function TaskDetailClient({
   const [dueDate, setDueDate] = useState(
     task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : ''
   );
+  const [isBlocker, setIsBlocker] = useState(Boolean(task.is_blocker));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +75,7 @@ export function TaskDetailClient({
         priority: Number(priority),
         assigned_to: assignedTo || null,
         due_date: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : null,
+        is_blocker: isBlocker,
         completed_at: status === 'done' ? new Date().toISOString() : null,
       })
       .eq('id', task.id);
@@ -179,6 +181,19 @@ export function TaskDetailClient({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="detailIsBlocker"
+              checked={isBlocker}
+              onChange={(e) => setIsBlocker(e.target.checked)}
+              className="rounded border-surface-300 text-red-600 focus:ring-red-500 h-4 w-4"
+            />
+            <label htmlFor="detailIsBlocker" className="text-sm font-medium text-red-700 cursor-pointer">
+              Flag as Blocker (prioritized in Panic Mode)
+            </label>
           </div>
 
           {error && (

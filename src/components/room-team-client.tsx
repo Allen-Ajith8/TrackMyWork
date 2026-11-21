@@ -235,10 +235,11 @@ function MemberRow({ member, currentUserId, isTeamLeader, isGlobalAdmin, onUpdat
 interface InviteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  room: Room;
   onSubmit: (data: { email: string; role_title: RoleTitle; custom_role_name?: string; permissions: Partial<Record<RoomPermission, boolean>> }) => void;
 }
 
-function InviteDialog({ open, onOpenChange, onSubmit }: InviteDialogProps) {
+function InviteDialog({ open, onOpenChange, room, onSubmit }: InviteDialogProps) {
   const [formData, setFormData] = React.useState({
     email: '',
     role_title: 'Custom' as RoleTitle,
@@ -269,11 +270,19 @@ function InviteDialog({ open, onOpenChange, onSubmit }: InviteDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite Team Member</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-purple-600" />
+              Invite Teammate via Email
+            </DialogTitle>
+            <Badge variant="outline" className="font-mono text-xs">
+              Code: {room.invite_code}
+            </Badge>
+          </div>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
+            <Label htmlFor="email">Teammate Email Address *</Label>
             <Input
               id="email"
               type="email"
@@ -282,6 +291,9 @@ function InviteDialog({ open, onOpenChange, onSubmit }: InviteDialogProps) {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
             />
+            <p className="text-xs text-muted-foreground">
+              Supabase sends an email containing the direct room join link.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -439,8 +451,10 @@ export function RoomTeamClient({ room, initialMembers }: {
       setMembers((prev) => [...prev, { ...payload.member, user: payload.user }]);
       setToast({
         type: 'success',
-        title: 'Invite Sent',
-        message: `Invitation sent to ${data.email}`,
+        title: payload.emailSent ? 'Invite Email Sent' : 'Teammate Invited',
+        message: payload.emailSent
+          ? `Invitation email dispatched to ${data.email}`
+          : `Teammate added to room. Share room code: ${room.invite_code}`,
       });
     } catch (error) {
       setToast({
@@ -523,6 +537,7 @@ export function RoomTeamClient({ room, initialMembers }: {
         <InviteDialog
           open={inviteDialogOpen}
           onOpenChange={setInviteDialogOpen}
+          room={room}
           onSubmit={handleInviteSubmit}
         />
 

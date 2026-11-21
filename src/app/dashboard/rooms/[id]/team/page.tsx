@@ -2,21 +2,41 @@ import { createServerClientSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { RoomTeamClient } from '@/components/room-team-client';
 import { loadRoomMembers } from '@/lib/room-relations';
+import { getServerAuthUser, getFallbackDemoRoom, isAuthRequired } from '@/lib/dashboard-data';
+
+export const dynamic = 'force-dynamic';
 
 async function getRoomTeam(roomId: string) {
   const supabase = createServerClientSupabase();
 
-  const { data: room } = await supabase
-    .from('rooms')
-    .select('*')
-    .eq('id', roomId)
-    .single();
+  let room: any = null;
+  try {
+    const { data } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('id', roomId)
+      .single();
+    room = data;
+  } catch {}
 
-  if (!room) return { room: null, members: [] };
+  if (!room) {
+    if (!isAuthRequired() || roomId.startsWith('demo-')) {
+      const demo = getFallbackDemoRoom(roomId);
+      return { room: demo.room, members: demo.members };
+    }
+    return { room: null, members: [] };
+  }
 
-  const members = await loadRoomMembers(supabase, roomId, { activeOnly: false });
-
-  return { room, members };
+  try {
+    const members = await loadRoomMembers(supabase, roomId, { activeOnly: false });
+    return { room, members };
+  } catch {
+    if (!isAuthRequired()) {
+      const demo = getFallbackDemoRoom(roomId);
+      return { room: demo.room, members: demo.members };
+    }
+    return { room, members: [] };
+  }
 }
 
 export default async function RoomTeamPage({ params }: { params: Promise<{ id: string }> }) {
@@ -28,7 +48,7 @@ export default async function RoomTeamPage({ params }: { params: Promise<{ id: s
   }
 
   const supabase = createServerClientSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getServerAuthUser(supabase);
   
   if (!user) {
     redirect(`/auth/login?redirect=/dashboard/rooms/${id}/team`);

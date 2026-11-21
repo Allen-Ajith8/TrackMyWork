@@ -1,15 +1,13 @@
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { RoomCreationWizardClient } from '../../../../components/room-creation-wizard-client';
+import { getServerAuthUser } from '@/lib/dashboard-data';
 
-async function getUser() {
-  const supabase = createServerClientSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
-}
+export const dynamic = 'force-dynamic';
 
 export default async function RoomCreationPage() {
-  const user = await getUser();
+  const supabase = createServerClientSupabase();
+  const user = await getServerAuthUser(supabase);
   
   if (!user) {
     redirect('/auth/login?redirect=/dashboard/rooms/new');

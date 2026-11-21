@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useRoomStore, useVibeStore, type VibeFileLock } from '@/lib/store';
 import type { FileLock, VibeHeartbeat } from '@/types/database';
 
@@ -36,6 +36,9 @@ function toFileLock(lock: FileLock, userName: string | null): VibeFileLock {
  * them in sync through Supabase Realtime.
  */
 export function VibeRealtime() {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
   const [supabase] = useState(() => createClient());
   const roomId = useRoomStore((state) => state.currentRoom?.id ?? null);
   const roomMembers = useRoomStore((state) => state.roomMembers);

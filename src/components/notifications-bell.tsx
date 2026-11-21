@@ -14,7 +14,7 @@ import {
   MessageSquare,
   UserPlus,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useAuthStore, useNotificationStore } from '@/lib/store';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import type { Notification, NotificationType } from '@/types/database';
@@ -54,7 +54,10 @@ export function NotificationsBell() {
   const userId = user?.id ?? null;
 
   const load = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !isSupabaseConfigured()) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const { data } = await supabase

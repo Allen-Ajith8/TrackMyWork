@@ -37,20 +37,33 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const admin = createAdminClient();
-  if (!(await canManageRoomRepo(admin, roomId, user.id))) {
-    return NextResponse.json(
-      { error: 'You do not have permission to connect a repository to this room.' },
-      { status: 403 }
+  const slug = process.env.GITHUB_APP_SLUG;
+  const hasGitHubApp =
+    slug &&
+    slug !== 'your-github-app-slug' &&
+    process.env.GITHUB_APP_ID &&
+    process.env.GITHUB_APP_ID !== 'your-github-app-id';
+
+  // If GitHub App credentials are not configured or placeholder, redirect
+  // to the direct repository connection modal in the room dashboard instead of 404ing!
+  if (!hasGitHubApp) {
+    return NextResponse.redirect(
+      new URL(`/dashboard/rooms/${roomId}?connectGithub=true`, url.origin)
     );
   }
 
   try {
+    const admin = createAdminClient();
+    if (!(await canManageRoomRepo(admin, roomId, user.id))) {
+      return NextResponse.json(
+        { error: 'You do not have permission to connect a repository to this room.' },
+        { status: 403 }
+      );
+    }
+
     const state = signGitHubState({ roomId, userId: user.id });
     const res = NextResponse.redirect(getAppInstallUrl(state));
 
-    // Fallback for setups where GitHub does not echo `state` back to the
-    // setup URL. The callback accepts either the query value or this cookie.
     res.cookies.set('github_connect_state', state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -61,14 +74,9 @@ export async function GET(req: NextRequest) {
 
     return res;
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'GitHub App is not configured on the server.',
-      },
-      { status: 500 }
+    // Graceful fallback to in-app direct repository linker
+    return NextResponse.redirect(
+      new URL(`/dashboard/rooms/${roomId}?connectGithub=true`, url.origin)
     );
   }
 }
