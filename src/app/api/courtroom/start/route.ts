@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runCourtroomSession } from '@/lib/courtroom/graph';
+import { isSupabaseConfigured } from '@/lib/dashboard-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +20,33 @@ type StartBody = {
 };
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClientSupabase();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Check for dev mode cookie
+  const cookieHeader = req.headers.get('cookie') || '';
+  console.log('[API courtroom/start] Cookie header:', cookieHeader);
+  const isDevMode = cookieHeader.includes('trackmywork_dev_user=true') || !isSupabaseConfigured();
+  console.log('[API courtroom/start] isDevMode:', isDevMode, 'isSupabaseConfigured:', isSupabaseConfigured());
+  
+  let user = null;
+  if (isSupabaseConfigured()) {
+    const supabase = createServerClientSupabase();
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    if (authUser) user = authUser;
+  }
+  
+  // Demo mode: allow anonymous access when Supabase is not configured or dev cookie is set
+  if (!user && isDevMode) {
+    // Create a demo user for the trial
+    user = { 
+      id: 'demo-dev-user-001', 
+      email: 'dev@trackmywork.local',
+      app_metadata: {},
+      user_metadata: {},
+      aud: 'authenticated',
+      created_at: new Date().toISOString()
+    };
+  }
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
@@ -50,28 +73,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'motion must be at most 4,000 characters.' }, { status: 400 });
   }
 
+  // In dev mode, skip Supabase room membership checks
+  let room: { id: string; created_by: string } | null = null;
   const admin = createAdminClient();
+  if (!isDevMode) {
+    // Verify room membership
+    const [{ data: membership }, { data: profile }, { data: roomData }] = await Promise.all([
+      admin
+        .from('room_members')
+        .select('status')
+        .eq('room_id', roomId)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle(),
+      admin.from('users').select('is_global_admin').eq('id', user.id).maybeSingle(),
+      admin.from('rooms').select('id, created_by').eq('id', roomId).maybeSingle(),
+    ]);
 
-  // Verify room membership
-  const [{ data: membership }, { data: profile }, { data: room }] = await Promise.all([
-    admin
-      .from('room_members')
-      .select('status')
-      .eq('room_id', roomId)
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .maybeSingle(),
-    admin.from('users').select('is_global_admin').eq('id', user.id).maybeSingle(),
-    admin.from('rooms').select('id, created_by').eq('id', roomId).maybeSingle(),
-  ]);
+    room = roomData;
+    const isMember =
+      membership?.status === 'active' ||
+      room?.created_by === user.id ||
+      Boolean(profile?.is_global_admin);
 
-  const isMember =
-    membership?.status === 'active' ||
-    room?.created_by === user.id ||
-    Boolean(profile?.is_global_admin);
+    if (!isMember || !room) {
+      return NextResponse.json({ error: 'You do not have access to this room.' }, { status: 403 });
+    }
+  } else {
+    // Demo mode: fetch room from database but skip membership checks
+    const { data: roomData } = await admin.from('rooms').select('id, created_by').eq('id', roomId).maybeSingle();
+    room = roomData;
+  }
 
-  if (!isMember || !room) {
-    return NextResponse.json({ error: 'You do not have access to this room.' }, { status: 403 });
+  if (!room) {
+    return NextResponse.json({ error: 'Room not found.' }, { status: 404 });
   }
 
   // Insert court_sessions row

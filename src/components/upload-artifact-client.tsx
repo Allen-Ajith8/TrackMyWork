@@ -35,7 +35,7 @@ export function UploadArtifactClient({
   defaultRoomId?: string;
 }) {
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [roomId, setRoomId] = useState(
     defaultRoomId && rooms.some((room) => room.id === defaultRoomId)
       ? defaultRoomId

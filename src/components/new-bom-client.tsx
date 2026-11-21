@@ -11,7 +11,7 @@ const STATUSES: BomStatus[] = ['planned', 'ordered', 'received', 'installed', 'f
 
 export function NewBomClient({ rooms }: { rooms: { id: string; name: string }[] }) {
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [roomId, setRoomId] = useState(rooms[0]?.id || '');
   const [component, setComponent] = useState('');
   const [quantity, setQuantity] = useState('1');

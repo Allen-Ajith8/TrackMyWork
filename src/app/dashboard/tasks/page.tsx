@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
-import { getDashboardContext } from '@/lib/dashboard-data';
+import { getDashboardContext, isSupabaseConfigured, getFallbackDemoRoom } from '@/lib/dashboard-data';
 import { TasksOverviewClient } from '@/components/tasks-overview-client';
+import { DUMMY_TASKS, DUMMY_ROOM } from '@/lib/dummy-data';
 import type { Task } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
@@ -18,25 +19,44 @@ export default async function TasksPage({
 
   let tasks: (Task & { roomName: string })[] = [];
 
-  if (roomIds.length > 0) {
-    const { data } = await supabase
-      .from('tasks')
-      .select('*')
-      .in('room_id', roomIds)
-      .order('created_at', { ascending: false })
-      .limit(200);
+  if (isSupabaseConfigured() && roomIds.length > 0) {
+    try {
+      const { data } = await supabase
+        .from('tasks')
+        .select('*')
+        .in('room_id', roomIds)
+        .order('created_at', { ascending: false })
+        .limit(200);
 
-    const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
-    tasks = (data || []).map((task: Task) => ({
+      const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
+      tasks = (data || []).map((task: Task) => ({
+        ...task,
+        roomName: roomNames.get(task.room_id) || 'Unknown room',
+      }));
+    } catch {
+      // Supabase query error
+    }
+  }
+
+  if (tasks.length === 0) {
+    const demo = getFallbackDemoRoom();
+    tasks = demo.tasks.map((t) => ({
+      ...t,
+      roomName: rooms[0]?.name || 'Algorithm Mastery & CodeTrack',
+    }));
+  }
+
+  if (tasks.length === 0) {
+    tasks = DUMMY_TASKS.map((task) => ({
       ...task,
-      roomName: roomNames.get(task.room_id) || 'Unknown room',
+      roomName: DUMMY_ROOM.name,
     }));
   }
 
   return (
     <TasksOverviewClient
       tasks={tasks}
-      rooms={rooms.map((room) => ({ id: room.id, name: room.name }))}
+      rooms={rooms.length > 0 ? rooms.map((room) => ({ id: room.id, name: room.name })) : [{ id: DUMMY_ROOM.id, name: DUMMY_ROOM.name }]}
       initialStatus={searchParams?.status || 'all'}
     />
   );

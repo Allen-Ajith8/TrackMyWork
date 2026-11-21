@@ -341,6 +341,7 @@ export function TeamManagementClient({ room, initialMembers }: {
 }) {
   const { user } = useAuthStore();
   const { currentRoom } = useRoomStore();
+  const [supabase] = React.useState(() => createClient());
   const [members, setMembers] = React.useState(initialMembers);
   const [inviteDialogOpen, setInviteDialogOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -368,7 +369,6 @@ export function TeamManagementClient({ room, initialMembers }: {
     
     // TODO: Sync with Supabase
     try {
-      const supabase = createClient();
       const { error } = await supabase
         .from('room_members')
         .update(updates)
@@ -387,7 +387,6 @@ export function TeamManagementClient({ room, initialMembers }: {
     setMembers(prev => prev.filter(m => m.id !== memberId));
     
     try {
-      const supabase = createClient();
       const { error } = await supabase
         .from('room_members')
         .delete()
@@ -454,8 +453,10 @@ export function TeamManagementClient({ room, initialMembers }: {
       setMembers((prev) => [...prev, { ...payload.member, user: payload.user }]);
       setToast({
         type: 'success',
-        title: 'Invite Sent',
-        message: `Invitation sent to ${data.email}`,
+        title: payload.emailSent ? 'Invite Email Sent' : 'Teammate Invited',
+        message: payload.emailSent
+          ? `Invitation email dispatched to ${data.email}`
+          : `Teammate added to room. Share room code: ${room.invite_code}`,
       });
     } catch (error) {
       setToast({

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore, useRoomStore, useTaskStore, useVibeStore } from '@/lib/store';
+import { useCachedPermissions, canUserInRoom } from '@/lib/permissions';
 import {
   Plus,
   Search,
@@ -28,7 +29,24 @@ import {
   Wifi,
   WifiOff,
   Github,
+  Award,
+  FileText,
+  ExternalLink,
+  Copy,
+  Check,
+  Sparkles,
+  Shield,
+  Info,
+  Mail,
+  Send,
+  Key,
+  Loader2,
+  MessageSquare,
+  Megaphone,
+  Calendar,
+  Flame,
 } from 'lucide-react';
+import { RoomTeamChat } from '@/components/room-team-chat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,6 +62,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { formatRelativeTime, cn, getTaskStatusColor, getBomStatusColor, getRoleColor } from '@/lib/utils';
+import { usePanicTasks } from '@/hooks/usePanicTasks';
 import type { Task, TaskStatus, TaskCategory, HardwareBomItem, BomStatus, Artifact, RoomMember, User, Room } from '@/types/database';
 
 const STATUS_COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
@@ -84,9 +103,19 @@ function TaskCard({ task, members, onUpdate, onDelete }: TaskCardProps) {
   const assignee = task.assigned_to ? members.find(m => m.user_id === task.assigned_to) : null;
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm p-3 hover:shadow-md transition-shadow">
+    <div className={cn(
+      "bg-white rounded-lg border shadow-sm p-3 hover:shadow-md transition-shadow",
+      (task.is_blocker || task.status === 'blocked') && "border-red-300 ring-1 ring-red-300/50"
+    )}>
       <div className="flex items-start justify-between mb-2">
-        <span className={cn('badge', getTaskStatusColor(task.status))}>{task.status.replace('_', ' ')}</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={cn('badge', getTaskStatusColor(task.status))}>{task.status.replace('_', ' ')}</span>
+          {(task.is_blocker || task.status === 'blocked') && (
+            <span className="badge bg-red-600 text-white font-bold text-[10px]">
+              BLOCKER
+            </span>
+          )}
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="p-1 rounded hover:bg-muted">
@@ -94,6 +123,10 @@ function TaskCard({ task, members, onUpdate, onDelete }: TaskCardProps) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onUpdate(task.id, { is_blocker: !task.is_blocker })}>
+              {task.is_blocker ? 'Unflag Blocker' : 'Flag as Blocker'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onUpdate(task.id, { status: 'todo' })}>Mark as To Do</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onUpdate(task.id, { status: 'in_progress' })}>Mark In Progress</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onUpdate(task.id, { status: 'review' })}>Mark for Review</DropdownMenuItem>
@@ -586,6 +619,547 @@ function ArtifactDialog({ open, onOpenChange, roomId, onSubmit }: ArtifactDialog
   );
 }
 
+const DASHBOARD_ROLE_OPTIONS = [
+  { value: 'Frontend', label: 'Frontend', defaultPermissions: { can_edit_repo: true, can_trigger_nim: false, can_assign_tasks: true, can_upload_assets: true, can_manage_bom: false, can_invite_members: false, can_edit_rules: false } },
+  { value: 'Backend', label: 'Backend', defaultPermissions: { can_edit_repo: true, can_trigger_nim: true, can_assign_tasks: true, can_upload_assets: true, can_manage_bom: false, can_invite_members: false, can_edit_rules: false } },
+  { value: 'AI/ML', label: 'AI/ML', defaultPermissions: { can_edit_repo: true, can_trigger_nim: true, can_assign_tasks: false, can_upload_assets: true, can_manage_bom: false, can_invite_members: false, can_edit_rules: false } },
+  { value: 'Team Leader', label: 'Team Leader (Co-lead)', defaultPermissions: { can_edit_repo: true, can_trigger_nim: true, can_assign_tasks: true, can_upload_assets: true, can_manage_bom: true, can_invite_members: true, can_edit_rules: true } },
+  { value: 'Pitch/Media', label: 'Pitch/Media', defaultPermissions: { can_edit_repo: false, can_trigger_nim: false, can_assign_tasks: true, can_upload_assets: true, can_manage_bom: false, can_invite_members: true, can_edit_rules: false } },
+  { value: 'Video Editor', label: 'Video Editor', defaultPermissions: { can_edit_repo: false, can_trigger_nim: false, can_assign_tasks: false, can_upload_assets: true, can_manage_bom: false, can_invite_members: false, can_edit_rules: false } },
+  { value: 'Hardware', label: 'Hardware', defaultPermissions: { can_edit_repo: true, can_trigger_nim: false, can_assign_tasks: true, can_upload_assets: true, can_manage_bom: true, can_invite_members: false, can_edit_rules: false } },
+  { value: 'Designer', label: 'Designer', defaultPermissions: { can_edit_repo: false, can_trigger_nim: false, can_assign_tasks: false, can_upload_assets: true, can_manage_bom: false, can_invite_members: false, can_edit_rules: false } },
+  { value: 'DevOps', label: 'DevOps', defaultPermissions: { can_edit_repo: true, can_trigger_nim: true, can_assign_tasks: true, can_upload_assets: false, can_manage_bom: false, can_invite_members: false, can_edit_rules: true } },
+  { value: 'Custom', label: 'Custom Role', defaultPermissions: { can_edit_repo: true, can_trigger_nim: false, can_assign_tasks: true, can_upload_assets: true, can_manage_bom: false, can_invite_members: false, can_edit_rules: false } },
+];
+
+const RBAC_TOGGLES: { key: string; label: string; desc: string }[] = [
+  { key: 'can_edit_repo', label: 'Edit Repository', desc: 'Push code, create branches, open/merge PRs' },
+  { key: 'can_trigger_nim', label: 'Trigger NIM AI', desc: 'Run automated AI summaries & SOS debug routines' },
+  { key: 'can_assign_tasks', label: 'Assign Tasks', desc: 'Create, update and reassign Kanban tasks' },
+  { key: 'can_upload_assets', label: 'Upload Assets', desc: 'Upload demo videos, APK builds, and slides' },
+  { key: 'can_manage_bom', label: 'Manage BOM', desc: 'Add and edit hardware components & budget' },
+  { key: 'can_invite_members', label: 'Invite Teammates', desc: 'Send room invitations to other teammates' },
+  { key: 'can_edit_rules', label: 'Edit Room Rules', desc: 'Modify tech stack locks, rubric and deadlines' },
+];
+
+interface InviteTeammateDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  roomId: string;
+  roomName: string;
+  inviteCode: string;
+  onInviteSent?: (newMember: any) => void;
+}
+
+function InviteTeammateDialog({
+  open,
+  onOpenChange,
+  roomId,
+  roomName,
+  inviteCode,
+  onInviteSent,
+}: InviteTeammateDialogProps) {
+  const [email, setEmail] = React.useState('');
+  const [roleTitle, setRoleTitle] = React.useState('Frontend');
+  const [customRoleName, setCustomRoleName] = React.useState('');
+  const [permissions, setPermissions] = React.useState<Record<string, boolean>>({
+    can_edit_repo: true,
+    can_trigger_nim: false,
+    can_assign_tasks: true,
+    can_upload_assets: true,
+    can_manage_bom: false,
+    can_invite_members: false,
+    can_edit_rules: false,
+  });
+  const [loading, setLoading] = React.useState(false);
+  const [successData, setSuccessData] = React.useState<{
+    joinUrl: string;
+    inviteCode: string;
+    email: string;
+    emailSent: boolean;
+  } | null>(null);
+  const [errorMsg, setErrorMsg] = React.useState('');
+  const [copiedLink, setCopiedLink] = React.useState(false);
+  const [copiedCode, setCopiedCode] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) {
+      setSuccessData(null);
+      setErrorMsg('');
+      setEmail('');
+    }
+  }, [open]);
+
+  const handleRoleSelect = (selectedRole: string) => {
+    setRoleTitle(selectedRole);
+    const preset = DASHBOARD_ROLE_OPTIONS.find((r) => r.value === selectedRole);
+    if (preset) {
+      setPermissions((prev) => ({ ...prev, ...preset.defaultPermissions }));
+    }
+  };
+
+  const handleTogglePermission = (key: string, checked: boolean) => {
+    setPermissions((prev) => ({ ...prev, [key]: checked }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          role_title: roleTitle,
+          custom_role_name: roleTitle === 'Custom' ? customRoleName.trim() : null,
+          permissions,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send invitation.');
+      }
+
+      const generatedUrl = data.joinUrl || `${window.location.origin}/dashboard/rooms/join?roomId=${encodeURIComponent(roomId)}&code=${encodeURIComponent(data.inviteCode || inviteCode)}`;
+
+      setSuccessData({
+        joinUrl: generatedUrl,
+        inviteCode: data.inviteCode || inviteCode,
+        email: email.trim(),
+        emailSent: Boolean(data.emailSent),
+      });
+
+      if (onInviteSent && data.member) {
+        onInviteSent({
+          ...data.member,
+          user: data.user || {
+            email: email.trim(),
+            display_name: email.split('@')[0],
+          },
+        });
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Could not send invitation.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (successData?.joinUrl) {
+      navigator.clipboard.writeText(successData.joinUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    }
+  };
+
+  const handleCopyCode = () => {
+    const codeToCopy = successData?.inviteCode || inviteCode;
+    if (codeToCopy) {
+      navigator.clipboard.writeText(codeToCopy);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <Mail className="w-5 h-5 text-primary-600" />
+              Invite Teammate via Email
+            </DialogTitle>
+            <Badge variant="outline" className="font-mono text-xs">
+              Room: {inviteCode}
+            </Badge>
+          </div>
+        </DialogHeader>
+
+        {successData ? (
+          <div className="space-y-4 py-2">
+            {successData.emailSent ? (
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <p className="font-bold text-sm">Invitation Email Dispatched!</p>
+                </div>
+                <p className="text-xs text-emerald-900 leading-relaxed">
+                  An email has been delivered directly to <strong className="font-semibold">{successData.email}</strong>. When they click the link in their email, they will automatically join <strong className="font-semibold">{roomName}</strong>.
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
+                  <p className="font-bold text-sm">Teammate Added to Room!</p>
+                </div>
+                <p className="text-xs text-amber-900 leading-relaxed">
+                  The invitation is created for <strong className="font-semibold">{successData.email}</strong>. Because SMTP credentials are not yet added in <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">.env.local</code>, automated email delivery is paused.
+                </p>
+                <div className="p-2.5 rounded-lg bg-white/80 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+                  👉 <strong>To send real emails to inboxes automatically</strong>: Add your Gmail App Password (<code className="font-mono">GMAIL_USER</code> &amp; <code className="font-mono">GMAIL_APP_PASSWORD</code>) to <code className="font-mono">.env.local</code>.
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3 pt-1">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Direct One-Click Join Link (Share with Teammate)
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    readOnly
+                    value={successData.joinUrl}
+                    className="font-mono text-xs bg-muted/50 truncate"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopyLink}
+                    className="shrink-0 text-xs font-semibold gap-1.5 cursor-pointer"
+                  >
+                    {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedLink ? 'Copied!' : 'Copy Link'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  6-Digit Room Invite Code
+                </Label>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-surface-100 border font-mono">
+                  <span className="text-base font-bold tracking-widest text-primary-900">{successData.inviteCode}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCopyCode}
+                    className="h-7 text-xs font-semibold gap-1 cursor-pointer"
+                  >
+                    {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedCode ? 'Copied' : 'Copy Code'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSuccessData(null);
+                  setEmail('');
+                }}
+              >
+                Invite Another Teammate
+              </Button>
+              <Button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="bg-primary-600 hover:bg-primary-700 text-white font-semibold"
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {errorMsg && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-900 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="teammateEmail" className="text-xs font-bold">
+                Teammate Email Address *
+              </Label>
+              <Input
+                id="teammateEmail"
+                type="email"
+                placeholder="colleague@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+              />
+              <p className="text-[11px] text-muted-foreground">
+                An invitation email will be dispatched containing the direct room join link and code.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Role Title</Label>
+                <Select value={roleTitle} onValueChange={handleRoleSelect}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DASHBOARD_ROLE_OPTIONS.map((r) => (
+                      <SelectItem key={r.value} value={r.value} className="text-xs">
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {roleTitle === 'Custom' && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="customRole" className="text-xs font-bold">Custom Title</Label>
+                  <Input
+                    id="customRole"
+                    placeholder="e.g. Lead Researcher"
+                    value={customRoleName}
+                    onChange={(e) => setCustomRoleName(e.target.value)}
+                    className="h-9 text-xs"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* RBAC Permission Switches */}
+            <div className="space-y-2 border rounded-xl p-3 bg-muted/20">
+              <div className="flex items-center justify-between pb-1 border-b">
+                <span className="text-xs font-bold text-foreground">Role Permissions (RBAC)</span>
+                <span className="text-[10px] text-muted-foreground font-mono">Discord-style</span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 max-h-48 overflow-y-auto pr-1">
+                {RBAC_TOGGLES.map((perm) => (
+                  <label
+                    key={perm.key}
+                    className="flex items-start gap-2 p-1.5 rounded-lg hover:bg-muted/50 cursor-pointer text-xs"
+                  >
+                    <Switch
+                      checked={Boolean(permissions[perm.key])}
+                      onCheckedChange={(val) => handleTogglePermission(perm.key, val)}
+                      className="mt-0.5 scale-90"
+                    />
+                    <div className="leading-tight">
+                      <p className="font-semibold text-foreground text-[11px]">{perm.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{perm.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading || !email.trim()}
+                className="bg-primary-600 hover:bg-primary-700 text-white font-semibold shadow-xs"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Sending Email...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Invitation
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface ConnectGithubDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  roomId: string;
+  roomName: string;
+  currentRepo: string | null;
+  onConnected: (repoUrl: string) => void;
+}
+
+function ConnectGithubDialog({
+  open,
+  onOpenChange,
+  roomId,
+  roomName,
+  currentRepo,
+  onConnected,
+}: ConnectGithubDialogProps) {
+  const [repoInput, setRepoInput] = React.useState(currentRepo || '');
+  const [loading, setLoading] = React.useState(false);
+  const [verifiedRepo, setVerifiedRepo] = React.useState<any>(null);
+  const [errorMsg, setErrorMsg] = React.useState('');
+  const [successMsg, setSuccessMsg] = React.useState('');
+
+  React.useEffect(() => {
+    if (open) {
+      setRepoInput(currentRepo || '');
+      setErrorMsg('');
+      setSuccessMsg('');
+      setVerifiedRepo(null);
+    }
+  }, [open, currentRepo]);
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!repoInput.trim()) return;
+
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const res = await fetch('/api/github/verify-repo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoUrl: repoInput.trim(),
+          roomId,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Could not verify GitHub repository.');
+      }
+
+      setVerifiedRepo(data.repo);
+      setSuccessMsg(`🎉 Connected ${data.repo.fullName} to ${roomName}!`);
+      onConnected(data.repo.htmlUrl);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to connect repository.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <Github className="w-5 h-5 text-foreground" />
+              Connect GitHub Repository
+            </DialogTitle>
+            <Badge variant="outline" className="text-xs font-mono">
+              Live GitHub Sync
+            </Badge>
+          </div>
+        </DialogHeader>
+
+        <form onSubmit={handleVerify} className="space-y-4 pt-1">
+          {errorMsg && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-900 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="font-medium">{successMsg}</span>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label htmlFor="repoInput" className="text-xs font-bold">
+              GitHub Repository URL or owner/repo *
+            </Label>
+            <Input
+              id="repoInput"
+              placeholder="e.g. https://github.com/owner/repo or owner/repo"
+              value={repoInput}
+              onChange={(e) => setRepoInput(e.target.value)}
+              className="font-mono text-xs"
+              required
+              autoFocus
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Enter any public or team repository URL to link commits, branches, and PRs to this room.
+            </p>
+          </div>
+
+          {verifiedRepo && (
+            <div className="p-3 rounded-xl bg-surface-100 border space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <a
+                  href={verifiedRepo.htmlUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-primary-700 hover:underline flex items-center gap-1"
+                >
+                  <Github className="w-3.5 h-3.5" />
+                  {verifiedRepo.fullName}
+                  <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                </a>
+                <Badge variant="secondary" className="font-mono text-[10px]">
+                  🌿 {verifiedRepo.defaultBranch}
+                </Badge>
+              </div>
+              {verifiedRepo.description && (
+                <p className="text-[11px] text-muted-foreground line-clamp-2">
+                  {verifiedRepo.description}
+                </p>
+              )}
+              <div className="flex items-center gap-3 text-[11px] text-muted-foreground pt-1 border-t">
+                <span>⭐ {verifiedRepo.stars} stars</span>
+                <span>🍴 {verifiedRepo.forks} forks</span>
+                <span>💻 {verifiedRepo.language}</span>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {verifiedRepo ? 'Close' : 'Cancel'}
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading || !repoInput.trim()}
+              className="bg-primary-600 hover:bg-primary-700 text-white font-semibold"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Github className="w-4 h-4 mr-2" />
+                  {verifiedRepo ? 'Re-verify' : 'Connect Repository'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function RoomDashboardClient({ room, initialTasks, initialBom, initialArtifacts, initialMembers }: {
   room: Room;
   initialTasks: (Task & { assignee?: User | null })[];
@@ -594,13 +1168,18 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
   initialMembers: (RoomMember & { user: User })[];
 }) {
   const { user } = useAuthStore();
+  const cachedPermissions = useCachedPermissions(user?.id ?? null);
   const { currentRoom, setCurrentRoom, setRoomMembers } = useRoomStore();
   const { tasks, setTasks, addTask, updateTask, removeTask } = useTaskStore();
   const { heartbeats, fileLocks } = useVibeStore();
-  const [activeTab, setActiveTab] = React.useState<'tasks' | 'bom' | 'artifacts'>('tasks');
+  const [activeTab, setActiveTab] = React.useState<'tasks' | 'chat' | 'bom' | 'artifacts' | 'rules'>('tasks');
   const [taskDialogOpen, setTaskDialogOpen] = React.useState(false);
   const [bomDialogOpen, setBomDialogOpen] = React.useState(false);
   const [artifactDialogOpen, setArtifactDialogOpen] = React.useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = React.useState(false);
+  const [githubDialogOpen, setGithubDialogOpen] = React.useState(false);
+  const [membersList, setMembersList] = React.useState(initialMembers);
+  const [connectedRepo, setConnectedRepo] = React.useState<string | null>(room.github_repo || null);
   const [editingTask, setEditingTask] = React.useState<Task | null>(null);
   const [editingBomItem, setEditingBomItem] = React.useState<HardwareBomItem | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -608,21 +1187,126 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
   const [filterCategory, setFilterCategory] = React.useState<TaskCategory | 'all'>('all');
 
   React.useEffect(() => {
-    setCurrentRoom(room);
+    if (!room?.id) return;
+    const current = useRoomStore.getState().currentRoom;
+    const targetRepo = connectedRepo ?? room.github_repo ?? null;
+    if (current?.id !== room.id || (current?.github_repo || null) !== targetRepo) {
+      setCurrentRoom({ ...room, github_repo: targetRepo });
+    }
     setRoomMembers(initialMembers);
     setTasks(initialTasks);
-  }, [room, initialMembers, setCurrentRoom, setRoomMembers, setTasks]);
+  }, [room.id, connectedRepo, room.github_repo]);
 
-  const canManageRepo = Boolean(
-    user &&
-      (room.created_by === user.id ||
-        initialMembers.some(
-          (member) =>
-            member.user_id === user.id && member.flag_is_team_leader
-        ))
+  // Check URL parameters for direct github connect trigger
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('connectGithub') === 'true') {
+        setGithubDialogOpen(true);
+      }
+    }
+  }, []);
+
+  const activeRoom = (currentRoom && (currentRoom.id === room.id || currentRoom.name === room.name))
+    ? { ...room, ...currentRoom, github_repo: connectedRepo ?? currentRoom.github_repo ?? room.github_repo }
+    : { ...room, github_repo: connectedRepo ?? room.github_repo };
+
+  const canManageRepo = canUserInRoom(
+    room.id,
+    user?.id,
+    room.created_by,
+    cachedPermissions,
+    membersList,
+    'can_edit_repo'
   );
 
-  const filteredTasks = tasks.filter(task => {
+  const canInvite = canUserInRoom(
+    room.id,
+    user?.id,
+    room.created_by,
+    cachedPermissions,
+    membersList,
+    'can_invite_members'
+  );
+
+  const deadlineTimestamp =
+    (activeRoom as any).submission_deadline ||
+    (activeRoom as any).deadline ||
+    (activeRoom as any).hackathon_end_time ||
+    (activeRoom as any).hackathon_end_date ||
+    new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+  const hackathonName = (activeRoom as any).hackathon_name;
+
+  // Real-time Hack-Timer countdown calculation (updates every second)
+  const [timeLeft, setTimeLeft] = React.useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    formatted: string;
+    urgency: 'critical' | 'warning' | 'normal' | 'expired';
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (!deadlineTimestamp) return;
+
+    const calcTime = () => {
+      const now = Date.now();
+      const target = new Date(deadlineTimestamp).getTime();
+      const diff = target - now;
+
+      if (isNaN(target)) return null;
+
+      if (diff <= 0) {
+        return {
+          days: 0,
+          hours: 0,
+          minutes: 0,
+          seconds: 0,
+          formatted: 'Deadline Expired',
+          urgency: 'expired' as const,
+        };
+      }
+
+      const totalSecs = Math.floor(diff / 1000);
+      const days = Math.floor(totalSecs / 86400);
+      const hours = Math.floor((totalSecs % 86400) / 3600);
+      const minutes = Math.floor((totalSecs % 3600) / 60);
+      const seconds = totalSecs % 60;
+
+      let urgency: 'critical' | 'warning' | 'normal' = 'normal';
+      if (diff < 24 * 3600 * 1000) {
+        urgency = 'critical';
+      } else if (diff < 72 * 3600 * 1000) {
+        urgency = 'warning';
+      }
+
+      return {
+        days,
+        hours,
+        minutes,
+        seconds,
+        formatted: `${days > 0 ? `${days}d ` : ''}${hours}h ${minutes}m ${seconds}s`,
+        urgency,
+      };
+    };
+
+    setTimeLeft(calcTime());
+    const interval = setInterval(() => {
+      setTimeLeft(calcTime());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [deadlineTimestamp]);
+
+  const { isPanicMode, panicTasks } = usePanicTasks({
+    tasks,
+    roomId: room.id,
+  });
+
+  const baseTasks = isPanicMode ? panicTasks : tasks;
+
+  const filteredTasks = baseTasks.filter(task => {
     if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (filterStatus !== 'all' && task.status !== filterStatus) return false;
     if (filterCategory !== 'all' && task.category !== filterCategory) return false;
@@ -722,45 +1406,93 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
               <Kanban className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">{room.name}</h1>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl font-bold">{activeRoom.name}</h1>
+                {timeLeft && (
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold shadow-xs ${
+                      timeLeft.urgency === 'critical'
+                        ? 'bg-red-100 text-red-900 border border-red-300 animate-pulse'
+                        : timeLeft.urgency === 'warning'
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                        : 'bg-purple-100 text-purple-900 border border-purple-300'
+                    }`}
+                    title={`Hack-Timer Countdown: ${timeLeft.formatted} remaining`}
+                  >
+                    <Clock className="w-3 h-3 text-primary-600" />
+                    <span>Hack-Timer: {timeLeft.formatted}</span>
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
-                {room.project_type} • {room.team_size} members • Invite: {room.invite_code}
+                {hackathonName ? `${hackathonName} • ` : ''}
+                {activeRoom.project_type} • {activeRoom.team_size} members • Invite: {activeRoom.invite_code}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Live Presence Avatars */}
-            <div className="flex items-center gap-1">
-              {initialMembers.slice(0, 5).map(member => {
-                const hb = getHeartbeatForUser(member.user_id);
-                const isActive = !!hb;
-                return (
-                  <Avatar
-                    key={member.user_id}
-                    className="relative"
-                    src={member.user.avatar_url}
-                    fallback={member.user.display_name || member.user.username || member.user.email}
-                  >
-                    {isActive && (
-                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white animate-pulse" />
-                    )}
-                  </Avatar>
-                );
-              })}
-              {initialMembers.length > 5 && (
-                <Avatar className="bg-muted" fallback={`+${initialMembers.length - 5}`} />
-              )}
-            </div>
-            {!room.github_installation_id && canManageRepo && (
-              <Button variant="outline" size="sm" asChild>
+            {/* GitHub Connection Status / Trigger */}
+            {connectedRepo ? (
+              <div className="flex items-center gap-1">
                 <a
-                  href={`/api/github/connect?roomId=${encodeURIComponent(room.id)}`}
+                  href={connectedRepo.startsWith('http') ? connectedRepo : `https://github.com/${connectedRepo}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border bg-surface-50 hover:bg-surface-100 text-xs font-semibold text-foreground transition-colors"
+                  title="Open connected GitHub repository"
                 >
+                  <Github className="w-3.5 h-3.5 text-primary-600" />
+                  <span className="max-w-[130px] truncate">{connectedRepo.replace('https://github.com/', '')}</span>
+                  <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                </a>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setGithubDialogOpen(true)}
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  title="Connect a different repository"
+                >
+                  Change
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setGithubDialogOpen(true)}
+                className="gap-1.5 text-xs font-semibold border-primary-200 text-primary-700 bg-primary-50/50 hover:bg-primary-100"
+              >
+                <Github className="w-4 h-4 text-primary-600" />
+                <span>Connect GitHub</span>
+              </Button>
+            )}
+
+            {!activeRoom.github_installation_id && canManageRepo && (
+              <Button variant="outline" size="sm" asChild>
+                <a href={`/api/github/connect?roomId=${encodeURIComponent(activeRoom.id)}`}>
                   <Github className="w-4 h-4 mr-2" />
-                  Connect GitHub
+                  Install GitHub App
                 </a>
               </Button>
             )}
+
+            {canInvite && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setInviteDialogOpen(true)}
+                className="bg-primary-600 hover:bg-primary-700 text-white font-medium shadow-xs"
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Invite Teammate
+              </Button>
+            )}
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/dashboard/rooms/${room.id}/team`}>
+                <Users className="w-4 h-4 mr-2" />
+                Team
+              </Link>
+            </Button>
             <Button variant="outline" size="sm" asChild>
               <Link href={`/dashboard/rooms/${room.id}/settings`}>
                 <Settings className="w-4 h-4 mr-2" />
@@ -770,6 +1502,43 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
           </div>
         </div>
       </div>
+
+      {/* Prominent Deadline Notification Banner */}
+      {timeLeft && (
+        <div
+          className={`px-6 py-2 flex items-center justify-between text-xs font-medium border-b shadow-xs transition-colors ${
+            timeLeft.urgency === 'critical'
+              ? 'bg-red-600 text-white animate-pulse'
+              : timeLeft.urgency === 'warning'
+              ? 'bg-amber-100 text-amber-950 border-amber-300'
+              : 'bg-purple-50 text-purple-950 border-purple-200'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {timeLeft.urgency === 'critical' ? (
+              <Flame className="w-4 h-4 text-amber-300" />
+            ) : (
+              <Clock className="w-4 h-4 text-primary-600" />
+            )}
+            <span>
+              <strong>{timeLeft.urgency === 'critical' ? '🚨 FINAL SPRINT ALERT:' : '⏰ DEADLINE NOTICE:'}</strong>{' '}
+              {timeLeft.formatted} remaining until final project submission (
+              {new Date(deadlineTimestamp).toLocaleDateString()} {new Date(deadlineTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant={timeLeft.urgency === 'critical' ? 'secondary' : 'outline'}
+              onClick={() => setActiveTab('chat')}
+              className="h-6 text-[11px] font-bold gap-1"
+            >
+              <Megaphone className="w-3 h-3" />
+              Announce in Chat
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Live IDE telemetry (heartbeats + file locks from the MCP server) */}
       {(liveHeartbeats.length > 0 || liveLocks.length > 0) && (
@@ -804,24 +1573,37 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
         </div>
       )}
 
-      {/* Tab Navigation */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
-        <div className="border-b bg-white px-6 flex-shrink-0">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="tasks">
-              <Kanban className="w-4 h-4 mr-2" />
-              Tasks
-            </TabsTrigger>
-            <TabsTrigger value="bom">
-              <Package className="w-4 h-4 mr-2" />
-              BOM
-            </TabsTrigger>
-            <TabsTrigger value="artifacts">
-              <FileImage className="w-4 h-4 mr-2" />
-              Artifacts
-            </TabsTrigger>
-          </TabsList>
-        </div>
+      {/* Tab Navigation - BOM is only displayed for hardware projects */}
+      {(() => {
+        const isHardware = activeRoom.project_type === 'hardware';
+        return (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
+            <div className="border-b bg-white px-6 flex-shrink-0">
+              <TabsList className={cn('grid w-full', isHardware ? 'grid-cols-5' : 'grid-cols-4')}>
+                <TabsTrigger value="tasks">
+                  <Kanban className="w-4 h-4 mr-2" />
+                  Tasks
+                </TabsTrigger>
+                <TabsTrigger value="chat">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Team Chat
+                </TabsTrigger>
+                {isHardware && (
+                  <TabsTrigger value="bom">
+                    <Package className="w-4 h-4 mr-2" />
+                    BOM
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value="artifacts">
+                  <FileImage className="w-4 h-4 mr-2" />
+                  Artifacts
+                </TabsTrigger>
+                <TabsTrigger value="rules">
+                  <Award className="w-4 h-4 mr-2" />
+                  Rules & Rubric
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
@@ -868,27 +1650,42 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
 
             {/* Kanban Board */}
             <div className="flex-1 overflow-x-auto">
-              <ScrollArea className="h-full">
-                <div className="flex gap-4 h-full pb-4">
-                  {STATUS_COLUMNS.map(col => (
-                    <KanbanColumn
-                      key={col.id}
-                      status={col.id}
-                      label={col.label}
-                      tasks={tasksByStatus[col.id]}
-                      members={initialMembers}
-                      onUpdateTask={handleUpdateTask}
-                      onDeleteTask={handleDeleteTask}
-                    />
-                  ))}
+              {isPanicMode && filteredTasks.length === 0 ? (
+                <div className="h-full min-h-[300px] flex flex-col items-center justify-center p-8 text-center bg-surface-50/50 rounded-xl border">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 shadow-sm">
+                    <CheckCircle className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-lg font-bold text-surface-900 mb-1">
+                    No blockers, nothing due in the next 2h
+                  </h3>
+                  <p className="text-sm text-surface-500 max-w-sm">
+                    All critical work is resolved or not urgently due. Take a breath, you are on track!
+                  </p>
                 </div>
-              </ScrollArea>
+              ) : (
+                <ScrollArea className="h-full">
+                  <div className="flex gap-4 h-full pb-4">
+                    {STATUS_COLUMNS.map(col => (
+                      <KanbanColumn
+                        key={col.id}
+                        status={col.id}
+                        label={col.label}
+                        tasks={tasksByStatus[col.id]}
+                        members={initialMembers}
+                        onUpdateTask={handleUpdateTask}
+                        onDeleteTask={handleDeleteTask}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
             </div>
           </div>
         </TabsContent>
 
-        {/* Hardware BOM */}
-        <TabsContent value="bom" className="h-full">
+        {/* Hardware BOM (Only for Hardware Projects) */}
+        {isHardware && (
+          <TabsContent value="bom" className="h-full">
           <div className="p-4 h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Bill of Materials</h2>
@@ -983,6 +1780,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
             )}
           </div>
         </TabsContent>
+        )}
 
         {/* Artifacts Gallery */}
         <TabsContent value="artifacts" className="h-full">
@@ -1046,20 +1844,141 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
             </div>
           </div>
         </TabsContent>
+
+        {/* Team Live Chat */}
+        <TabsContent value="chat" className="h-full">
+          <div className="p-4 h-full">
+            <RoomTeamChat
+              roomId={activeRoom.id}
+              roomName={activeRoom.name}
+              inviteCode={activeRoom.invite_code}
+              githubRepo={connectedRepo ?? activeRoom.github_repo ?? null}
+              deadline={deadlineTimestamp}
+              currentUser={user}
+              isTeamLeader={canInvite}
+              userRole={membersList.find((m) => m.user_id === user?.id)?.role_title || (canInvite ? 'Team Leader' : 'Frontend')}
+            />
+          </div>
+        </TabsContent>
+
+        {/* Rules & Rubric */}
+        <TabsContent value="rules" className="h-full overflow-y-auto p-6 space-y-4">
+          <div className="max-w-4xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b">
+              <div>
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <Award className="w-5 h-5 text-primary-600" />
+                  Hackathon Rules, Rubric & Constraints
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Official project specifications, evaluation criteria, and tech stack locks.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Problem Statement
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs leading-relaxed text-surface-800">
+                  {activeRoom.problem_statement || activeRoom.description || 'No problem statement recorded.'}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Submission Format & Budget Cap
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs">
+                  <div>
+                    <span className="font-semibold text-foreground">Format: </span>
+                    <span className="text-muted-foreground">{activeRoom.submission_format || 'GitHub Repo + Pitch Video + Presentation'}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-foreground">Allowed Tech: </span>
+                    <span className="text-muted-foreground">{activeRoom.allowed_tech || 'Open / Unrestricted'}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {activeRoom.judging_rubric && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Judging Rubric
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="p-4 rounded-xl bg-surface-50 border border-surface-200 font-mono text-xs whitespace-pre-wrap leading-relaxed text-surface-800 max-h-60 overflow-y-auto">
+                    {activeRoom.judging_rubric}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {activeRoom.rules_text && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Official Competition Rules
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="p-4 rounded-xl bg-surface-50 border border-surface-200 font-mono text-xs whitespace-pre-wrap leading-relaxed text-surface-800 max-h-60 overflow-y-auto">
+                    {activeRoom.rules_text}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
       </div>
       </Tabs>
+      );
+      })()}
 
       {/* Dialogs for editing (inline with triggers for new items) */}
       {editingTask && (
         <TaskDialog
           open={taskDialogOpen}
           onOpenChange={setTaskDialogOpen}
-          members={initialMembers}
+          members={membersList}
           roomId={room.id}
           onSubmit={(data) => handleUpdateTask(editingTask.id, data)}
           editingTask={editingTask}
         />
       )}
+
+      {/* Invite Teammate via Email Dialog */}
+      <InviteTeammateDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        roomId={activeRoom.id}
+        roomName={activeRoom.name}
+        inviteCode={activeRoom.invite_code}
+        onInviteSent={(newMember) => {
+          setMembersList((prev) => [...prev, newMember]);
+        }}
+      />
+
+      {/* Connect GitHub Dialog */}
+      <ConnectGithubDialog
+        open={githubDialogOpen}
+        onOpenChange={setGithubDialogOpen}
+        roomId={activeRoom.id}
+        roomName={activeRoom.name}
+        currentRepo={connectedRepo}
+        onConnected={(repoUrl) => {
+          setConnectedRepo(repoUrl);
+          setCurrentRoom({ ...activeRoom, github_repo: repoUrl });
+        }}
+      />
     </div>
   );
 }

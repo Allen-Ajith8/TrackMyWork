@@ -38,7 +38,7 @@ interface SettingsClientProps {
 
 export function SettingsClient({ profile, stats }: SettingsClientProps) {
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const [signingOut, setSigningOut] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(
     typeof window !== 'undefined' && 'Notification' in window

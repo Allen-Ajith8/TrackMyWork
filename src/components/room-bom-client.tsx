@@ -211,6 +211,7 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
   initialMembers: (RoomMember & { user: User })[];
 }) {
   const { user } = useAuthStore();
+  const [supabase] = React.useState(() => createClient());
   const [bom, setBom] = React.useState(initialBom);
   const [bomDialogOpen, setBomDialogOpen] = React.useState(false);
   const [editingBomItem, setEditingBomItem] = React.useState<HardwareBomItem | null>(null);
@@ -230,7 +231,6 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
   const failedCount = bom.filter(i => i.status === 'failed').length;
 
   const handleUpdateBom = async (data: Partial<HardwareBomItem>) => {
-    const supabase = createClient();
     if (editingBomItem) {
       setBom(prev => prev.map(i => i.id === editingBomItem.id ? { ...i, ...data, updated_at: new Date().toISOString() } : i));
       try {
@@ -263,7 +263,6 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
     if (!confirm('Delete this BOM item?')) return;
     setBom(prev => prev.filter(i => i.id !== id));
     try {
-      const supabase = createClient();
       await supabase.from('hardware_bom').delete().eq('id', id);
     } catch (error) {
       console.error('Failed to delete BOM item:', error);

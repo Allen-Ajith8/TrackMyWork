@@ -183,6 +183,7 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
   initialMembers: (RoomMember & { user: User })[];
 }) {
   const { user } = useAuthStore();
+  const [supabase] = React.useState(() => createClient());
   const [artifacts, setArtifacts] = React.useState(initialArtifacts);
   const [artifactDialogOpen, setArtifactDialogOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -223,7 +224,6 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
     if (!confirm('Delete this artifact?')) return;
     setArtifacts(prev => prev.filter(a => a.id !== id));
     try {
-      const supabase = createClient();
       await supabase.from('artifacts').delete().eq('id', id);
     } catch (error) {
       console.error('Failed to delete artifact:', error);

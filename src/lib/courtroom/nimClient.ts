@@ -98,6 +98,76 @@ function stripJsonFences(text: string): string {
     .trim();
 }
 
+// ---------------------------------------------------------------------------
+// Resilient NIM JSON parser
+// Handles empty/truncated outputs,  reasoning blocks,
+// markdown fences, and conversational text wrapping the JSON object.
+// ---------------------------------------------------------------------------
+
+export function parseNimJson<T = unknown>(
+  rawContent: string | null | undefined,
+  role: string,
+  modelUsed: string
+): { data: T; modelUsed: string } {
+  const raw = rawContent ?? '';
+
+  if (!raw.trim()) {
+    console.warn(
+      `[Courtroom NIM JSON] role=${role} model=${modelUsed} raw_content="" (empty)`
+    );
+    throw new Error(
+      `Failed to parse NIM JSON output for role ${role} (model ${modelUsed}): empty response content (first 150 chars: "")`
+    );
+  }
+
+  // Log the raw content so empty/truncated outputs are visible in server logs.
+  console.warn(
+    `[Courtroom NIM JSON] role=${role} model=${modelUsed} raw_content_preview=${JSON.stringify(
+      raw.slice(0, 500)
+    )}`
+  );
+
+  // Strip  reasoning blocks
+  let cleaned = raw.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+
+  // Strip all markdown code fences (``` ... ``` and ```json ... ```)
+  cleaned = cleaned.replace(/```[\s\S]*?```/gi, '').trim();
+
+  // Try direct parse first
+  try {
+    return { data: JSON.parse(cleaned) as T, modelUsed };
+  } catch {
+    // Fall through to extraction below.
+  }
+
+  // Extract from first { to last } (or [ to ] for arrays)
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  const firstBracket = cleaned.indexOf('[');
+  const lastBracket = cleaned.lastIndexOf(']');
+
+  // Prefer object extraction, fall back to array
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    const candidate = cleaned.slice(firstBrace, lastBrace + 1);
+    try {
+      return { data: JSON.parse(candidate) as T, modelUsed };
+    } catch {
+      // Fall through to error below.
+    }
+  } else if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+    const candidate = cleaned.slice(firstBracket, lastBracket + 1);
+    try {
+      return { data: JSON.parse(candidate) as T, modelUsed };
+    } catch {
+      // Fall through to error below.
+    }
+  }
+
+  throw new Error(
+    `Failed to parse NIM JSON output for role ${role} (model ${modelUsed}): no valid JSON object found (first 150 chars: ${raw.slice(0, 150)})`
+  );
+}
+
 function jitterDelay(minMs: number, maxMs: number): number {
   return Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
 }
@@ -222,6 +292,16 @@ async function callNimWithFallback({
 
       const json = (await response.json()) as NimRawResponse;
       const content = json.choices[0]?.message?.content || '';
+
+      // Retryable: empty content (model exhausted max_tokens on reasoning).
+      if (!content.trim()) {
+        lastError = new Error(
+          `NIM ${attempt.kind} model ${attempt.model} returned empty content`
+        );
+        await sleep(jitterDelay(600, 1200));
+        continue; // try fallback
+      }
+
       return { text: content, modelUsed: json.model || attempt.model };
     } catch (error) {
       if (error instanceof FatalNimConfigError) throw error;
@@ -301,46 +381,30 @@ export async function invokeCourtroomText({
  * Strips <think>...</think> blocks and ```json fences, then JSON.parse.
  * One automatic repair/fallback retry if malformed.
  *
- * Default maxTokens = 750. Default timeout = 8000ms (lightweight JSON).
+ * Default maxTokens = 2048. Default timeout = 15000ms.
  */
 export async function invokeCourtroomJson<T = unknown>({
   role,
   systemPrompt,
   userPrompt,
-  maxTokens = 750,
+  maxTokens = 2048,
 }: InvokeJsonParams<T>): Promise<InvokeResult<T>> {
+  // Ensure the system prompt explicitly signals JSON output mode.
+  const jsonSystemPrompt = /JSON/i.test(systemPrompt)
+    ? systemPrompt
+    : `${systemPrompt}\n\nIMPORTANT: You MUST respond with valid JSON only. No prose, no markdown fences, no conversational text. Output a single JSON object.`;
+
   const result = await callNimWithFallback({
     role,
     messages: [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: jsonSystemPrompt },
       { role: 'user', content: userPrompt },
     ],
     temperature: 0.2,
     maxTokens,
-    timeoutMs: 8000,
+    timeoutMs: 15000,
     responseFormat: { type: 'json_object' },
   });
 
-  let cleaned = stripThinkTags(result.text);
-  cleaned = stripJsonFences(cleaned);
-
-  try {
-    return { data: JSON.parse(cleaned) as T, modelUsed: result.modelUsed };
-  } catch {
-    // Automatic repair: try to extract the first balanced JSON object.
-    const firstBrace = cleaned.indexOf('{');
-    const lastBrace = cleaned.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const candidate = cleaned.slice(firstBrace, lastBrace + 1);
-      try {
-        return { data: JSON.parse(candidate) as T, modelUsed: result.modelUsed };
-      } catch {
-        // Fall through to error below.
-      }
-    }
-
-    throw new Error(
-      `Failed to parse NIM JSON output for role ${role} (model ${result.modelUsed}): ${cleaned.slice(0, 200)}`
-    );
-  }
+  return parseNimJson(result.text, role, result.modelUsed);
 }

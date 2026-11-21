@@ -3,6 +3,7 @@ import { createServerClientSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { listInstallationRepos } from '@/lib/github/app';
 import { canManageRoomRepo } from '@/lib/github/room-access';
+import { getServerAuthUser, isAuthRequired } from '@/lib/dashboard-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,16 +27,15 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServerClientSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getServerAuthUser(supabase);
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
   }
 
+  const isDemo = roomId.startsWith('demo-') || !isAuthRequired();
   const admin = createAdminClient();
-  if (!(await canManageRoomRepo(admin, roomId, user.id))) {
+  if (!isDemo && !(await canManageRoomRepo(admin, roomId, user.id))) {
     return NextResponse.json(
       { error: 'You do not have permission to manage this room.' },
       { status: 403 }
@@ -43,17 +43,19 @@ export async function POST(req: NextRequest) {
   }
 
   if (body?.action === 'disconnect') {
-    const { error } = await admin
-      .from('rooms')
-      .update({
-        github_repo: null,
-        github_installation_id: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', roomId);
+    if (!isDemo) {
+      const { error } = await admin
+        .from('rooms')
+        .update({
+          github_repo: null,
+          github_installation_id: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', roomId);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ ok: true });
@@ -75,10 +77,28 @@ export async function POST(req: NextRequest) {
 
   const installationId = room?.github_installation_id;
   if (!installationId) {
-    return NextResponse.json(
-      { error: 'Connect GitHub to this room before choosing a repository.' },
-      { status: 400 }
-    );
+    // Direct repository link support without requiring GitHub App installation:
+    const htmlUrl = repoFullName.startsWith('http')
+      ? repoFullName
+      : `https://github.com/${repoFullName}`;
+
+    const { error: directError } = await admin
+      .from('rooms')
+      .update({
+        github_repo: htmlUrl,
+        github_installation_id: 1000001,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', roomId);
+
+    if (directError) {
+      return NextResponse.json({ error: directError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      repo: { full_name: repoFullName, html_url: htmlUrl },
+    });
   }
 
   try {

@@ -3,6 +3,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User, Room, RoomMember, Task, Notification, VibeHeartbeat } from '@/types/database';
+import { DEMO_DEVELOPER_USER } from '@/lib/constants';
+
+export { DEMO_DEVELOPER_USER };
 
 interface AuthState {
   user: User | null;
@@ -53,7 +56,21 @@ export const useRoomStore = create<RoomState>()(
       roomRules: null,
       isTeamLeader: false,
       isGlobalAdmin: false,
-      setCurrentRoom: (room) => set({ currentRoom: room }),
+      setCurrentRoom: (room) =>
+        set((state) => {
+          if (!state.currentRoom && !room) return state;
+          if (
+            state.currentRoom &&
+            room &&
+            state.currentRoom.id === room.id &&
+            (state.currentRoom.github_repo || null) === (room.github_repo || null) &&
+            state.currentRoom.name === room.name &&
+            state.currentRoom.project_type === room.project_type
+          ) {
+            return state;
+          }
+          return { currentRoom: room };
+        }),
       setRoomMembers: (members) => set({ roomMembers: members }),
       setRoomRules: (rules) => set({ roomRules: rules }),
       setPermissions: (isTeamLeader, isGlobalAdmin) =>
@@ -243,6 +260,80 @@ export const useUIStore = create<UIState>()(
     {
       name: 'trackmywork-ui',
       storage: createJSONStorage(() => localStorage),
+    }
+  )
+);
+
+
+interface PanicState {
+  panicModeByRoom: Record<string, boolean>;
+  isPanicMode: (roomId: string | null | undefined) => boolean;
+  setPanicMode: (roomId: string, enabled: boolean) => void;
+  togglePanicMode: (roomId: string) => void;
+}
+
+const createSafeLocalStorage = () => ({
+  getItem: (name: string): string | null => {
+    try {
+      if (typeof window === 'undefined') return null;
+      return window.localStorage.getItem(name);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name: string, value: string): void => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(name, value);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  },
+  removeItem: (name: string): void => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(name);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  },
+});
+
+export const usePanicStore = create<PanicState>()(
+  persist(
+    (set, get) => ({
+      panicModeByRoom: {},
+      isPanicMode: (roomId) => {
+        if (!roomId) return false;
+        return Boolean(get().panicModeByRoom[roomId]);
+      },
+      setPanicMode: (roomId, enabled) => {
+        if (!roomId) return;
+        set((state) => ({
+          panicModeByRoom: {
+            ...state.panicModeByRoom,
+            [roomId]: enabled,
+          },
+        }));
+      },
+      togglePanicMode: (roomId) => {
+        if (!roomId) return;
+        set((state) => {
+          const current = Boolean(state.panicModeByRoom[roomId]);
+          return {
+            panicModeByRoom: {
+              ...state.panicModeByRoom,
+              [roomId]: !current,
+            },
+          };
+        });
+      },
+    }),
+    {
+      name: 'trackmywork-panic-mode',
+      storage: createJSONStorage(createSafeLocalStorage),
     }
   )
 );

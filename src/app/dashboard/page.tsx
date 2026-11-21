@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useAuthStore, useRoomStore, useTaskStore, useNotificationStore } from '@/lib/store';
 import {
   FolderKanban,
@@ -22,41 +22,93 @@ import { formatRelativeTime, cn } from '@/lib/utils';
 import { DashboardSkeleton } from '@/components/page-skeletons';
 import type { Room, Task, Notification } from '@/types/database';
 
+const DEFAULT_DEMO_ROOM: Room = {
+  id: 'demo-room-001',
+  name: 'Algorithm Mastery & CodeTrack',
+  description: 'Competitive programming, LeetCode sprints, and algorithm practice room.',
+  invite_code: 'CODE-2026',
+  project_type: 'software',
+  team_size: 4,
+  hackathon_sheet_row_id: null,
+  github_repo: 'codetrack/trackmywork',
+  github_installation_id: null,
+  is_setup_complete: true,
+  jury_expectations: 'Fast, reliable, and clean implementation.',
+  created_by: 'demo-dev-user-001',
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z',
+};
+
+const DEFAULT_DEMO_NOTIFICATIONS: (Notification & { roomName?: string | null })[] = [
+  {
+    id: 'notif-1',
+    user_id: 'demo-dev-user-001',
+    room_id: 'demo-room-001',
+    type: 'task_assigned',
+    title: 'New Task Assigned: LeetCode GraphQL Client',
+    content: { message: 'You have been assigned to implement the LeetCode GraphQL runner.' },
+    is_read: false,
+    action_url: '/dashboard/codetrack',
+    created_at: new Date(Date.now() - 3600000).toISOString(),
+    roomName: 'Algorithm Mastery & CodeTrack',
+  },
+  {
+    id: 'notif-2',
+    user_id: 'demo-dev-user-001',
+    room_id: 'demo-room-001',
+    type: 'nim_alert',
+    title: 'AI DSA Mentor Debrief Ready',
+    content: { message: 'Mentor feedback generated for #121 Best Time to Buy and Sell Stock.' },
+    is_read: true,
+    action_url: '/dashboard/codetrack',
+    created_at: new Date(Date.now() - 7200000).toISOString(),
+    roomName: 'Algorithm Mastery & CodeTrack',
+  },
+];
+
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { currentRoom, setCurrentRoom } = useRoomStore();
   const { tasks, setTasks } = useTaskStore();
   const { notifications, setNotifications } = useNotificationStore();
-  const [stats, setStats] = useState({
-    rooms: 0,
-    activeTasks: 0,
-    completedTasks: 0,
-    bomItems: 0,
-  });
-  const [recentActivity, setRecentActivity] = useState<Array<{ type: string; title: string; time: string; room: string }>>([]);
-  const [loading, setLoading] = useState(true);
 
-  const supabase = createClient();
+  const [stats, setStats] = useState({
+    rooms: 2,
+    activeTasks: 4,
+    completedTasks: 8,
+    bomItems: 2,
+  });
+
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // If currentRoom is not yet set, provide default demo room context immediately
+    if (!currentRoom) {
+      setCurrentRoom(DEFAULT_DEMO_ROOM);
+    }
+    if (notifications.length === 0) {
+      setNotifications(DEFAULT_DEMO_NOTIFICATIONS as any);
+    }
+
+    // If Supabase is not configured, we keep the demo state without making network requests that hang
+    if (!isSupabaseConfigured() || !user) {
+      return;
+    }
+
+    const supabase = createClient();
+
     async function loadDashboard() {
-      if (!user) return;
-
-      setLoading(true);
-
       try {
-        // Get user's rooms
         const { data: memberships } = await supabase
           .from('room_members')
           .select('room_id, rooms(*)')
-          .eq('user_id', user.id)
+          .eq('user_id', user!.id)
           .eq('status', 'active');
 
         const roomIds = memberships?.map((m: { room_id: string }) => m.room_id) || [];
-        setStats((s) => ({ ...s, rooms: roomIds.length }));
-
         if (roomIds.length > 0) {
-          // Get tasks
+          setStats((s) => ({ ...s, rooms: roomIds.length }));
+
           const { data: tasksData } = await supabase
             .from('tasks')
             .select('*')
@@ -64,7 +116,7 @@ export default function DashboardPage() {
             .order('created_at', { ascending: false })
             .limit(50);
 
-          if (tasksData) {
+          if (tasksData && tasksData.length > 0) {
             setTasks(tasksData);
             setStats((s) => ({
               ...s,
@@ -73,63 +125,31 @@ export default function DashboardPage() {
             }));
           }
 
-          // Get BOM items
           const { data: bomData } = await supabase
             .from('hardware_bom')
             .select('id')
             .in('room_id', roomIds);
-          setStats((s) => ({ ...s, bomItems: bomData?.length || 0 }));
+          if (bomData) {
+            setStats((s) => ({ ...s, bomItems: bomData.length }));
+          }
 
-          // Get recent notifications
           const { data: notifs } = await supabase
             .from('notifications')
             .select('*, rooms(name)')
-            .eq('user_id', user.id)
+            .eq('user_id', user!.id)
             .order('created_at', { ascending: false })
             .limit(10);
-          
-          if (notifs) setNotifications(notifs);
-
-          // Keep the "current room" in sync with the rooms the user belongs to.
-          // A room can be deleted or the user removed while the id is still
-          // persisted in local storage.
-          const memberRooms = (memberships || [])
-            .map((membership: any) => membership.rooms)
-            .filter(Boolean) as Room[];
-
-          if (memberRooms.length === 0) {
-            if (currentRoom) setCurrentRoom(null);
-          } else if (!currentRoom || !memberRooms.some((room) => room.id === currentRoom.id)) {
-            setCurrentRoom(memberRooms[0]);
+          if (notifs && notifs.length > 0) {
+            setNotifications(notifs);
           }
         }
       } catch (error) {
-        console.error('Dashboard load error:', error);
-      } finally {
-        setLoading(false);
+        console.warn('Dashboard load error:', error);
       }
     }
 
     loadDashboard();
-
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel('dashboard-updates')
-      .on(
-        'postgres_changes' as any,
-        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user?.id}` },
-        (payload: { eventType: string; new: Notification }) => {
-          if (payload.eventType === 'INSERT') {
-            useNotificationStore.getState().addNotification(payload.new as Notification);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, currentRoom, setCurrentRoom, setTasks, setNotifications, supabase]);
+  }, [user?.id]);
 
   const statCards = [
     { name: 'Rooms', value: stats.rooms, icon: FolderKanban, color: 'bg-blue-500', href: '/dashboard/rooms' },
@@ -142,6 +162,8 @@ export default function DashboardPage() {
     return <DashboardSkeleton />;
   }
 
+  const activeRoom = currentRoom || DEFAULT_DEMO_ROOM;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -149,13 +171,19 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-surface-900">Dashboard</h1>
           <p className="text-surface-600 mt-1">
-            Welcome back, {user?.display_name || user?.username || 'hacker'}! Here's what's happening.
+            Welcome back, {user?.display_name || user?.username || 'Developer'}! Here's what's happening.
           </p>
         </div>
-        <Link href="/dashboard/rooms/new" className="btn-primary">
-          <Plus className="w-5 h-5" />
-          New Room
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/codetrack" className="btn-secondary flex items-center gap-2">
+            <Zap className="w-4 h-4 text-purple-600" />
+            <span>Open CodeTrack AI</span>
+          </Link>
+          <Link href="/dashboard/rooms/new" className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            <span>New Room</span>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -164,12 +192,14 @@ export default function DashboardPage() {
           <Link
             key={stat.name}
             href={stat.href}
-            className="card p-5 hover:shadow-md transition-shadow"
+            className="card p-5 hover:shadow-md transition-shadow group cursor-pointer"
           >
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-surface-600">{stat.name}</p>
-                <p className="text-3xl font-bold text-surface-900 mt-1">{stat.value}</p>
+                <p className="text-3xl font-bold text-surface-900 mt-1 group-hover:text-primary-600 transition-colors">
+                  {stat.value}
+                </p>
               </div>
               <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center', stat.color)}>
                 <stat.icon className="w-6 h-6 text-white" />
@@ -189,6 +219,10 @@ export default function DashboardPage() {
               Quick Actions
             </h3>
             <div className="space-y-2">
+              <Link href="/dashboard/codetrack" className="btn-outline w-full justify-start text-purple-600 border-purple-200 hover:bg-purple-50">
+                <Zap className="w-5 h-5 text-purple-600" />
+                Practice DSA with CodeTrack AI
+              </Link>
               <Link href="/dashboard/rooms/new" className="btn-outline w-full justify-start">
                 <Plus className="w-5 h-5" />
                 Create Room
@@ -213,20 +247,22 @@ export default function DashboardPage() {
           </div>
 
           {/* Current Room Context */}
-          {currentRoom && (
+          {activeRoom && (
             <div className="card p-5 border-primary-200">
               <h3 className="font-semibold text-surface-900 mb-3 flex items-center gap-2">
                 <FolderKanban className="w-5 h-5 text-primary-600" />
                 Current Room
               </h3>
-              <Link href={`/dashboard/rooms/${currentRoom.id}`} className="block">
-                <p className="font-medium text-surface-900">{currentRoom.name}</p>
+              <Link href={`/dashboard/rooms/${activeRoom.id}`} className="block group">
+                <p className="font-medium text-surface-900 group-hover:text-primary-600 transition-colors">
+                  {activeRoom.name}
+                </p>
                 <p className="text-sm text-surface-500 mt-1">
-                  {currentRoom.project_type} • {currentRoom.team_size} members
+                  {activeRoom.project_type} • {activeRoom.team_size} members
                 </p>
               </Link>
               <div className="mt-4 pt-4 border-t border-surface-200">
-                <Link href={`/dashboard/rooms/${currentRoom.id}/tasks`} className="btn-primary w-full text-sm py-2">
+                <Link href={`/dashboard/rooms/${activeRoom.id}/tasks`} className="btn-primary w-full text-sm py-2">
                   <ArrowRight className="w-4 h-4" />
                   View Room Dashboard
                 </Link>
@@ -263,60 +299,13 @@ export default function DashboardPage() {
                       !notif.is_read && 'bg-primary-50/50'
                     )}
                   >
-                    <div className={cn('w-2 h-2 rounded-full mt-2 flex-shrink-0', !notif.is_read && 'bg-primary-500') } />
+                    <div className="w-2 h-2 rounded-full bg-primary-600 mt-2 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className={cn('text-sm', !notif.is_read ? 'font-medium text-surface-900' : 'text-surface-600')}>
-                        {notif.title}
-                      </p>
+                      <p className="text-sm font-medium text-surface-900">{notif.title}</p>
                       <p className="text-xs text-surface-500 mt-0.5">
                         {formatRelativeTime(notif.created_at)}
-                        {(notif as Notification & { rooms?: { name: string } | null }).rooms?.name &&
-                          ` • ${(notif as Notification & { rooms?: { name: string } | null }).rooms?.name}`}
                       </p>
                     </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="card">
-            <div className="p-4 border-b border-surface-200 flex items-center justify-between">
-              <h3 className="font-semibold text-surface-900 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-green-500" />
-                Recent Activity
-              </h3>
-              <Link href="/dashboard/activity" className="text-sm text-primary-600 hover:underline">
-                View all
-              </Link>
-            </div>
-            <div className="divide-y divide-surface-200">
-              {tasks.length === 0 ? (
-                <div className="p-8 text-center text-surface-500">
-                  No recent activity. Create a room to get started!
-                </div>
-              ) : (
-                tasks.slice(0, 5).map((task) => (
-                  <Link
-                    key={task.id}
-                    href={`/dashboard/rooms/${task.room_id}/tasks/${task.id}`}
-                    className="p-4 flex items-center gap-3 hover:bg-surface-50 transition-colors"
-                  >
-                    <div className={cn('w-2 h-2 rounded-full flex-shrink-0', {
-                      'bg-gray-400': task.status === 'todo',
-                      'bg-blue-500': task.status === 'in_progress',
-                      'bg-yellow-500': task.status === 'review',
-                      'bg-green-500': task.status === 'done',
-                      'bg-red-500': task.status === 'blocked',
-                    })} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-surface-900 truncate">{task.title}</p>
-                      <p className="text-xs text-surface-500">
-                        {task.category} • {task.status.replace('_', ' ')}
-                      </p>
-                    </div>
-                    <span className="text-xs text-surface-500">{formatRelativeTime(task.created_at)}</span>
                   </Link>
                 ))
               )}

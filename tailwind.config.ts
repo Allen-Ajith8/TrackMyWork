@@ -52,16 +52,16 @@ const config: Config = {
         accent: {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
-          50: '#fdf4ff',
-          100: '#fae8ff',
-          200: '#f5d0fe',
-          300: '#f0abfc',
-          400: '#e879f9',
-          500: '#d946ef',
-          600: '#c026d3',
-          700: '#a21caf',
-          800: '#86198f',
-          900: '#701a75',
+          50: 'hsl(var(--accent-50, 288 100% 98%))',
+          100: 'hsl(var(--accent-100, 291 100% 95%))',
+          200: 'hsl(var(--accent-200, 292 94% 91%))',
+          300: 'hsl(var(--accent-300, 293 93% 83%))',
+          400: 'hsl(var(--accent-400, 294 89% 73%))',
+          500: 'hsl(var(--accent-500, 292 84% 61%))',
+          600: 'hsl(var(--accent-600, 293 69% 49%))',
+          700: 'hsl(var(--accent-700, 295 72% 40%))',
+          800: 'hsl(var(--accent-800, 296 70% 32%))',
+          900: 'hsl(var(--accent-900, 297 64% 28%))',
         },
         surface: {
           50: '#fafafa',
@@ -83,6 +83,8 @@ const config: Config = {
       },
       animation: {
         'pulse-purple': 'pulse-purple 2s ease-in-out infinite',
+        'pulse-subtle': 'pulse-subtle 1.8s ease-in-out infinite',
+        'glow-orange': 'glow-orange 1.5s ease-in-out infinite alternate',
         'slide-in': 'slide-in 0.3s ease-out',
         'fade-in': 'fade-in 0.2s ease-out',
         'scale-in': 'scale-in 0.2s ease-out',
@@ -90,6 +92,14 @@ const config: Config = {
         shimmer: 'shimmer 1.8s ease-in-out infinite',
       },
       keyframes: {
+        'pulse-subtle': {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.85', transform: 'scale(1.02)' },
+        },
+        'glow-orange': {
+          '0%': { boxShadow: '0 0 5px rgba(255, 106, 0, 0.4)' },
+          '100%': { boxShadow: '0 0 20px rgba(255, 106, 0, 0.8)' },
+        },
         'pulse-purple': {
           '0%, 100%': { boxShadow: '0 0 0 0 rgba(168, 85, 247, 0.7)' },
           '50%': { boxShadow: '0 0 0 12px rgba(168, 85, 247, 0)' },

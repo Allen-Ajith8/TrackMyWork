@@ -167,3 +167,130 @@ export function normalizeGitHubRepoInput(
 
   return { owner, repo, url: constructGitHubUrl(owner, repo) };
 }
+
+
+// ============================================================================
+// HACK-TIMER & PANIC MODE UTILITIES
+// ============================================================================
+
+import type { Task, TaskStatus } from '@/types/database';
+
+export type HackTimerState = 'normal' | 'warning' | 'critical' | 'passed';
+
+/**
+ * Returns formatted time remaining for the Hack-Timer countdown.
+ * - > 48h: DDd HHh
+ * - 10m to 48h: HHh MMm
+ * - < 10m: MMm SSs
+ * - <= 0: "Submissions closed"
+ */
+export function formatRemainingTime(ms: number): string {
+  if (ms <= 0) return 'Submissions closed';
+
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (ms > 48 * 3600 * 1000) {
+    return `${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h`;
+  }
+
+  if (ms < 10 * 60 * 1000) {
+    return `${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+  }
+
+  const totalHours = Math.floor(totalSeconds / 3600);
+  return `${String(totalHours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`;
+}
+
+/**
+ * Determines timer state threshold:
+ * - normal: > 6h
+ * - warning: 6h to 2h
+ * - critical: < 2h
+ * - passed: <= 0
+ */
+export function getHackTimerState(ms: number): HackTimerState {
+  if (ms <= 0) return 'passed';
+  if (ms <= 2 * 60 * 60 * 1000) return 'critical';
+  if (ms <= 6 * 60 * 60 * 1000) return 'warning';
+  return 'normal';
+}
+
+export interface PanicTaskLike {
+  id?: string;
+  title?: string;
+  status: TaskStatus | string;
+  is_blocker?: boolean | null;
+  due_date?: string | null;
+  due_at?: string | null;
+  completed_at?: string | null;
+  priority?: number;
+}
+
+/**
+ * Pure, unit-testable filtering and sorting function for Panic Mode.
+ * - Hides all completed tasks (status === 'done' or completed_at !== null)
+ * - Shows ONLY:
+ *   (a) tasks flagged as blockers (is_blocker === true or status === 'blocked')
+ *   (b) open tasks due within next 2 hours (due_date/due_at <= now + windowMs, including overdue)
+ * - Sorts blockers first, then by due date ascending.
+ */
+export function getPanicTasks<T extends PanicTaskLike>(
+  tasks: T[],
+  now: Date | number | string,
+  windowMs = 2 * 60 * 60 * 1000
+): T[] {
+  const nowMs =
+    typeof now === 'number'
+      ? now
+      : now instanceof Date
+      ? now.getTime()
+      : new Date(now).getTime();
+
+  return tasks
+    .filter((task) => {
+      // 1. Hide all completed tasks
+      const isCompleted =
+        task.status === 'done' || Boolean(task.completed_at);
+      if (isCompleted) return false;
+
+      // 2. Check blocker status
+      const isBlocker = Boolean(task.is_blocker || task.status === 'blocked');
+
+      // 3. Check due date
+      const dueRaw = task.due_at ?? task.due_date;
+      const dueMs = dueRaw ? new Date(dueRaw).getTime() : null;
+      const isDueWithinWindow =
+        dueMs !== null && !isNaN(dueMs) && dueMs <= nowMs + windowMs;
+
+      return isBlocker || isDueWithinWindow;
+    })
+    .sort((a, b) => {
+      const aBlocker = Boolean(a.is_blocker || a.status === 'blocked');
+      const bBlocker = Boolean(b.is_blocker || b.status === 'blocked');
+
+      // Blocker tasks sorted first
+      if (aBlocker && !bBlocker) return -1;
+      if (!aBlocker && bBlocker) return 1;
+
+      // Then sort by due_date/due_at ascending
+      const dueRawA = a.due_at ?? a.due_date;
+      const dueRawB = b.due_at ?? b.due_date;
+      const dueA = dueRawA ? new Date(dueRawA).getTime() : null;
+      const dueB = dueRawB ? new Date(dueRawB).getTime() : null;
+
+      if (dueA !== null && dueB !== null) {
+        if (dueA !== dueB) return dueA - dueB;
+      } else if (dueA !== null) {
+        return -1;
+      } else if (dueB !== null) {
+        return 1;
+      }
+
+      // Secondary sort: priority descending
+      return (Number(b.priority) || 0) - (Number(a.priority) || 0);
+    });
+}

@@ -43,7 +43,7 @@ interface InstallationRepo {
 type Status = { type: 'success' | 'error'; message: string } | null;
 
 export function RoomRepoClient({ room, canManageRepo }: RoomRepoClientProps) {
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const { user } = useAuthStore();
   const { currentRoom, setCurrentRoom } = useRoomStore();
 

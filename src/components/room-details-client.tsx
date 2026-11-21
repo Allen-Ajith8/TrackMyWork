@@ -16,7 +16,7 @@ interface RoomDetailsClientProps {
 }
 
 export function RoomDetailsClient({ room }: RoomDetailsClientProps) {
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   const [editing, setEditing] = useState(false);
   const [description, setDescription] = useState(room.description || '');

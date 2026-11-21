@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getDashboardContext } from '@/lib/dashboard-data';
+import { getDashboardContext, isSupabaseConfigured, getFallbackDemoRoom } from '@/lib/dashboard-data';
 import { ArtifactsOverviewClient } from '@/components/artifacts-overview-client';
 import type { Artifact } from '@/types/database';
 
@@ -14,18 +14,30 @@ export default async function ArtifactsPage() {
 
   let artifacts: (Artifact & { roomName: string })[] = [];
 
-  if (roomIds.length > 0) {
-    const { data } = await supabase
-      .from('artifacts')
-      .select('*')
-      .in('room_id', roomIds)
-      .order('created_at', { ascending: false })
-      .limit(200);
+  if (isSupabaseConfigured() && roomIds.length > 0) {
+    try {
+      const { data } = await supabase
+        .from('artifacts')
+        .select('*')
+        .in('room_id', roomIds)
+        .order('created_at', { ascending: false })
+        .limit(200);
 
-    const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
-    artifacts = (data || []).map((artifact: Artifact) => ({
-      ...artifact,
-      roomName: roomNames.get(artifact.room_id) || 'Unknown room',
+      const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
+      artifacts = (data || []).map((artifact: Artifact) => ({
+        ...artifact,
+        roomName: roomNames.get(artifact.room_id) || 'Unknown room',
+      }));
+    } catch {
+      // Supabase query error
+    }
+  }
+
+  if (artifacts.length === 0) {
+    const demo = getFallbackDemoRoom();
+    artifacts = demo.artifacts.map((a) => ({
+      ...a,
+      roomName: rooms[0]?.name || 'Algorithm Mastery & CodeTrack',
     }));
   }
 
