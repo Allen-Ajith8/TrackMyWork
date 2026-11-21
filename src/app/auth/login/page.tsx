@@ -20,7 +20,6 @@ function LoginForm() {
     searchParams.get('error_description') || searchParams.get('error') || ''
   );
   const [otpStep, setOtpStep] = useState<'none' | 'sent'>('none');
-  const [otpCode, setOtpCode] = useState('');
   // Track client-side render to avoid hydration mismatch with dev-mode card
   const [isClient, setIsClient] = useState(false);
 
@@ -107,26 +106,6 @@ function LoginForm() {
     } else {
       setOtpStep('sent');
       setLoading(false);
-    }
-  }
-
-  async function handleVerifyOtpLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: otpCode,
-      type: 'email',
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
-      router.push(redirect);
-      router.refresh();
     }
   }
 
@@ -262,20 +241,20 @@ function LoginForm() {
             </button>
           </form>
 
-          {/* OTP Login */}
+          {/* Magic Link Login */}
           {otpStep === 'none' ? (
             <div className="mt-6 p-4 border border-surface-200 rounded-lg bg-surface-50/50">
               <div className="flex items-center gap-2 mb-3">
                 <Mail className="w-4 h-4 text-surface-500" />
-                <span className="text-sm font-medium text-surface-700">Sign in with OTP</span>
+                <span className="text-sm font-medium text-surface-700">Sign in with magic link</span>
               </div>
               <p className="text-xs text-surface-500 mb-3">
-                Receive a one-time code by email instead of using a password.
+                We&apos;ll send a confirmation link to your email instead of using a password.
               </p>
               <div>
-                <label htmlFor="otp-email" className="label text-xs">Email</label>
+                <label htmlFor="magic-email" className="label text-xs">Email</label>
                 <input
-                  id="otp-email"
+                  id="magic-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -290,55 +269,25 @@ function LoginForm() {
                 disabled={loading}
                 className="btn-primary w-full py-2 mt-3 text-sm"
               >
-                {loading ? 'Sending…' : 'Send OTP Code'}
+                {loading ? 'Sending…' : 'Send Magic Link'}
               </button>
             </div>
           ) : (
             <div className="mt-6 p-4 border border-surface-200 rounded-lg bg-surface-50/50">
               <div className="flex items-center gap-2 mb-3">
                 <CheckCircle2 className="w-4 h-4 text-green-600" />
-                <span className="text-sm font-medium text-surface-700">Verify OTP</span>
+                <span className="text-sm font-medium text-surface-700">Check your inbox</span>
               </div>
               <p className="text-xs text-surface-500 mb-3">
-                We sent a code to <span className="font-medium">{email}</span>. Enter it below.
+                We sent a magic link to <span className="font-medium">{email}</span>. Click the link in the email to sign in.
               </p>
-              {error && (
-                <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm mb-3">
-                  {error}
-                </div>
-              )}
-              <form onSubmit={handleVerifyOtpLogin} className="space-y-3">
-                <div>
-                  <label htmlFor="otp-code" className="label text-xs">OTP Code</label>
-                  <input
-                    id="otp-code"
-                    type="text"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
-                    className="input text-sm"
-                    placeholder="123456"
-                    maxLength={6}
-                    required
-                    disabled={loading}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setOtpStep('none')}
-                    className="btn-outline text-xs text-surface-500 hover:text-surface-700"
-                  >
-                    <ArrowLeft className="w-3 h-3 mr-1" /> Use password
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="btn-primary py-2 text-sm"
-                  >
-                    {loading ? 'Verifying…' : 'Verify & Sign In'}
-                  </button>
-                </div>
-              </form>
+              <button
+                type="button"
+                onClick={() => setOtpStep('none')}
+                className="btn-outline w-full py-2 text-sm mt-3"
+              >
+                <ArrowLeft className="w-3 h-3 mr-1" /> Send another
+              </button>
             </div>
           )}
 
