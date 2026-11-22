@@ -366,6 +366,31 @@ export function NexconnRoomChat({
   const [slashDismissed, setSlashDismissed] = React.useState(false);
   const [slashIndex, setSlashIndex] = React.useState(0);
 
+  // ---- Slash command palette computed values ------------------------------
+  const slashQuery =
+    draft.startsWith('/') && !/\s/.test(draft)
+      ? draft.slice(1).toLowerCase()
+      : null;
+  const slashMatches =
+    slashQuery === null
+      ? []
+      : SLASH_COMMANDS.filter((command) =>
+          command.name.slice(1).startsWith(slashQuery)
+        );
+  const slashMenuOpen =
+    phase === 'ready' && !slashDismissed && slashMatches.length > 0;
+  const activeSlashIndex = Math.min(
+    slashIndex,
+    Math.max(slashMatches.length - 1, 0)
+  );
+
+  const applySlashCommand = (command: SlashCommand) => {
+    setDraft(`${command.name} `);
+    setSlashDismissed(true);
+    setSlashIndex(0);
+    textareaRef.current?.focus();
+  };
+
   const sdkRef = React.useRef<NexconnSdk | null>(null);
   const channelRef = React.useRef<GroupChannel | null>(null);
   const queryRef = React.useRef<MessagesQuery | null>(null);
@@ -392,6 +417,31 @@ export function NexconnRoomChat({
     },
     []
   );
+
+  // ---- Click outside to dismiss slash palette -----------------------------
+  React.useEffect(() => {
+    if (!slashMenuOpen) return;
+
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (target && !document.body.contains(target)) return;
+      // If the click is inside the palette or the textarea, ignore.
+      const palette = document.querySelector(
+        '[class*="border-zinc-200 bg-white/95 backdrop-blur shadow-lg"]'
+      );
+      const textarea = textareaRef.current;
+      if (
+        palette?.contains(target) ||
+        textarea?.contains(target)
+      ) {
+        return;
+      }
+      setSlashDismissed(true);
+    };
+
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [slashMenuOpen]);
 
   const persistSummaries = React.useCallback(
     (summaries: SavedAiSummary[]) => {
@@ -831,31 +881,6 @@ export function NexconnRoomChat({
   const isLive = connectionStatus === 0;
   const label = connectionLabel(connectionStatus);
 
-  // ---- Slash command palette ---------------------------------------------
-  const slashQuery =
-    draft.startsWith('/') && !/\s/.test(draft)
-      ? draft.slice(1).toLowerCase()
-      : null;
-  const slashMatches =
-    slashQuery === null
-      ? []
-      : SLASH_COMMANDS.filter((command) =>
-          command.name.slice(1).startsWith(slashQuery)
-        );
-  const slashMenuOpen =
-    phase === 'ready' && !slashDismissed && slashMatches.length > 0;
-  const activeSlashIndex = Math.min(
-    slashIndex,
-    Math.max(slashMatches.length - 1, 0)
-  );
-
-  const applySlashCommand = (command: SlashCommand) => {
-    setDraft(`${command.name} `);
-    setSlashDismissed(true);
-    setSlashIndex(0);
-    textareaRef.current?.focus();
-  };
-
   return (
     <div className="flex h-[calc(100vh-11.5rem)] max-h-[calc(100vh-11.5rem)] flex-col bg-white">
       {/* Header */}
@@ -1059,6 +1084,41 @@ export function NexconnRoomChat({
           })}
         </div>
 
+        {helpOpen && (
+          <div
+            className="flex w-full justify-start mt-3 mb-2"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="max-w-[75%] rounded-2xl border border-purple-200 bg-white/80 backdrop-blur px-3.5 py-2.5 text-sm shadow-sm">
+              <div className="flex items-center gap-1.5 mb-2">
+                <BookOpen className="h-3.5 w-3.5 text-purple-600" />
+                <p className="mb-0 text-[11px] font-semibold text-purple-800">
+                  Slash Commands
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setHelpOpen(false)}
+                  className="ml-auto p-1 rounded text-purple-400 hover:text-purple-600 hover:bg-purple-50"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <ul className="space-y-1.5 text-xs text-purple-900">
+                {SLASH_COMMANDS.map((command) => (
+                  <li key={command.name} className="flex items-start gap-2">
+                    <span className="font-mono font-semibold text-purple-700 shrink-0">
+                      {command.name}
+                    </span>
+                    <p className="text-[11px] text-zinc-600 leading-relaxed">
+                      {command.description}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {micaThinking && (
           <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1149,23 +1209,18 @@ export function NexconnRoomChat({
         {/* Slash command palette */}
         {slashMenuOpen && (
           <div
-            className="absolute bottom-full left-0 right-0 mb-2 z-50 rounded-xl border border-zinc-200 bg-white shadow-xl overflow-hidden flex flex-col"
+            className="absolute bottom-full left-0 mb-2 w-full max-w-xl z-50 rounded-xl border border-zinc-200 bg-white/95 backdrop-blur shadow-lg flex flex-col"
             style={{ pointerEvents: 'auto' }}
           >
-            <div className="flex items-center gap-2 border-b border-zinc-100 bg-zinc-50 px-4 py-2">
-              <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-                Commands
-              </span>
-              <span className="text-[10px] text-zinc-400">
-                ↑↓ to navigate · Enter to select · Esc to close
-              </span>
-            </div>
             <div className="flex flex-col gap-0.5">
               {slashMatches.map((command, index) => (
                 <button
                   key={command.name}
                   type="button"
-                  onClick={() => applySlashCommand(command)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    applySlashCommand(command);
+                  }}
                   className={cn(
                     'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors border-b border-zinc-100 last:border-b-0 cursor-pointer',
                     index === activeSlashIndex
@@ -1173,10 +1228,10 @@ export function NexconnRoomChat({
                       : 'text-zinc-700 hover:bg-zinc-50'
                   )}
                 >
-                  <span className="font-mono text-sm font-semibold text-purple-700 shrink-0">
+                  <span className="font-mono text-xs font-semibold text-purple-700 w-28 shrink-0">
                     {command.name}
                   </span>
-                  <span className="text-sm text-zinc-600 truncate">
+                  <span className="text-xs text-zinc-600 truncate">
                     {command.description}
                   </span>
                 </button>
@@ -1337,41 +1392,6 @@ export function NexconnRoomChat({
                 {aiSummarySent ? 'Saved' : 'Save Summary'}
               </Button>
             </div>
-          </div>
-        )}
-
-        {/* Local /help card (never posted to the group channel) */}
-        {helpOpen && (
-          <div className="mt-2 rounded-xl border border-purple-200 bg-purple-50 p-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="flex items-center gap-1.5 mb-2">
-              <BookOpen className="h-4 w-4 text-purple-600" />
-              <h3 className="text-sm font-semibold text-purple-800">Slash Commands</h3>
-              <button
-                type="button"
-                onClick={() => setHelpOpen(false)}
-                className="ml-auto p-1 text-purple-400 hover:text-purple-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <ul className="space-y-2 text-xs text-purple-900">
-              {SLASH_COMMANDS.map((command) => (
-                <li key={command.name} className="flex justify-between gap-2">
-                  <div>
-                    <span className="font-mono font-bold">{command.name}</span>{' '}
-                    <span className="font-mono text-[10px] text-purple-600">{command.usage.slice(command.name.length + 1)}</span>
-                  </div>
-                  <p className="text-[10px] text-purple-700 leading-relaxed">
-                    {command.description}
-                  </p>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-[10px] text-purple-600">
-              Summaries saved via{' '}
-              <span className="font-semibold">+ AI Summary</span>{' '}
-              are shared room context for MICA.
-            </p>
           </div>
         )}
 
