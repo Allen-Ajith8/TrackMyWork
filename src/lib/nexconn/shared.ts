@@ -20,6 +20,6 @@ export function toNexconnUserId(supabaseUserId: string): string {
 export const COURTROOM_BOT_USER_ID = 'tmwcourtroombot';
 export const COURTROOM_BOT_NAME = 'AI Courtroom';
 
-/** Optional `@ai` teammate that replies inline in the room thread. */
-export const AI_TEAMMATE_BOT_USER_ID = 'tmwaiteammatebot';
-export const AI_TEAMMATE_BOT_NAME = 'NIM AI';
+/** MICA, the in-room AI agent invoked with `/mica <prompt>`. */
+export const MICA_BOT_USER_ID = 'tmwmicaagent';
+export const MICA_BOT_NAME = 'MICA • AI Agent';

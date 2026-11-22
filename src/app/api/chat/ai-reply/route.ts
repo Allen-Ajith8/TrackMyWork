@@ -1,9 +1,10 @@
 // ============================================================================
-// TrackMyWork - Team Chat: AI Teammate Reply
+// TrackMyWork - Team Chat: MICA Reply
 // POST /api/chat/ai-reply
-// Verifies room access, asks the NIM teammate for a short reply, then posts it
-// into the room's Nexconn channel. Returns the posted text + message id so the
-// caller can render the reply without waiting for the realtime echo.
+// Verifies room access, asks MICA (the in-room AI agent) for a short reply
+// using recent chat + saved AI summaries as context, then posts it into the
+// room's Nexconn channel. Returns the posted text + message id so the caller
+// can render the reply without waiting for the realtime echo.
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,12 +12,12 @@ import { createServerClientSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { invokeCourtroomText } from '@/lib/courtroom/nimClient';
 import {
-  AI_TEAMMATE_BOT_NAME,
-  AI_TEAMMATE_BOT_USER_ID,
+  MICA_BOT_NAME,
+  MICA_BOT_USER_ID,
   getNexconnChannelId,
 } from '@/lib/nexconn/shared';
 import {
-  ensureAiTeammateBotRegistered,
+  ensureMicaRegistered,
   isNexconnConfigured,
   sendNexconnGroupText,
 } from '@/lib/nexconn/server';
@@ -24,20 +25,29 @@ import {
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-const AI_MODEL = 'nvidia/nemotron-3.5-bolt-e4b';
+const MICA_MODEL = 'nvidia/nemotron-3.5-bolt-e4b';
 const MAX_PROMPT_CHARS = 4000;
 const MAX_TRANSCRIPT_MESSAGES = 20;
 const MAX_TRANSCRIPT_CHARS = 8000;
+const MAX_SUMMARIES = 20;
+const MAX_SUMMARY_CHARS = 6000;
 
 type RecentMessage = {
   senderName?: string;
   text?: string;
 };
 
+type SavedSummary = {
+  source?: string;
+  topic?: string | null;
+  body?: string;
+};
+
 type AiReplyBody = {
   roomId?: string;
   prompt?: string;
   recentMessages?: RecentMessage[];
+  summaries?: SavedSummary[];
 };
 
 function buildTranscript(messages: RecentMessage[]): string {
@@ -62,6 +72,33 @@ function buildTranscript(messages: RecentMessage[]): string {
   }
 
   return lines.join('\n');
+}
+
+function buildSummaries(summaries: SavedSummary[]): string {
+  const blocks: string[] = [];
+  let total = 0;
+
+  for (const summary of summaries.slice(-MAX_SUMMARIES)) {
+    const source =
+      typeof summary?.source === 'string' && summary.source.trim()
+        ? summary.source.trim().slice(0, 40)
+        : 'Other';
+    const topic =
+      typeof summary?.topic === 'string' ? summary.topic.trim().slice(0, 120) : '';
+    const body =
+      typeof summary?.body === 'string' ? summary.body.trim() : '';
+
+    if (!body) continue;
+
+    const header = topic ? `[${source} — ${topic}]` : `[${source}]`;
+    const block = `${header}\n${body.slice(0, 1500)}`;
+    if (total + block.length > MAX_SUMMARY_CHARS) break;
+
+    blocks.push(block);
+    total += block.length + 2;
+  }
+
+  return blocks.join('\n\n');
 }
 
 export async function POST(req: NextRequest) {
@@ -90,6 +127,7 @@ export async function POST(req: NextRequest) {
   const recentMessages = Array.isArray(body?.recentMessages)
     ? body.recentMessages
     : [];
+  const summaries = Array.isArray(body?.summaries) ? body.summaries : [];
 
   if (!roomId) {
     return NextResponse.json({ error: 'roomId is required.' }, { status: 400 });
@@ -139,52 +177,63 @@ export async function POST(req: NextRequest) {
   }
 
   const transcript = buildTranscript(recentMessages);
+  const summaryContext = buildSummaries(summaries);
 
   const systemPrompt = [
-    `You are ${AI_TEAMMATE_BOT_NAME}, an AI teammate inside a project team chat.`,
-    'Answer the latest request directly and concisely (2-6 sentences, under 150 words).',
+    `You are ${MICA_BOT_NAME}, the in-room AI agent for a project team chat.`,
+    'Answer the latest /mica request directly and concisely (2-6 sentences, under 160 words).',
+    'Use the recent thread and the saved AI summaries as background context, but do not repeat them verbatim.',
     'Be practical and specific. Use plain text only: no markdown headings, tables, or code fences.',
-    'If the request asks you to critique or synthesize an AI summary, do exactly that.',
     'If the context is insufficient, say what is missing instead of inventing details.',
-    'Do not mention that you are a language model.',
+    'Do not prefix your answer with your name, and do not mention that you are a language model.',
   ].join(' ');
 
-  const userPrompt = transcript
-    ? `Recent thread:\n${transcript}\n\nLatest request:\n${prompt}`
-    : `Latest request:\n${prompt}`;
+  const sections: string[] = [];
+
+  if (summaryContext) {
+    sections.push(`Saved AI summaries (shared room context):\n${summaryContext}`);
+  }
+
+  if (transcript) {
+    sections.push(`Recent room messages:\n${transcript}`);
+  }
+
+  sections.push(`Request:\n${prompt}`);
+
+  const userPrompt = sections.join('\n\n');
 
   let replyText: string;
   try {
     const result = await invokeCourtroomText({
       role: 'Clerk Router',
-      modelOverride: AI_MODEL,
+      modelOverride: MICA_MODEL,
       systemPrompt,
       userPrompt,
-      maxTokens: 400,
+      maxTokens: 450,
       temperature: 0.4,
     });
 
     replyText = result.text.trim();
   } catch (error) {
-    console.error('[AI Teammate] NIM reply failed:', error);
+    console.error('[MICA] NIM reply failed:', error);
     return NextResponse.json(
-      { error: 'The AI teammate could not generate a reply.' },
+      { error: 'MICA could not generate a reply.' },
       { status: 502 }
     );
   }
 
   if (!replyText) {
     return NextResponse.json(
-      { error: 'The AI teammate returned an empty reply.' },
+      { error: 'MICA returned an empty reply.' },
       { status: 502 }
     );
   }
 
   try {
-    await ensureAiTeammateBotRegistered();
+    await ensureMicaRegistered();
 
     const { messageId } = await sendNexconnGroupText({
-      fromUserId: AI_TEAMMATE_BOT_USER_ID,
+      fromUserId: MICA_BOT_USER_ID,
       channelId: getNexconnChannelId(roomId),
       text: replyText,
       pushContent: replyText,
@@ -193,14 +242,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       text: replyText,
       messageId,
-      senderId: AI_TEAMMATE_BOT_USER_ID,
-      senderName: AI_TEAMMATE_BOT_NAME,
+      senderId: MICA_BOT_USER_ID,
+      senderName: MICA_BOT_NAME,
       sentTime: Date.now(),
     });
   } catch (error) {
-    console.error('[AI Teammate] Could not post reply:', error);
+    console.error('[MICA] Could not post reply:', error);
     return NextResponse.json(
-      { error: 'The AI teammate reply could not be posted to the room.' },
+      { error: 'MICA could not post the reply to the room.' },
       { status: 502 }
     );
   }

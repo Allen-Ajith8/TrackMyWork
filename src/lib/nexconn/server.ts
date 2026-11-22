@@ -6,10 +6,10 @@
 
 import { createHash, randomBytes } from 'node:crypto';
 import {
-  AI_TEAMMATE_BOT_NAME,
-  AI_TEAMMATE_BOT_USER_ID,
   COURTROOM_BOT_NAME,
   COURTROOM_BOT_USER_ID,
+  MICA_BOT_NAME,
+  MICA_BOT_USER_ID,
 } from './shared';
 
 const DEFAULT_BASE_URL = 'https://api.sg-light-api.com';
@@ -132,23 +132,23 @@ export async function ensureCourtroomBotRegistered(): Promise<void> {
   return courtroomBotTokenPromise;
 }
 
-let aiTeammateBotTokenPromise: Promise<void> | null = null;
+let micaTokenPromise: Promise<void> | null = null;
 
-/** Registers the `@ai` teammate identity with Nexconn (idempotent). */
-export async function ensureAiTeammateBotRegistered(): Promise<void> {
-  if (!aiTeammateBotTokenPromise) {
-    aiTeammateBotTokenPromise = issueNexconnAccessToken({
-      userId: AI_TEAMMATE_BOT_USER_ID,
-      name: AI_TEAMMATE_BOT_NAME,
+/** Registers the MICA agent identity with Nexconn (idempotent). */
+export async function ensureMicaRegistered(): Promise<void> {
+  if (!micaTokenPromise) {
+    micaTokenPromise = issueNexconnAccessToken({
+      userId: MICA_BOT_USER_ID,
+      name: MICA_BOT_NAME,
     })
       .then(() => undefined)
       .catch((error) => {
-        aiTeammateBotTokenPromise = null;
+        micaTokenPromise = null;
         throw error;
       });
   }
 
-  return aiTeammateBotTokenPromise;
+  return micaTokenPromise;
 }
 
 export async function sendNexconnGroupText(params: {

@@ -9,8 +9,9 @@
 import * as React from 'react';
 import {
   AlertTriangle,
+  BookOpen,
   Bot,
-  ChevronDown,
+  Check,
   Gavel,
   Hash,
   Loader2,
@@ -18,16 +19,18 @@ import {
   Send,
   ShieldAlert,
   Sparkles,
+  Trash2,
   Wifi,
   WifiOff,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
-  AI_TEAMMATE_BOT_NAME,
-  AI_TEAMMATE_BOT_USER_ID,
   COURTROOM_BOT_NAME,
   COURTROOM_BOT_USER_ID,
+  MICA_BOT_NAME,
+  MICA_BOT_USER_ID,
   getNexconnChannelId,
 } from '@/lib/nexconn/shared';
 import type {
@@ -57,8 +60,45 @@ interface ChatMessage {
   text: string;
   sentTime: number;
   isBot: boolean;
-  isAiTeammate: boolean;
+  isMica: boolean;
 }
+
+/** A saved AI summary kept in the room's shared-context drawer. */
+interface SavedAiSummary {
+  id: string;
+  source: string;
+  topic: string | null;
+  body: string;
+  savedAt: number;
+  savedBy: string;
+}
+
+interface SlashCommand {
+  name: string;
+  usage: string;
+  description: string;
+}
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  {
+    name: '/mica',
+    usage: '/mica <prompt>',
+    description:
+      'Ask MICA (your AI teammate) using full room chat + saved AI summaries as context',
+  },
+  {
+    name: '/courtroom',
+    usage: '/courtroom <motion>',
+    description:
+      'Launch an adversarial 7-agent AI Courtroom trial on a technical/project motion',
+  },
+  {
+    name: '/help',
+    usage: '/help',
+    description:
+      'Show quick inline usage guide for /mica, /courtroom, and + AI Summary',
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Module-level SDK singleton (one connection per browser session)
@@ -175,21 +215,21 @@ function toChatMessage(message: Message<any>): ChatMessage {
         ? content.content
         : '[Unsupported message type]';
 
-  const isAiTeammate = message.senderUserId === AI_TEAMMATE_BOT_USER_ID;
-  const isBot = message.senderUserId === COURTROOM_BOT_USER_ID || isAiTeammate;
+  const isMica = message.senderUserId === MICA_BOT_USER_ID;
+  const isBot = message.senderUserId === COURTROOM_BOT_USER_ID || isMica;
 
   return {
     id: message.messageId,
     senderId: message.senderUserId,
-    senderName: isAiTeammate
-      ? AI_TEAMMATE_BOT_NAME
+    senderName: isMica
+      ? MICA_BOT_NAME
       : isBot
         ? COURTROOM_BOT_NAME
         : senderInfo?.name || senderInfo?.alias || message.senderUserId || 'Unknown',
     text,
     sentTime: message.sentTime,
     isBot,
-    isAiTeammate,
+    isMica,
   };
 }
 
@@ -250,76 +290,38 @@ function connectionLabel(status: number | null): string {
 }
 
 // ---------------------------------------------------------------------------
-// AI Summary Card
+// Shared-context storage
 // ---------------------------------------------------------------------------
 
-function AiSummaryCard({
-  message,
-  currentUserName,
-  aiTeammateEnabled,
-  onAskAi,
-}: {
-  message: ChatMessage;
-  currentUserName: string;
-  aiTeammateEnabled: boolean;
-  onAskAi?: () => void;
-}) {
-  const parsed = parseAiSummary(message.text);
-  const [collapsed, setCollapsed] = React.useState(false);
+function parseStoredSummaries(raw: string | null): SavedAiSummary[] {
+  if (!raw) return [];
 
-  if (!parsed) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
 
-  return (
-    <div className="flex w-full gap-2 justify-start">
-      <div className="mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-semibold uppercase text-purple-700">
-        AI
-      </div>
-      <div className="max-w-[75%] rounded-2xl border border-purple-200 bg-purple-50/60 px-3.5 py-2.5 text-sm shadow-sm">
-        <div className="flex items-center gap-1.5 mb-1">
-          <p className="mb-0 text-[11px] font-semibold text-purple-700">AI Summary</p>
-          <span
-            className="inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 border border-purple-200"
-          >
-            {parsed.source}
-          </span>
-          {parsed.topic && (
-            <span className="text-[10px] font-medium text-purple-600">· {parsed.topic}</span>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => setCollapsed((c) => !c)}
-          className="flex items-center gap-1 text-[11px] font-medium text-purple-600 hover:underline mb-1.5"
-        >
-          {collapsed ? 'Expand' : 'Collapse'}
-          <ChevronDown className={cn('h-3 w-3', collapsed ? 'rotate-180' : '')} />
-        </button>
-        <div className={cn('whitespace-pre-wrap break-words text-purple-900', collapsed ? 'hidden' : '')}>
-          {parsed.body}
-        </div>
-        <div className="mt-1 flex items-center justify-between gap-2">
-          {aiTeammateEnabled && onAskAi ? (
-            <button
-              type="button"
-              onClick={onAskAi}
-              className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-purple-700 hover:bg-purple-100"
-            >
-              <Bot className="h-3 w-3" />
-              Ask AI
-            </button>
-          ) : (
-            <span />
-          )}
-          <p className="text-right text-[10px] text-purple-500">
-            {formatClock(message.sentTime)}
-          </p>
-        </div>
-      </div>
-      <div className="mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-semibold uppercase text-purple-700">
-        {(message.senderName || currentUserName || 'You').slice(0, 2).toUpperCase()}
-      </div>
-    </div>
-  );
+    return parsed
+      .filter((item): item is SavedAiSummary => {
+        if (!item || typeof item !== 'object') return false;
+        const value = item as Record<string, unknown>;
+        return (
+          typeof value.id === 'string' &&
+          typeof value.body === 'string' &&
+          value.body.trim().length > 0
+        );
+      })
+      .map((item) => ({
+        id: item.id,
+        source: typeof item.source === 'string' ? item.source : 'Other',
+        topic: typeof item.topic === 'string' ? item.topic : null,
+        body: item.body,
+        savedAt: typeof item.savedAt === 'number' ? item.savedAt : Date.now(),
+        savedBy: typeof item.savedBy === 'string' ? item.savedBy : 'Teammate',
+      }))
+      .slice(-50);
+  } catch {
+    return [];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -354,17 +356,68 @@ export function NexconnRoomChat({
   const [aiSource, setAiSource] = React.useState<AiSummarySource>('Gemini');
   const [aiTopic, setAiTopic] = React.useState('');
   const [aiSummaryText, setAiSummaryText] = React.useState('');
-  const [postingAiSummary, setPostingAiSummary] = React.useState(false);
+  const [aiSummarySent, setAiSummarySent] = React.useState(false);
+  const [savedSummaries, setSavedSummaries] = React.useState<SavedAiSummary[]>([]);
+  const [contextOpen, setContextOpen] = React.useState(false);
 
-  // ---- AI Teammate state --------------------------------------------------
-  const [aiTeammateEnabled, setAiTeammateEnabled] = React.useState(false);
-  const [aiThinking, setAiThinking] = React.useState(false);
+  // ---- MICA / slash command state ----------------------------------------
+  const [micaThinking, setMicaThinking] = React.useState(false);
+  const [helpOpen, setHelpOpen] = React.useState(false);
+  const [slashDismissed, setSlashDismissed] = React.useState(false);
+  const [slashIndex, setSlashIndex] = React.useState(0);
 
   const sdkRef = React.useRef<NexconnSdk | null>(null);
   const channelRef = React.useRef<GroupChannel | null>(null);
   const queryRef = React.useRef<MessagesQuery | null>(null);
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const bottomRef = React.useRef<HTMLDivElement | null>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const summaryTimerRef = React.useRef<number | null>(null);
+
+  // ---- Load saved summaries for this room --------------------------------
+  React.useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(`tmw:room-ai-summaries:${roomId}`);
+      setSavedSummaries(parseStoredSummaries(raw));
+    } catch {
+      setSavedSummaries([]);
+    }
+  }, [roomId]);
+
+  React.useEffect(
+    () => () => {
+      if (summaryTimerRef.current !== null) {
+        window.clearTimeout(summaryTimerRef.current);
+      }
+    },
+    []
+  );
+
+  const persistSummaries = React.useCallback(
+    (summaries: SavedAiSummary[]) => {
+      try {
+        window.localStorage.setItem(
+          `tmw:room-ai-summaries:${roomId}`,
+          JSON.stringify(summaries)
+        );
+      } catch {
+        // Storage can be unavailable (private mode); the drawer still works
+        // for the current session.
+      }
+    },
+    [roomId]
+  );
+
+  const removeSavedSummary = React.useCallback(
+    (id: string) => {
+      setSavedSummaries((previous) => {
+        const next = previous.filter((summary) => summary.id !== id);
+        persistSummaries(next);
+        return next;
+      });
+    },
+    [persistSummaries]
+  );
 
   // ---- Connect, join the room channel, load history ----------------------
   React.useEffect(() => {
@@ -515,7 +568,7 @@ export function NexconnRoomChat({
   // ---- Auto-scroll on new messages ---------------------------------------
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' });
-  }, [messages.length, aiThinking]);
+  }, [messages.length, micaThinking]);
 
   // ---- Older history -----------------------------------------------------
   const loadOlder = React.useCallback(async () => {
@@ -540,24 +593,29 @@ export function NexconnRoomChat({
     }
   }, [loadingOlder]);
 
-  // ---- AI Teammate: request an inline reply ------------------------------
-  const requestAiReply = React.useCallback(
+  // ---- MICA: ask the in-room agent ---------------------------------------
+  const requestMicaReply = React.useCallback(
     async (prompt: string) => {
       if (!prompt.trim()) return;
 
-      setAiThinking(true);
+      setMicaThinking(true);
       setError(null);
 
       try {
-        const recentMessages = messages.slice(-15).map((message) => ({
+        const recentMessages = messages.slice(-20).map((message) => ({
           senderName: message.senderName,
           text: message.text,
+        }));
+        const summaries = savedSummaries.map((summary) => ({
+          source: summary.source,
+          topic: summary.topic,
+          body: summary.body,
         }));
 
         const response = await fetch('/api/chat/ai-reply', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roomId, prompt, recentMessages }),
+          body: JSON.stringify({ roomId, prompt, recentMessages, summaries }),
         });
         const payload = (await response.json().catch(() => null)) as
           | {
@@ -571,69 +629,58 @@ export function NexconnRoomChat({
           | null;
 
         if (!response.ok || !payload?.text) {
-          throw new Error(payload?.error || 'The AI teammate could not reply.');
+          throw new Error(payload?.error || 'MICA could not reply.');
         }
 
         const reply: ChatMessage = {
-          id: payload.messageId || `ai-${Date.now()}`,
-          senderId: payload.senderId || AI_TEAMMATE_BOT_USER_ID,
-          senderName: payload.senderName || AI_TEAMMATE_BOT_NAME,
+          id: payload.messageId || `mica-${Date.now()}`,
+          senderId: payload.senderId || MICA_BOT_USER_ID,
+          senderName: payload.senderName || MICA_BOT_NAME,
           text: payload.text,
           sentTime: payload.sentTime ?? Date.now(),
           isBot: true,
-          isAiTeammate: true,
+          isMica: true,
         };
 
         setMessages((previous) => mergeMessages(previous, [reply]));
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
-        setAiThinking(false);
+        setMicaThinking(false);
       }
     },
-    [messages, roomId]
+    [messages, roomId, savedSummaries]
   );
 
-  // ---- Post a shared AI Summary ------------------------------------------
-  const handlePostAiSummary = async () => {
-    const sdk = sdkRef.current;
-    const channel = channelRef.current;
+  // ---- Save an AI summary into the room's shared context ----------------
+  const handleSaveAiSummary = () => {
     const body = aiSummaryText.trim();
+    if (!body) return;
 
-    if (!sdk || !channel || !body || postingAiSummary) return;
+    const summary: SavedAiSummary = {
+      id: `summary-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      source: aiSource,
+      topic: aiTopic.trim() || null,
+      body,
+      savedAt: Date.now(),
+      savedBy: currentUserName,
+    };
 
-    setPostingAiSummary(true);
-    setError(null);
+    const next = [...savedSummaries, summary].slice(-50);
+    setSavedSummaries(next);
+    persistSummaries(next);
 
-    try {
-      const topic = aiTopic.trim().replace(/[|\]]/g, '').slice(0, 120);
-      const marker = `[[AI_SUMMARY|source=${aiSource}${topic ? `|topic=${topic}` : ''}]]`;
-      const text = `${marker}\n${body}`;
-
-      const result = await channel.sendMessage(
-        new sdk.SendTextMessageParams({ text })
-      );
-
-      if (!result.isOk) {
-        throw new Error(
-          `Summary failed to send (${result.code}: ${result.msg}).`
-        );
-      }
-
-      if (result.data) {
-        setMessages((previous) =>
-          mergeMessages(previous, [toChatMessage(result.data!)])
-        );
-      }
-
+    setAiSummarySent(true);
+    if (summaryTimerRef.current !== null) {
+      window.clearTimeout(summaryTimerRef.current);
+    }
+    summaryTimerRef.current = window.setTimeout(() => {
+      summaryTimerRef.current = null;
+      setAiSummarySent(false);
+      setAiSummaryOpen(false);
       setAiTopic('');
       setAiSummaryText('');
-      setAiSummaryOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setPostingAiSummary(false);
-    }
+    }, 1200);
   };
 
   // ---- Send (including /courtroom) --------------------------------------
@@ -646,11 +693,44 @@ export function NexconnRoomChat({
 
     if (!sdk || !channel || !text || sending) return;
 
+    // Local-only help card: never posted to the group channel.
+    if (/^\/help(\s|$)/i.test(text)) {
+      setHelpOpen(true);
+      setDraft('');
+      setSlashDismissed(true);
+      return;
+    }
+
     setSending(true);
     setError(null);
 
     try {
-      if (/^\/courtroom(\s|$)/i.test(text)) {
+      if (/^\/mica(\s|$)/i.test(text)) {
+        const prompt = text.replace(/^\/mica\s*/i, '').trim();
+
+        if (!prompt) {
+          throw new Error('Usage: /mica <prompt>');
+        }
+
+        // Show the question to the whole room first, then let MICA answer.
+        const question = await channel.sendMessage(
+          new sdk.SendTextMessageParams({ text })
+        );
+
+        if (!question.isOk) {
+          throw new Error(
+            `MICA question failed to send (${question.code}: ${question.msg}).`
+          );
+        }
+
+        if (question.data) {
+          setMessages((previous) =>
+            mergeMessages(previous, [toChatMessage(question.data!)])
+          );
+        }
+
+        void requestMicaReply(prompt);
+      } else if (/^\/courtroom(\s|$)/i.test(text)) {
         const motion = text.replace(/^\/courtroom\s*/i, '').trim();
 
         if (!motion) {
@@ -700,10 +780,6 @@ export function NexconnRoomChat({
           setMessages((previous) =>
             mergeMessages(previous, [toChatMessage(result.data!)])
           );
-        }
-
-        if (aiTeammateEnabled && /(^|\s)@ai\b/i.test(text)) {
-          void requestAiReply(text);
         }
       }
 
@@ -755,6 +831,31 @@ export function NexconnRoomChat({
   const isLive = connectionStatus === 0;
   const label = connectionLabel(connectionStatus);
 
+  // ---- Slash command palette ---------------------------------------------
+  const slashQuery =
+    draft.startsWith('/') && !/\s/.test(draft)
+      ? draft.slice(1).toLowerCase()
+      : null;
+  const slashMatches =
+    slashQuery === null
+      ? []
+      : SLASH_COMMANDS.filter((command) =>
+          command.name.slice(1).startsWith(slashQuery)
+        );
+  const slashMenuOpen =
+    phase === 'ready' && !slashDismissed && slashMatches.length > 0;
+  const activeSlashIndex = Math.min(
+    slashIndex,
+    Math.max(slashMatches.length - 1, 0)
+  );
+
+  const applySlashCommand = (command: SlashCommand) => {
+    setDraft(`${command.name} `);
+    setSlashDismissed(true);
+    setSlashIndex(0);
+    textareaRef.current?.focus();
+  };
+
   return (
     <div className="flex h-[calc(100vh-11.5rem)] max-h-[calc(100vh-11.5rem)] flex-col bg-white">
       {/* Header */}
@@ -794,28 +895,17 @@ export function NexconnRoomChat({
           </span>
           <button
             type="button"
-            onClick={() => setAiTeammateEnabled((enabled) => !enabled)}
-            aria-pressed={aiTeammateEnabled}
-            title={
-              aiTeammateEnabled
-                ? 'AI Teammate is on. Mention @ai to get an inline reply.'
-                : 'Turn on the AI Teammate to mention @ai in the thread.'
-            }
+            onClick={() => setContextOpen((open) => !open)}
+            aria-expanded={contextOpen}
+            title="Shared AI summaries used as MICA context"
             className={cn(
               'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-              aiTeammateEnabled
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-input bg-white text-muted-foreground hover:bg-muted'
+              'border-input bg-white text-muted-foreground hover:bg-muted'
             )}
           >
-            <Bot className="h-3 w-3" />
-            AI Teammate: {aiTeammateEnabled ? 'On' : 'Off'}
+            <BookOpen className="h-3 w-3" />
+            Context <span>({savedSummaries.length})</span>
           </button>
-          {aiTeammateEnabled && (
-            <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
-              🤖 NIM AI in thread
-            </span>
-          )}
         </div>
       </div>
 
@@ -890,30 +980,6 @@ export function NexconnRoomChat({
         <div className="space-y-3">
           {messages.map((message) => {
             const isOwn = message.senderId === currentUserId;
-            const aiSummary = parseAiSummary(message.text);
-
-            // AI Summary messages render as a distinct highlighted card
-            if (aiSummary) {
-              return (
-                <div
-                  key={message.id}
-                  className="flex w-full gap-2 justify-start"
-                >
-                  <AiSummaryCard
-                    message={message}
-                    currentUserName={currentUserName}
-                    aiTeammateEnabled={aiTeammateEnabled}
-                    onAskAi={() =>
-                      void requestAiReply(
-                        `Synthesize and critique this ${aiSummary.source} AI summary${
-                          aiSummary.topic ? ` about "${aiSummary.topic}"` : ''
-                        }. Highlight the key points, then call out anything missing or risky:\n\n${aiSummary.body}`
-                      )
-                    }
-                  />
-                </div>
-              );
-            }
 
             return (
               <div
@@ -927,14 +993,14 @@ export function NexconnRoomChat({
                   <div
                     className={cn(
                       'mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold uppercase',
-                      message.isAiTeammate
+                      message.isMica
                         ? 'bg-emerald-100 text-emerald-700'
                         : message.isBot
                           ? 'bg-amber-100 text-amber-700'
                           : 'bg-muted text-muted-foreground'
                     )}
                   >
-                    {message.isAiTeammate ? (
+                    {message.isMica ? (
                       <Bot className="h-3.5 w-3.5" />
                     ) : message.isBot ? (
                       <Gavel className="h-3.5 w-3.5" />
@@ -949,7 +1015,7 @@ export function NexconnRoomChat({
                     'max-w-[75%] rounded-2xl px-3.5 py-2 text-sm shadow-sm',
                     isOwn
                       ? 'rounded-br-sm bg-primary-600 text-white'
-                      : message.isAiTeammate
+                      : message.isMica
                         ? 'rounded-bl-sm border border-emerald-200 bg-emerald-50 text-emerald-950'
                         : message.isBot
                           ? 'rounded-bl-sm border border-amber-200 bg-amber-50 text-amber-950'
@@ -960,7 +1026,7 @@ export function NexconnRoomChat({
                     <p
                       className={cn(
                         'mb-0.5 text-[11px] font-semibold',
-                        message.isAiTeammate
+                        message.isMica
                           ? 'text-emerald-700'
                           : message.isBot
                             ? 'text-amber-700'
@@ -993,15 +1059,83 @@ export function NexconnRoomChat({
           })}
         </div>
 
-        {aiThinking && (
+        {micaThinking && (
           <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            🤖 NIM AI is thinking...
+            MICA is thinking…
           </div>
         )}
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Context / Shared Summaries drawer */}
+      {contextOpen && (
+        <div
+          className="absolute inset-0 z-50 flex flex-col bg-white"
+          style={{ pointerEvents: 'auto' }}
+        >
+          <div className="flex-shrink-0 border-b px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setContextOpen(false)}
+              className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" /> Shared Context
+            </button>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Saved AI summaries used as background context for{' '}
+              <span className="font-semibold">/mica</span>.
+            </p>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            {savedSummaries.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+                <BookOpen className="h-8 w-8 opacity-20" />
+                <p>No saved summaries yet.</p>
+                <p className="text-[11px]">
+                  Use <span className="font-mono">+ AI Summary</span> to save one.
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {savedSummaries.map((summary) => (
+                  <li
+                    key={summary.id}
+                    className="flex gap-2 rounded-lg border bg-white p-3 shadow-sm"
+                  >
+                    <div className="flex-shrink-0">
+                      <span className="text-[10px] font-semibold text-purple-700 uppercase">
+                        {summary.source}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {summary.topic && (
+                        <p className="text-[11px] font-medium text-purple-600 truncate">
+                          {summary.topic}
+                        </p>
+                      )}
+                      <p className="text-[11px] text-muted-foreground line-clamp-2 break-words">
+                        {summary.body}
+                      </p>
+                      <p className="mt-1 text-right text-[10px] text-muted-foreground">
+                        {formatClock(summary.savedAt)} — {summary.savedBy}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSavedSummary(summary.id)}
+                      className="flex-shrink-0 p-1 text-purple-400 hover:text-purple-600 hover:bg-purple-50 rounded"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Composer */}
       <div className="flex-shrink-0 border-t bg-white px-4 pt-3 pb-5">
@@ -1012,14 +1146,73 @@ export function NexconnRoomChat({
           </p>
         )}
 
+        {/* Slash command palette */}
+        {slashMenuOpen && (
+          <div
+            className="absolute bottom-[60px] left-4 right-4 flex flex-col gap-1"
+            style={{ pointerEvents: 'auto' }}
+          >
+            <div className="flex flex-col gap-0.5">
+              {slashMatches.map((command, index) => (
+                <button
+                  key={command.name}
+                  type="button"
+                  onClick={() => applySlashCommand(command)}
+                  className={cn(
+                    'w-full flex items-center justify-between gap-2 rounded border border-input bg-white px-2 py-1.5 text-xs text-sm font-medium transition-colors',
+                    index === activeSlashIndex
+                      ? 'bg-accent text-accent-foreground border-accent'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <span className="font-mono text-purple-600">{command.name}</span>
+                  <span className="ml-auto text-[10px] text-muted-foreground truncate max-w-[200px]">
+                    {command.description}
+                  </span>
+                  {index === activeSlashIndex && (
+                    <span className="text-[10px] font-semibold text-purple-600">↵</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSend} className="flex items-end gap-2">
           <textarea
+            ref={textareaRef}
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              const value = event.target.value;
+              setDraft(value);
+              if (!value.startsWith('/')) {
+                setSlashDismissed(false);
+              }
+            }}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
                 event.currentTarget.form?.requestSubmit();
+                return;
+              }
+
+              if (!slashMenuOpen) return;
+
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setSlashIndex((prev) =>
+                  prev < slashMatches.length - 1 ? prev + 1 : prev
+                );
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setSlashIndex((prev) =>
+                  prev > 0 ? prev - 1 : slashMatches.length - 1
+                );
+              } else if (event.key === 'Enter' || event.key === 'Tab') {
+                event.preventDefault();
+                applySlashCommand(slashMatches[activeSlashIndex]);
+              } else if (event.key === 'Escape') {
+                setSlashDismissed(true);
               }
             }}
             rows={1}
@@ -1052,14 +1245,14 @@ export function NexconnRoomChat({
           </Button>
         </form>
 
-        {/* AI Summary popover */}
+        {/* AI Summary popover — saves to shared context, not the feed */}
         {aiSummaryOpen && (
           <div
             className="mt-2 rounded-xl border border-purple-200 bg-purple-50 p-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200"
           >
             <div className="flex items-center gap-1.5 mb-2">
               <Sparkles className="h-4 w-4 text-purple-600" />
-              <h3 className="text-sm font-semibold text-purple-800">Share AI Summary</h3>
+              <h3 className="text-sm font-semibold text-purple-800">Save AI Summary</h3>
             </div>
 
             <div className="mb-2">
@@ -1104,6 +1297,15 @@ export function NexconnRoomChat({
               />
             </div>
 
+            {aiSummarySent && (
+              <div className="mb-2 flex items-center gap-2 rounded bg-emerald-50 px-2 py-1.5">
+                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                <span className="text-[10px] font-semibold text-emerald-700">
+                  ✓ Sent to MICA context
+                </span>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
@@ -1116,30 +1318,62 @@ export function NexconnRoomChat({
               </Button>
               <Button
                 type="button"
-                onClick={handlePostAiSummary}
-                disabled={postingAiSummary || !aiSummaryText.trim()}
+                onClick={handleSaveAiSummary}
+                disabled={!aiSummaryText.trim()}
                 className="bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
               >
-                {postingAiSummary ? (
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                {aiSummarySent ? (
+                  <Check className="mr-2 h-3.5 w-3.5" />
                 ) : (
                   <Send className="mr-2 h-3.5 w-3.5" />
                 )}
-                Post Summary to Thread
+                {aiSummarySent ? 'Saved' : 'Save Summary'}
               </Button>
             </div>
           </div>
         )}
 
+        {/* Local /help card (never posted to the group channel) */}
+        {helpOpen && (
+          <div className="mt-2 rounded-xl border border-purple-200 bg-purple-50 p-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center gap-1.5 mb-2">
+              <BookOpen className="h-4 w-4 text-purple-600" />
+              <h3 className="text-sm font-semibold text-purple-800">Slash Commands</h3>
+              <button
+                type="button"
+                onClick={() => setHelpOpen(false)}
+                className="ml-auto p-1 text-purple-400 hover:text-purple-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <ul className="space-y-2 text-xs text-purple-900">
+              {SLASH_COMMANDS.map((command) => (
+                <li key={command.name} className="flex justify-between gap-2">
+                  <div>
+                    <span className="font-mono font-bold">{command.name}</span>{' '}
+                    <span className="font-mono text-[10px] text-purple-600">{command.usage.slice(command.name.length + 1)}</span>
+                  </div>
+                  <p className="text-[10px] text-purple-700 leading-relaxed">
+                    {command.description}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[10px] text-purple-600">
+              Summaries saved via{' '}
+              <span className="font-semibold">+ AI Summary</span>{' '}
+              are shared room context for MICA.
+            </p>
+          </div>
+        )}
+
         <p className="mt-1.5 text-[11px] text-muted-foreground">
-          Type <code className="rounded bg-muted px-1">/courtroom &lt;motion&gt;</code>{' '}
-          to start an AI Courtroom trial.{' '}
-          {aiTeammateEnabled && (
-            <>
-              Mention <code className="rounded bg-muted px-1">@ai</code> for an inline reply.{' '}
-            </>
-          )}
-          You are <span className="font-medium">{currentUserName}</span>.
+          Type <code className="rounded bg-muted px-1">/mica &lt;prompt&gt;</code>{' '}
+          to ask MICA using room chat + saved summaries, or{' '}
+          <code className="rounded bg-muted px-1">/courtroom &lt;motion&gt;</code>{' '}
+          to start an AI Courtroom trial. You are{' '}
+          <span className="font-medium">{currentUserName}</span>.
         </p>
       </div>
     </div>
