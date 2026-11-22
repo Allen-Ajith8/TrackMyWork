@@ -3,8 +3,8 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/lib/store';
+import { createClient } from '@/lib/supabase/client';
 import {
   Plus,
   Search,
@@ -42,12 +42,15 @@ import { cn, formatRelativeTime } from '@/lib/utils';
 import type { Artifact, RoomMember, User, Room } from '@/types/database';
 
 const ARTIFACT_TYPES = [
+  { value: 'document', label: 'Document / Spec', icon: FileText },
   { value: 'apk', label: 'APK Build', icon: Box },
   { value: 'lottie', label: 'Lottie Animation', icon: Code },
   { value: 'riv', label: 'Rive Animation', icon: Code },
   { value: 'presentation', label: 'Presentation', icon: FileText },
   { value: 'video', label: 'Video', icon: Video },
   { value: 'image', label: 'Image', icon: Image },
+  { value: 'note', label: 'Research Note', icon: FileText },
+  { value: 'reference', label: 'Reference Link', icon: FileText },
   { value: 'other', label: 'Other', icon: FileImage },
 ];
 
@@ -58,12 +61,15 @@ function getTypeIcon(type: string) {
 
 function getTypeColor(type: string) {
   const colors: Record<string, string> = {
+    document: 'bg-indigo-100 text-indigo-800',
     apk: 'bg-green-100 text-green-800',
     lottie: 'bg-purple-100 text-purple-800',
     riv: 'bg-purple-100 text-purple-800',
     presentation: 'bg-blue-100 text-blue-800',
     video: 'bg-red-100 text-red-800',
     image: 'bg-pink-100 text-pink-800',
+    note: 'bg-amber-100 text-amber-800',
+    reference: 'bg-cyan-100 text-cyan-800',
     other: 'bg-gray-100 text-gray-800',
   };
   return colors[type] || colors.other;
@@ -79,7 +85,7 @@ interface ArtifactDialogProps {
 function ArtifactDialog({ open, onOpenChange, roomId, onSubmit }: ArtifactDialogProps) {
   const [file, setFile] = React.useState<File | null>(null);
   const [name, setName] = React.useState('');
-  const [type, setType] = React.useState<'apk' | 'lottie' | 'riv' | 'presentation' | 'video' | 'image' | 'other'>('other');
+  const [type, setType] = React.useState<'apk' | 'lottie' | 'riv' | 'presentation' | 'video' | 'image' | 'document' | 'note' | 'reference' | 'other'>('document');
   const [tags, setTags] = React.useState('');
   const [isFinal, setIsFinal] = React.useState(false);
   const [version, setVersion] = React.useState('v1');
@@ -99,7 +105,7 @@ function ArtifactDialog({ open, onOpenChange, roomId, onSubmit }: ArtifactDialog
     onOpenChange(false);
     setFile(null);
     setName('');
-    setType('other');
+    setType('document');
     setTags('');
     setIsFinal(false);
     setVersion('v1');
@@ -198,33 +204,41 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
   });
 
   const handleUploadArtifact = async (formData: FormData) => {
-    // TODO: Upload to Supabase Storage
-    // For now, create optimistic artifact
-    const newArtifact: Artifact = {
-      id: crypto.randomUUID(),
-      room_id: room.id,
-      uploaded_by: user?.id || '',
-      name: formData.get('name') as string,
-      type: formData.get('type') as Artifact['type'],
-      file_url: '', // Would be set after upload
-      file_size: 0,
-      mime_type: '',
-      tags: (formData.get('tags') as string).split(',').map(t => t.trim()).filter(Boolean),
-      version: formData.get('version') as string,
-      is_final: formData.get('is_final') === 'true',
-      canva_design_id: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    setArtifacts(prev => [newArtifact, ...prev]);
-    setToast({ type: 'success', title: 'Upload Started', message: `${newArtifact.name} is being uploaded` });
+    try {
+      const response = await fetch('/api/artifacts', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Could not upload artifact.');
+      }
+
+      if (data?.artifact) {
+        setArtifacts((prev) => [data.artifact, ...prev]);
+      }
+      setToast({
+        type: 'success',
+        title: data?.textExtracted ? 'Artifact indexed' : 'Artifact uploaded',
+        message:
+          data?.message ||
+          `${data?.artifact?.name || 'Artifact'} is ready for MICA and the AI Courtroom.`,
+      });
+    } catch (error) {
+      setToast({
+        type: 'error',
+        title: 'Upload failed',
+        message: error instanceof Error ? error.message : 'Could not upload artifact.',
+      });
+    }
   };
 
   const handleDeleteArtifact = async (id: string) => {
     if (!confirm('Delete this artifact?')) return;
     setArtifacts(prev => prev.filter(a => a.id !== id));
     try {
-      await supabase.from('artifacts').delete().eq('id', id);
+      await fetch(`/api/artifacts?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
     } catch (error) {
       console.error('Failed to delete artifact:', error);
     }
@@ -326,6 +340,13 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
                           <Badge variant="default"><Check className="w-3 h-3 mr-1" />Final</Badge>
                         </div>
                       )}
+                      {(artifact.extracted_text || artifact.content) && (
+                        <div className="absolute top-2 left-2">
+                          <Badge variant="outline" className="bg-white/90 text-[9px] gap-1 border-indigo-300 text-indigo-800">
+                            AI Ready
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                     <div className="p-3 border-t flex-1 flex flex-col">
                       <div className="flex items-center justify-between mb-2">
@@ -347,6 +368,11 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
                       </div>
                       <p className="text-sm font-medium truncate mb-1">{artifact.name}</p>
                       <p className="text-xs text-muted-foreground mb-2">{artifact.version || 'v1'}</p>
+                      {(artifact.extracted_text || artifact.content) && (
+                        <p className="text-[10px] text-indigo-700 mb-2 line-clamp-2">
+                          {(artifact.extracted_text || artifact.content || '').slice(0, 140)}…
+                        </p>
+                      )}
                       {artifact.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-2">
                           {artifact.tags.map(tag => (
@@ -374,6 +400,7 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
                     <th className="pb-2 pr-4">Tags</th>
                     <th className="pb-2 pr-4">Uploader</th>
                     <th className="pb-2 pr-4">Status</th>
+                    <th className="pb-2 pr-4">AI Index</th>
                     <th className="pb-2 pr-4">Created</th>
                     <th className="pb-2">Actions</th>
                   </tr>
@@ -404,6 +431,15 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
                       </td>
                       <td className="py-3 pr-4">{artifact.uploader?.display_name || artifact.uploader?.username || 'Unknown'}</td>
                       <td className="py-3 pr-4">{artifact.is_final ? <Badge variant="default"><Check className="w-3 h-3 mr-1" />Final</Badge> : <Badge variant="secondary">Draft</Badge>}</td>
+                      <td className="py-3 pr-4">
+                        {(artifact.extracted_text || artifact.content) ? (
+                          <Badge variant="outline" className="text-[10px] border-indigo-300 text-indigo-800">
+                            AI Ready
+                          </Badge>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">Binary</span>
+                        )}
+                      </td>
                       <td className="py-3 pr-4">{formatRelativeTime(artifact.created_at)}</td>
                       <td className="py-3">
                         <DropdownMenu>

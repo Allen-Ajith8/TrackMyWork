@@ -27,9 +27,24 @@ interface ArtifactsOverviewClientProps {
   rooms: { id: string; name: string }[];
 }
 
-const TYPE_FILTERS = ['all', 'image', 'video', 'apk', 'presentation', 'lottie', 'riv', 'other'] as const;
+const TYPE_FILTERS = [
+  'all',
+  'document',
+  'note',
+  'reference',
+  'image',
+  'video',
+  'apk',
+  'presentation',
+  'lottie',
+  'riv',
+  'other',
+] as const;
 
 const TYPE_ICONS: Record<string, typeof FileImage> = {
+  document: FileText,
+  note: FileText,
+  reference: FileText,
   image: FileImage,
   video: FileVideo,
   apk: Package,
