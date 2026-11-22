@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, ExternalLink, FileText, Sparkles } from 'lucide-react';
 import { createServerClientSupabase } from '@/lib/supabase/server';
-import { getServerAuthUser, isSupabaseConfigured } from '@/lib/dashboard-data';
+import { getFallbackDemoRoom, getServerAuthUser, isSupabaseConfigured } from '@/lib/dashboard-data';
 import { formatRelativeTime } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import type { Artifact } from '@/types/database';
@@ -33,6 +33,20 @@ export default async function ArtifactDetailPage({
       ]);
       artifact = (artifactData as Artifact | null) || null;
       roomName = String((roomData as { name?: string } | null)?.name || roomName);
+    } catch {
+      artifact = null;
+    }
+  }
+
+  // Demo / offline fallback: look up the artifact in the fallback demo room data
+  if (!artifact && !isSupabaseConfigured()) {
+    try {
+      const demo = getFallbackDemoRoom(roomId);
+      const demoArtifact = demo.artifacts.find((a) => a.id === artifactId) as Artifact | undefined;
+      if (demoArtifact) {
+        artifact = demoArtifact;
+        roomName = demo.room.name;
+      }
     } catch {
       artifact = null;
     }
