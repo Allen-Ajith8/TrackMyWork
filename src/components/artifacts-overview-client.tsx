@@ -12,13 +12,10 @@ import {
   Plus,
   Search,
   Sparkles,
-  RotateCw,
-  ShieldCheck,
   CheckCircle,
   FolderKanban,
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
-import TiltedCard from '@/components/ui/tilted-card';
 import { GlassIconTile } from '@/components/ui/glass-icons';
 import type { Artifact } from '@/types/database';
 
@@ -94,7 +91,7 @@ export function ArtifactsOverviewClient({ artifacts, rooms }: ArtifactsOverviewC
         <div>
           <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Artifacts</h1>
           <p className="text-surface-600 dark:text-slate-400 mt-1">
-            Builds, designs and deliverables from every room • Hover to tilt in 3D, click card to flip for specs.
+            Builds, designs and deliverables from every room.
           </p>
         </div>
         <Link href="/dashboard/artifacts/upload" className="btn-primary">
@@ -233,192 +230,59 @@ export function ArtifactsOverviewClient({ artifacts, rooms }: ArtifactsOverviewC
           {filtered.map((artifact) => {
             const Icon = TYPE_ICONS[artifact.type] || FileText;
             return (
-              <div key={artifact.id} className="w-full flex justify-center">
-                <TiltedCard
-                  containerWidth="100%"
-                  containerHeight="275px"
-                  imageWidth="100%"
-                  imageHeight="100%"
-                  rotateAmplitude={14}
-                  scaleOnHover={1.035}
-                  glare={0.4}
-                  shadow={0.5}
-                  radius={16}
-                  flipOnClick={true}
-                  showTooltip={true}
-                  captionText={`Click to flip: ${artifact.name}`}
-                  className="w-full transition-shadow duration-300 hover:shadow-2xl"
-                  backContent={
-                    /* BACK OF CARD: SPECIFICATIONS & CHECKSUM */
-                    <div className="p-5 flex flex-col justify-between h-full w-full select-none text-left">
-                      <div>
-                        <div className="flex items-center justify-between pb-2.5 border-b border-surface-200/60 dark:border-slate-800/80">
-                          <div className="flex items-center gap-1.5 text-xs font-mono font-bold uppercase text-brand-600 dark:text-brand-400">
-                            <ShieldCheck className="w-3.5 h-3.5 text-brand-500" />
-                            <span>Deliverable Specs</span>
-                          </div>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-300 font-bold border border-brand-500/20">
-                            ↺ Flip Back
-                          </span>
-                        </div>
-
-                        <div className="mt-3 space-y-2 text-xs font-mono">
-                          <div className="flex items-center justify-between text-surface-600 dark:text-slate-300">
-                            <span className="text-surface-400 dark:text-slate-500">Room</span>
-                            <span className="font-semibold truncate max-w-[170px]">{artifact.roomName}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-surface-600 dark:text-slate-300">
-                            <span className="text-surface-400 dark:text-slate-500">MIME Format</span>
-                            <span className="font-semibold">{artifact.mime_type || `${artifact.type.toUpperCase()}`}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-surface-600 dark:text-slate-300">
-                            <span className="text-surface-400 dark:text-slate-500">File Size</span>
-                            <span className="font-semibold">{formatBytes(artifact.file_size)}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-surface-600 dark:text-slate-300">
-                            <span className="text-surface-400 dark:text-slate-500">Checksum Hash</span>
-                            <span className="font-semibold text-brand-600 dark:text-brand-300">
-                              #{artifact.id.slice(-8).toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-surface-600 dark:text-slate-300">
-                            <span className="text-surface-400 dark:text-slate-500">Status</span>
-                            <span className={`font-semibold ${artifact.is_final ? 'text-emerald-500' : 'text-amber-500'}`}>
-                              {artifact.is_final ? '● Final Release' : '○ Review Draft'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t border-surface-200/60 dark:border-slate-800/80 flex items-center gap-2">
-                        <a
-                          href={artifact.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="btn-primary text-xs flex-1 py-2 inline-flex items-center justify-center gap-1.5"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>Open Asset</span>
-                        </a>
-                        <a
-                          href={artifact.file_url}
-                          download
-                          onClick={(e) => e.stopPropagation()}
-                          className="btn-outline p-2 text-xs"
-                          title={`Download ${artifact.name}`}
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                    </div>
-                  }
-                >
-                  {/* FRONT OF CARD */}
-                  <div className="p-5 flex flex-col justify-between h-full w-full select-none text-left">
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div
-                            className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
-                              artifact.type === 'image'
-                                ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400'
-                                : artifact.type === 'video'
-                                ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
-                                : artifact.type === 'apk'
-                                ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
-                                : artifact.type === 'presentation'
-                                ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
-                                : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
-                            }`}
-                          >
-                            <Icon className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm sm:text-base text-surface-900 dark:text-white truncate">
-                              {artifact.name}
-                            </p>
-                            <p className="text-xs text-surface-500 dark:text-slate-400 truncate">
-                              {artifact.roomName} · {formatDate(artifact.created_at)}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {artifact.is_final && (
-                            <span className="badge bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
-                              Final
-                            </span>
-                          )}
-                          <span
-                            className="p-1 rounded-md text-surface-400 hover:text-brand-600 dark:hover:text-brand-300 transition-colors"
-                            title="Click card to flip for specs"
-                          >
-                            <RotateCw className="w-3.5 h-3.5" />
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Badges Row */}
-                      <div className="flex flex-wrap gap-1.5">
-                        <span className="badge bg-surface-100 dark:bg-slate-800 text-surface-700 dark:text-slate-300 capitalize font-medium text-[11px]">
-                          {artifact.type}
-                        </span>
-                        {artifact.version && (
-                          <span className="badge bg-surface-100 dark:bg-slate-800 text-surface-700 dark:text-slate-300 font-medium text-[11px]">
-                            v{artifact.version}
-                          </span>
-                        )}
-                        <span className="badge bg-surface-100 dark:bg-slate-800 text-surface-700 dark:text-slate-300 font-medium text-[11px]">
-                          {formatBytes(artifact.file_size)}
-                        </span>
-                      </div>
-
-                      {/* Tags */}
-                      {artifact.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {artifact.tags.slice(0, 4).map((tag) => (
-                            <span
-                              key={tag}
-                              className="px-2 py-0.5 rounded-md text-[10.5px] font-mono font-medium text-brand-600 dark:text-purple-400 bg-brand-50/60 dark:bg-purple-950/30"
-                            >
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action Row */}
-                    <div className="pt-2 border-t border-surface-200/60 dark:border-slate-800/80 flex items-center gap-2">
-                      <a
-                        href={artifact.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="btn-outline text-xs flex-1 py-1.5 inline-flex items-center justify-center gap-1.5 hover:bg-brand-500/10 dark:hover:bg-brand-500/20 hover:text-brand-600 dark:hover:text-brand-300"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Open</span>
-                      </a>
-                      <a
-                        href={artifact.file_url}
-                        download
-                        onClick={(e) => e.stopPropagation()}
-                        className="btn-ghost p-2 text-surface-400 hover:text-surface-900 dark:hover:text-white"
-                        aria-label={`Download ${artifact.name}`}
-                        title="Download file"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
+                            <div key={artifact.id} className="card p-5 flex flex-col gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-5 h-5 text-primary-600" />
                   </div>
-                </TiltedCard>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-surface-900 truncate">{artifact.name}</p>
+                    <p className="text-xs text-surface-500 truncate">
+                      {artifact.roomName} · {formatDate(artifact.created_at)}
+                    </p>
+                    {artifact.is_final && (
+                      <span className="badge bg-green-100 text-green-800">Final</span>
+                    )}
+                    {(artifact.extracted_text || artifact.content) && (
+                      <span className="badge bg-indigo-100 text-indigo-800">AI Ready</span>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-auto flex items-center gap-2 pt-2 border-t border-surface-100">
+                  <Link
+                    href={`/dashboard/rooms/${artifact.room_id}/artifacts/${artifact.id}`}
+                    className="btn-outline text-sm flex-1"
+                  >
+                    <FileText className="w-4 h-4" />
+                    View
+                  </Link>
+                  {artifact.file_url ? (
+                    <a
+                      href={artifact.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-ghost p-2"
+                      aria-label={`Open ${artifact.name}`}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  ) : null}
+                  {artifact.file_url ? (
+                    <a
+                      href={artifact.file_url}
+                      download
+                      className="btn-ghost p-2"
+                      aria-label={`Download ${artifact.name}`}
+                    >
+                      <Download className="w-4 h-4" />
+                    </a>
+                  ) : null}
+                </div>
               </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
+            )})}
+          </div>
+        )}
+      </div>
+    )
+  }
+
