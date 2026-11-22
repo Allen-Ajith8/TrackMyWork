@@ -1138,7 +1138,7 @@ export function NexconnRoomChat({
       )}
 
       {/* Composer */}
-      <div className="flex-shrink-0 border-t bg-white px-4 pt-3 pb-5">
+      <div className="relative flex-shrink-0 border-t bg-white px-4 pt-3 pb-5">
         {error && phase !== 'error' && (
           <p className="mb-2 flex items-center gap-1.5 text-xs text-red-600">
             <AlertTriangle className="h-3.5 w-3.5" />
@@ -1149,9 +1149,17 @@ export function NexconnRoomChat({
         {/* Slash command palette */}
         {slashMenuOpen && (
           <div
-            className="absolute bottom-[60px] left-4 right-4 flex flex-col gap-1"
+            className="absolute bottom-full left-0 right-0 mb-2 z-50 rounded-xl border border-zinc-200 bg-white shadow-xl overflow-hidden flex flex-col"
             style={{ pointerEvents: 'auto' }}
           >
+            <div className="flex items-center gap-2 border-b border-zinc-100 bg-zinc-50 px-4 py-2">
+              <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+                Commands
+              </span>
+              <span className="text-[10px] text-zinc-400">
+                ↑↓ to navigate · Enter to select · Esc to close
+              </span>
+            </div>
             <div className="flex flex-col gap-0.5">
               {slashMatches.map((command, index) => (
                 <button
@@ -1159,19 +1167,18 @@ export function NexconnRoomChat({
                   type="button"
                   onClick={() => applySlashCommand(command)}
                   className={cn(
-                    'w-full flex items-center justify-between gap-2 rounded border border-input bg-white px-2 py-1.5 text-xs text-sm font-medium transition-colors',
+                    'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors border-b border-zinc-100 last:border-b-0 cursor-pointer',
                     index === activeSlashIndex
-                      ? 'bg-accent text-accent-foreground border-accent'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      ? 'bg-purple-50 text-purple-900 border-b-purple-100 last:border-b-purple-100'
+                      : 'text-zinc-700 hover:bg-zinc-50'
                   )}
                 >
-                  <span className="font-mono text-purple-600">{command.name}</span>
-                  <span className="ml-auto text-[10px] text-muted-foreground truncate max-w-[200px]">
+                  <span className="font-mono text-sm font-semibold text-purple-700 shrink-0">
+                    {command.name}
+                  </span>
+                  <span className="text-sm text-zinc-600 truncate">
                     {command.description}
                   </span>
-                  {index === activeSlashIndex && (
-                    <span className="text-[10px] font-semibold text-purple-600">↵</span>
-                  )}
                 </button>
               ))}
             </div>
