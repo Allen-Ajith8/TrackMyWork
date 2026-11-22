@@ -54,7 +54,7 @@ export function RoomDashboardLayoutClient({ room, children }: RoomDashboardLayou
   }, [room?.id, room?.github_repo, setCurrentRoom]);
 
   return (
-    <div className="h-[calc(100vh-64px)] flex flex-col">
+    <div className="h-[calc(100vh-64px)] flex flex-col bg-surface-50 dark:bg-[#0b0f19] text-surface-900 dark:text-surface-100 transition-colors duration-200">
       {/* Room Sub-navigation */}
       <nav className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-4 flex-shrink-0">
         <div className="flex items-center justify-between h-12">

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 // ============================================================================
 // TrackMyWork - AI Courtroom Workspace (Phase 5)
@@ -41,6 +41,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import Galaxy from '@/components/ui/galaxy';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import {
   createDemoCourtroomState,
@@ -688,6 +689,29 @@ export function RoomCourtroomClient({
     null
   );
 
+  // Theme & Galaxy mount detection
+  const [mounted, setMounted] = React.useState(false);
+  const [isDark, setIsDark] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+    const checkDark = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+    checkDark();
+
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === 'attributes' && m.attributeName === 'class') {
+          checkDark();
+        }
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true });
+
+    return () => observer.disconnect();
+  }, []);
+
   const transcriptEndRef = React.useRef<HTMLDivElement | null>(null);
   const lastTurnRef = React.useRef<number>(-1);
 
@@ -824,6 +848,61 @@ export function RoomCourtroomClient({
     return () => clearInterval(timer);
   }, [selectedSessionId, demoMode, loadSession]);
 
+  // -------------------------------------------------------------------------
+  // Supabase Realtime subscription (+ polling fallback for safety)
+  // -------------------------------------------------------------------------
+
+  React.useEffect(() => {
+    if (demoMode) return;
+    if (!selectedSessionId) return;
+
+    setRealtimeState('connecting');
+
+    const refresh = () => {
+      void loadSession(selectedSessionId, { silent: true });
+    };
+
+    const channel = supabase
+      .channel(`courtroom:${selectedSessionId}:${Date.now()}:b`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'court_sessions',
+          filter: `id=eq.${selectedSessionId}`,
+        },
+        refresh
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'court_transcripts',
+          filter: `session_id=eq.${selectedSessionId}`,
+        },
+        refresh
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'court_petitions',
+          filter: `session_id=eq.${selectedSessionId}`,
+        },
+        refresh
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') setRealtimeState('live');
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setRealtimeState('polling');
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [selectedSessionId, demoMode, loadSession]);
 
   React.useEffect(() => {
     if (!selectedSessionId || !isActive) return;
@@ -1040,18 +1119,18 @@ export function RoomCourtroomClient({
     activeSession?.status === 'awaiting_human_choice' || activeSession?.status === 'adopted';
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50">
+    <div className="h-full overflow-y-auto bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors duration-200">
       <div className="mx-auto max-w-6xl space-y-5 p-4 pb-32 lg:p-6">
         {/* Header ---------------------------------------------------------- */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-amber-300">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 dark:bg-slate-800 text-amber-300 shadow-sm border border-slate-800 dark:border-slate-700">
                 <Landmark className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold tracking-tight">AI Courtroom</h1>
-                <p className="text-xs text-muted-foreground">
+                <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">AI Courtroom</h1>
+                <p className="text-xs text-muted-foreground dark:text-slate-400">
                   {room.name} · Adversarial architectural review, live
                 </p>
               </div>
@@ -1061,10 +1140,10 @@ export function RoomCourtroomClient({
           <div className="flex flex-wrap items-center gap-2">
             <div
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium',
-                realtimeState === 'live' && 'border-emerald-200 bg-emerald-50 text-emerald-700',
-                realtimeState === 'connecting' && 'border-slate-200 bg-white text-slate-500',
-                realtimeState === 'polling' && 'border-amber-200 bg-amber-50 text-amber-700'
+                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium shadow-2xs',
+                realtimeState === 'live' && 'border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400',
+                realtimeState === 'connecting' && 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400',
+                realtimeState === 'polling' && 'border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400'
               )}
             >
               <Radio className="h-3 w-3" />
@@ -1078,6 +1157,9 @@ export function RoomCourtroomClient({
               size="sm"
               variant={launcherOpen ? 'outline' : 'default'}
               onClick={() => setLauncherOpen((open) => !open)}
+              className={cn(
+                launcherOpen && 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-2xs'
+              )}
             >
               {launcherOpen ? (
                 <>
@@ -1099,8 +1181,8 @@ export function RoomCourtroomClient({
             className={cn(
               'flex items-start gap-2 rounded-lg border px-4 py-3 text-sm',
               notice.tone === 'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                : 'border-rose-200 bg-rose-50 text-rose-800'
+                ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300'
+                : 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300'
             )}
           >
             {notice.tone === 'success' ? (
@@ -1115,14 +1197,14 @@ export function RoomCourtroomClient({
         {/* Session selector ------------------------------------------------ */}
         {sessions.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
-            <Label htmlFor="court-session" className="text-xs text-muted-foreground">
+            <Label htmlFor="court-session" className="text-xs text-muted-foreground dark:text-slate-400">
               Docket history
             </Label>
             <select
               id="court-session"
               value={selectedSessionId ?? ''}
               onChange={(event) => setSelectedSessionId(event.target.value || null)}
-              className="h-9 max-w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="h-9 max-w-full rounded-md border border-input dark:border-slate-800 bg-background dark:bg-slate-900 text-slate-900 dark:text-slate-100 px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {sessions.map((entry) => (
                 <option key={entry.id} value={entry.id}>
@@ -1137,6 +1219,7 @@ export function RoomCourtroomClient({
                 variant="ghost"
                 onClick={() => void loadSession(selectedSessionId)}
                 disabled={hydrating}
+                className="text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <RefreshCw className={cn('mr-2 h-3.5 w-3.5', hydrating && 'animate-spin')} />
                 Refresh
@@ -1147,21 +1230,55 @@ export function RoomCourtroomClient({
 
         {/* Launcher -------------------------------------------------------- */}
         {launcherOpen && (
-          <Card className="border-slate-200 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Scale className="h-5 w-5 text-slate-500" />
+          <Card className="relative overflow-hidden border-slate-200/90 dark:border-slate-800/80 shadow-md bg-white/95 dark:bg-slate-950/95 backdrop-blur-md">
+            {/* Dynamic Galaxy Background strictly contained within this layout */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+              {mounted && (
+                <Galaxy
+                  key={isDark ? 'courtroom-docket-dark' : 'courtroom-docket-light'}
+                  lightMode={!isDark}
+                  transparent={true}
+                  starColors={
+                    !isDark
+                      ? ['#991b1b', '#7f1d1d', '#450a0a', '#18181b'] // dark red, burgundy & rich black ink sprinkles (matching landing page!)
+                      : ['#ef4444', '#f87171', '#fb7185', '#ffffff'] // glowing crimson, ruby rose, coral & white stars (matching landing page!)
+                  }
+                  density={!isDark ? 1.25 : 1.05}
+                  glowIntensity={!isDark ? 0.45 : 0.55}
+                  flareIntensity={!isDark ? 0.75 : 1.0}
+                  starSpeed={0.4}
+                  speed={0.8}
+                  twinkleIntensity={0.35}
+                  rotationSpeed={0.05}
+                  mouseInteraction={true}
+                  mouseRepulsion={true}
+                  repulsionStrength={2.2}
+                  clickWarp={false}
+                  className="w-full h-full opacity-65 dark:opacity-80"
+                />
+              )}
+            </div>
+
+            {/* Subtle Ambient Radial Red Glow (matching landing page) */}
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 pointer-events-none transition-opacity duration-500 z-0 bg-[radial-gradient(ellipse_75%_55%_at_50%_35%,rgba(239,68,68,0.06),transparent_70%)] dark:bg-[radial-gradient(ellipse_75%_55%_at_50%_35%,rgba(220,38,38,0.12),transparent_70%)]"
+            />
+
+            <CardHeader className="relative z-10 pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-white">
+                <Scale className="h-5 w-5 text-red-600 dark:text-red-400" />
                 Open a New Docket
               </CardTitle>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-slate-400">
                 Submit a feature motion, architectural dilemma, or PR link. Seven courtroom agents
                 will debate it and the Judge will hand you Option Cards.
               </p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative z-10">
               <form onSubmit={handleStartTrial} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="motion">Motion</Label>
+                  <Label htmlFor="motion" className="text-slate-900 dark:text-slate-200">Motion</Label>
                   <Textarea
                     id="motion"
                     value={motion}
@@ -1169,30 +1286,30 @@ export function RoomCourtroomClient({
                     maxLength={4000}
                     rows={4}
                     placeholder="e.g. Should we replace our REST polling with Supabase Realtime for the courtroom transcript stream? Or: https://github.com/org/repo/pull/42"
-                    className="resize-y"
+                    className="resize-y bg-white/85 dark:bg-black/70 backdrop-blur-sm border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
-                  <p className="text-right text-[11px] text-muted-foreground">
+                  <p className="text-right text-[11px] text-muted-foreground dark:text-slate-400">
                     {motion.length}/4,000
                   </p>
                 </div>
 
-                <details className="group rounded-lg border border-slate-200 bg-white">
-                  <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-medium text-slate-700">
+                <details className="group rounded-lg border border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-black/70 backdrop-blur-sm">
+                  <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
                     <span>Repo / PR Context (optional)</span>
                     <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
                   </summary>
-                  <div className="border-t border-slate-100 p-3">
+                  <div className="border-t border-slate-100 dark:border-slate-800 p-3">
                     <Textarea
                       value={repoContextText}
                       onChange={(event) => setRepoContextText(event.target.value)}
                       rows={3}
                       placeholder='Paste JSON ({"repo":"owner/name","pr":42}) or plain notes about the codebase.'
-                      className="resize-y font-mono text-xs"
+                      className="resize-y font-mono text-xs bg-white/90 dark:bg-slate-900/90 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
                 </details>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/85 dark:bg-black/70 backdrop-blur-sm px-4 py-3">
                   <div className="flex items-center gap-3">
                     <Switch
                       id="fast-demo-mode"
@@ -1200,23 +1317,23 @@ export function RoomCourtroomClient({
                       onCheckedChange={setFastDemoMode}
                     />
                     <div>
-                      <Label htmlFor="fast-demo-mode" className="cursor-pointer text-sm font-medium">
+                      <Label htmlFor="fast-demo-mode" className="cursor-pointer text-sm font-medium text-slate-900 dark:text-slate-200">
                         Fast Demo Mode (1 Rebuttal)
                       </Label>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground dark:text-slate-400">
                         {fastDemoMode
                           ? '~20 second live demo · one floor grant'
                           : 'Full Docket (up to 2 Rebuttals) · full Phase 2 floor petitioning'}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="border-slate-300 bg-white text-slate-600">
+                  <Badge variant="outline" className="border-slate-300 dark:border-slate-700 bg-white/90 dark:bg-black/80 text-slate-600 dark:text-slate-300">
                     {fastDemoMode ? 'Fast Demo' : 'Full Docket'}
                   </Badge>
                 </div>
 
                 {launcherError && (
-                  <p className="flex items-center gap-1.5 text-sm text-rose-600">
+                  <p className="flex items-center gap-1.5 text-sm text-rose-600 dark:text-rose-400">
                     <AlertTriangle className="h-4 w-4" />
                     {launcherError}
                   </p>
@@ -1242,12 +1359,12 @@ export function RoomCourtroomClient({
 
         {/* Empty state ----------------------------------------------------- */}
         {!selectedSessionId && !launcherOpen && (
-          <Card className="border-dashed border-slate-300 bg-white/60">
+          <Card className="border-dashed border-slate-300 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60">
             <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-              <Landmark className="h-10 w-10 text-slate-300" />
+              <Landmark className="h-10 w-10 text-slate-300 dark:text-slate-600" />
               <div>
-                <p className="font-medium text-slate-700">No trial selected</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="font-medium text-slate-700 dark:text-slate-300">No trial selected</p>
+                <p className="text-sm text-muted-foreground dark:text-slate-400">
                   Start a new docket to convene the AI Courtroom.
                 </p>
               </div>
@@ -1263,8 +1380,8 @@ export function RoomCourtroomClient({
         {selectedSessionId && (
           <div className="space-y-4">
             {hydrating && !activeSession && (
-              <Card className="border-slate-200">
-                <CardContent className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
+              <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90">
+                <CardContent className="flex items-center gap-2 py-10 text-sm text-muted-foreground dark:text-slate-400">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading the courtroom record…
                 </CardContent>
@@ -1274,14 +1391,14 @@ export function RoomCourtroomClient({
             {activeSession && (
               <>
                 {/* Status header */}
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-sm">
                   <CardContent className="space-y-3 py-4">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                           Motion on the docket
                         </p>
-                        <p className="mt-0.5 text-sm font-medium text-slate-800">
+                        <p className="mt-0.5 text-sm font-medium text-slate-800 dark:text-slate-200">
                           {activeSession.motion}
                         </p>
                         <p className="mt-1 text-[11px] text-slate-400">
@@ -1292,10 +1409,10 @@ export function RoomCourtroomClient({
                       </div>
                       <WitnessBadges session={activeSession} />
                     </div>
-                    <Separator />
+                    <Separator className="dark:bg-slate-800" />
                     <PhaseStepper status={activeSession.status} />
                     {activeSession.status === 'failed' && activeSession.error_message && (
-                      <p className="rounded-md bg-rose-50 p-2 font-mono text-[11px] text-rose-700">
+                      <p className="rounded-md bg-rose-50 dark:bg-rose-950/40 p-2 font-mono text-[11px] text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
                         {activeSession.error_message}
                       </p>
                     )}
@@ -1305,7 +1422,7 @@ export function RoomCourtroomClient({
                 {/* Transcript stream */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                    <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                       <MessageSquare className="h-4 w-4" />
                       Live Transcript
                     </h2>
@@ -1315,8 +1432,8 @@ export function RoomCourtroomClient({
                   </div>
 
                   {transcripts.length === 0 ? (
-                    <Card className="border-dashed border-slate-300 bg-white/60">
-                      <CardContent className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
+                    <Card className="border-dashed border-slate-300 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60">
+                      <CardContent className="flex items-center gap-2 py-10 text-sm text-muted-foreground dark:text-slate-400">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         The Clerk is preparing the courtroom…
                       </CardContent>
@@ -1331,12 +1448,11 @@ export function RoomCourtroomClient({
                   )}
                 </div>
 
-                {/* Floor petitions */}
                 {petitions.length > 0 && (
-                  <Card className="border-slate-200 shadow-sm">
+                  <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-sm">
                     <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Scale className="h-4 w-4 text-slate-500" />
+                      <CardTitle className="flex items-center gap-2 text-base text-slate-900 dark:text-white">
+                        <Scale className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                         Floor Petitions &amp; Gavel Rulings
                       </CardTitle>
                     </CardHeader>
@@ -1351,10 +1467,10 @@ export function RoomCourtroomClient({
                 {/* Decision matrix */}
                 {showDecisionMatrix && (
                   <div className="space-y-4">
-                    <Card className="border-amber-200 bg-amber-50/40 shadow-sm">
+                    <Card className="border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 shadow-sm">
                       <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <Gavel className="h-4 w-4 text-amber-600" />
+                        <CardTitle className="flex items-center gap-2 text-base text-amber-900 dark:text-amber-200">
+                          <Gavel className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                           The Judge&apos;s Synthesis
                         </CardTitle>
                       </CardHeader>
@@ -1364,21 +1480,21 @@ export function RoomCourtroomClient({
                         )}
                         {(activeSession.key_tensions ?? []).length > 0 && (
                           <div className="space-y-2">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
                               Key Tensions
                             </p>
                             <div className="grid gap-2 sm:grid-cols-2">
                               {(activeSession.key_tensions ?? []).map((tension, index) => (
                                 <div
                                   key={index}
-                                  className="rounded-lg border border-amber-200 bg-white p-3"
+                                  className="rounded-lg border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900/90 p-3"
                                 >
-                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
                                     {Array.isArray(tension.between)
                                       ? tension.between.join(' vs ')
                                       : 'Tension'}
                                   </p>
-                                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                                  <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                                     {tension.tension}
                                   </p>
                                 </div>
@@ -1403,15 +1519,15 @@ export function RoomCourtroomClient({
                         ))}
                       </div>
                     ) : (
-                      <Card className="border-dashed border-slate-300 bg-white/60">
-                        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                      <Card className="border-dashed border-slate-300 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60">
+                        <CardContent className="py-8 text-center text-sm text-muted-foreground dark:text-slate-400">
                           The Judge is still drafting the Option Cards…
                         </CardContent>
                       </Card>
                     )}
 
                     {activeSession.status === 'adopted' && (
-                      <p className="flex items-center justify-center gap-1.5 text-xs text-emerald-700">
+                      <p className="flex items-center justify-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         Ruling adopted. Tasks were created and AGENTS.md was synced for local IDE
                         agents.
@@ -1422,7 +1538,7 @@ export function RoomCourtroomClient({
 
                 {/* Human bench interjection bar */}
                 {isActive && (
-                  <div className="sticky bottom-0 z-10 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:-mx-6 lg:px-6">
+                  <div className="sticky bottom-0 z-10 -mx-4 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0b0f19]/95 px-4 py-3 backdrop-blur lg:-mx-6 lg:px-6">
                     <form onSubmit={handleInterject} className="mx-auto flex max-w-6xl items-center gap-2">
                       <Input
                         value={interjection}
@@ -1430,6 +1546,7 @@ export function RoomCourtroomClient({
                         maxLength={2000}
                         placeholder="Post an Amicus Interjection to the bench…"
                         disabled={posting}
+                        className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
                       />
                       <Button type="submit" disabled={posting || !interjection.trim()}>
                         {posting ? (
