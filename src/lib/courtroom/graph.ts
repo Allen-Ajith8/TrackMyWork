@@ -219,20 +219,79 @@ async function phase1OpeningStatements(state: typeof CourtroomState.State) {
   const transcript: TranscriptEntry[] = [];
   let turnIndex = 0;
 
-  for (const role of state.activeSpeakers) {
+  const independentRoles: CourtRole[] = ['Visionary Counsel', 'Feasibility Prosecutor'];
+  const parallelRoles = state.activeSpeakers.filter((r) => independentRoles.includes(r));
+  const sequentialRoles = state.activeSpeakers.filter((r) => !independentRoles.includes(r));
+
+  // Phase 1a: Independent opening speeches in parallel (Visionary + Feasibility).
+  // These don't depend on each other, so run them together to cut wall-clock time.
+  const parallelResults = await Promise.allSettled(
+    parallelRoles.map(async (role) => {
+      const personaPrompt = await loadPersonaPrompt(role);
+
+      let evidenceStr = '';
+      if (role === 'Feasibility Prosecutor') {
+        const evidence = await gatherProsecutorEvidence(state.motion);
+        if (evidence.length > 0) {
+          evidenceStr = evidence
+            .map((e) => `[${e.source.toUpperCase()}] ${e.title}: ${e.snippet} (${e.url})`)
+            .join('\n');
+        }
+      }
+
+      const userPrompt = buildSpeakerUserPrompt({
+        mode: 'opening',
+        motion: state.motion,
+        transcript: formatTranscript(transcript),
+        evidence: evidenceStr || undefined,
+        repoContext: state.repoContext,
+      });
+
+      const speech = await invokeCourtroomText({
+        role,
+        systemPrompt: personaPrompt,
+        userPrompt,
+        maxTokens: 320,
+        temperature: 0.3,
+      });
+
+      return { role, speech };
+    })
+  );
+
+  // Insert parallel results into transcript in a stable order.
+  for (const result of parallelResults) {
+    if (result.status === 'fulfilled') {
+      const { role, speech } = result.value;
+      const entry: TranscriptEntry = {
+        phase: 'phase1_opening',
+        speakerRole: role,
+        modelId: speech.modelUsed,
+        content: speech.text,
+        citations: [],
+        turnIndex,
+      };
+      await insertTranscriptRow({
+        sessionId: state.sessionId,
+        phase: 'phase1_opening',
+        speakerRole: role,
+        modelId: speech.modelUsed,
+        content: speech.text,
+        citations: [],
+        turnIndex,
+      });
+      transcript.push(entry);
+      turnIndex++;
+    }
+  }
+
+  // Phase 1b: Dependent speeches sequentially (Architect Counsel + witnesses).
+  // Architect Counsel reads the Prosecutor's opening from the transcript.
+  for (const role of sequentialRoles) {
     const personaPrompt = await loadPersonaPrompt(role);
 
-    // Build evidence context for specific roles
     let evidenceStr = '';
-    if (role === 'Feasibility Prosecutor') {
-      const evidence = await gatherProsecutorEvidence(state.motion);
-      if (evidence.length > 0) {
-        evidenceStr = evidence
-          .map((e) => `[${e.source.toUpperCase()}] ${e.title}: ${e.snippet} (${e.url})`)
-          .join('\n');
-      }
-    } else if (role === 'Architect Counsel') {
-      // Gather architect evidence, using prior prosecutor opening text if available
+    if (role === 'Architect Counsel') {
       const prosecutorOpening = transcript.find((t) => t.speakerRole === 'Feasibility Prosecutor');
       const prosecutorObjections = prosecutorOpening
         ? `Prior Prosecutor opening stated: "${prosecutorOpening.content.slice(0, 200)}..."`
@@ -257,7 +316,7 @@ async function phase1OpeningStatements(state: typeof CourtroomState.State) {
       role,
       systemPrompt: personaPrompt,
       userPrompt,
-      maxTokens: 750,
+      maxTokens: 320,
       temperature: 0.3,
     });
 
@@ -515,7 +574,7 @@ async function phase2DeliverRebuttal(state: typeof CourtroomState.State) {
     role,
     systemPrompt: personaPrompt,
     userPrompt,
-    maxTokens: 750,
+    maxTokens: 320,
     temperature: 0.3,
   });
 
@@ -627,7 +686,7 @@ async function judgeFinalSynthesis(state: typeof CourtroomState.State) {
       role: 'Presiding Judge',
       systemPrompt: personaPrompt,
       userPrompt,
-      maxTokens: 1600,
+      maxTokens: 800,
     });
 
     // Update court_sessions with synthesis results

@@ -54,34 +54,36 @@ type ModelPair = { primary: string; fallback: string };
 // reasoning tokens (nemotron lightning/nano-omni), or that exceed the request
 // timeout (kimi-k3.1-pro, glm-5.3-flash, gemma-4-31b, muse-glimmer), are not
 // used as primaries. bolt-e4b is the fastest reliable JSON/text model.
+// Fallback models are fast, small instruct models so a timeout/rate-limit on
+// the primary doesn't cascade into a slow large-model retry.
 const ROLE_MODEL_MAP: Record<CourtRole, ModelPair> = {
   'Clerk Router': {
     primary: 'nvidia/nemotron-3.5-bolt-e4b',
-    fallback: 'nvidia/nemotron-3-ultra-550b-a55b',
+    fallback: 'meta/llama-3.1-8b-instruct',
   },
   'Visionary Counsel': {
     primary: 'nvidia/nemotron-3.5-bolt-e4b',
-    fallback: 'nvidia/nemotron-3-ultra-550b-a55b',
+    fallback: 'meta/llama-3.1-8b-instruct',
   },
   'Feasibility Prosecutor': {
     primary: 'nvidia/nemotron-3.5-bolt-e4b',
-    fallback: 'nvidia/nemotron-3-ultra-550b-a55b',
+    fallback: 'meta/llama-3.1-8b-instruct',
   },
   'Architect Counsel': {
     primary: 'nvidia/nemotron-3.5-bolt-e4b',
-    fallback: 'nvidia/nemotron-3-ultra-550b-a55b',
+    fallback: 'meta/llama-3.1-8b-instruct',
   },
   'Security Witness': {
     primary: 'nvidia/nemotron-3.5-bolt-e4b',
-    fallback: 'minimaxai/minimax-m3.1-flash',
+    fallback: 'meta/llama-3.1-8b-instruct',
   },
   'UX Witness': {
     primary: 'nvidia/nemotron-3.5-bolt-e4b',
-    fallback: 'nvidia/nemotron-3-ultra-550b-a55b',
+    fallback: 'meta/llama-3.1-8b-instruct',
   },
   'Presiding Judge': {
     primary: 'nvidia/nemotron-3-ultra-550b-a55b',
-    fallback: 'nvidia/nemotron-3.5-bolt-e4b',
+    fallback: 'meta/llama-3.1-8b-instruct',
   },
 } as const;
 
@@ -410,14 +412,14 @@ export interface InvokeResult<T = unknown> {
  * Invoke NIM for plain text output (courtroom speeches, ~500 words).
  * Strips <think>...</think> reasoning preambles before returning.
  *
- * Default maxTokens = 750 (for ~450–550 word opening/rebuttal speeches).
- * Default timeout = 12000ms.
+ * Default maxTokens = 320 (concise, punchy ~150-250 word speeches that
+ * finish in 3-6 seconds). Default timeout = 25000ms.
  */
 export async function invokeCourtroomText({
   role,
   systemPrompt,
   userPrompt,
-  maxTokens = 750,
+  maxTokens = 320,
   temperature = 0.3,
   modelOverride,
 }: InvokeTextParams): Promise<{ text: string; modelUsed: string }> {
@@ -430,7 +432,7 @@ export async function invokeCourtroomText({
     ],
     temperature,
     maxTokens,
-    timeoutMs: 12000,
+    timeoutMs: 25000,
   });
 
   return {
@@ -444,7 +446,7 @@ export async function invokeCourtroomText({
  * Strips <think>...</think> blocks and ```json fences, then JSON.parse.
  * One automatic repair/fallback retry if malformed.
  *
- * Default maxTokens = 2048. Default timeout = 15000ms.
+ * Default maxTokens = 2048. Default timeout = 25000ms.
  */
 export async function invokeCourtroomJson<T = unknown>({
   role,
@@ -465,7 +467,7 @@ export async function invokeCourtroomJson<T = unknown>({
     ],
     temperature: 0.2,
     maxTokens,
-    timeoutMs: 15000,
+    timeoutMs: 25000,
     responseFormat: { type: 'json_object' },
   });
 
