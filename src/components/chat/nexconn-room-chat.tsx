@@ -9,18 +9,23 @@
 import * as React from 'react';
 import {
   AlertTriangle,
+  Bot,
+  ChevronDown,
   Gavel,
   Hash,
   Loader2,
   RefreshCw,
   Send,
   ShieldAlert,
+  Sparkles,
   Wifi,
   WifiOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
+  AI_TEAMMATE_BOT_NAME,
+  AI_TEAMMATE_BOT_USER_ID,
   COURTROOM_BOT_NAME,
   COURTROOM_BOT_USER_ID,
   getNexconnChannelId,
@@ -52,6 +57,7 @@ interface ChatMessage {
   text: string;
   sentTime: number;
   isBot: boolean;
+  isAiTeammate: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -169,17 +175,21 @@ function toChatMessage(message: Message<any>): ChatMessage {
         ? content.content
         : '[Unsupported message type]';
 
-  const isBot = message.senderUserId === COURTROOM_BOT_USER_ID;
+  const isAiTeammate = message.senderUserId === AI_TEAMMATE_BOT_USER_ID;
+  const isBot = message.senderUserId === COURTROOM_BOT_USER_ID || isAiTeammate;
 
   return {
     id: message.messageId,
     senderId: message.senderUserId,
-    senderName: isBot
-      ? COURTROOM_BOT_NAME
-      : senderInfo?.name || senderInfo?.alias || message.senderUserId || 'Unknown',
+    senderName: isAiTeammate
+      ? AI_TEAMMATE_BOT_NAME
+      : isBot
+        ? COURTROOM_BOT_NAME
+        : senderInfo?.name || senderInfo?.alias || message.senderUserId || 'Unknown',
     text,
     sentTime: message.sentTime,
     isBot,
+    isAiTeammate,
   };
 }
 
@@ -199,12 +209,117 @@ function formatClock(sentTime: number): string {
   });
 }
 
+/**
+ * Parse an AI Summary message marker:
+ *   [[AI_SUMMARY|source=Gemini|topic=My Topic]]
+ *   Actual summary content here...
+ *
+ * Returns null when the text is not an AI Summary.
+ */
+interface AiSummaryData {
+  source: string;
+  topic: string | null;
+  body: string;
+}
+
+type AiSummarySource = 'Gemini' | 'Claude' | 'ChatGPT' | 'Other';
+
+function parseAiSummary(text: string): AiSummaryData | null {
+  const match = text.match(/^\[\[AI_SUMMARY\|([^\]]+)\]\]\n?([\s\S]*)$/);
+  if (!match) return null;
+
+  const attrs = match[1];
+  const body = match[2].trim();
+
+  const sourceMatch = attrs.match(/source=([^|]+)/);
+  const topicMatch = attrs.match(/topic=([^|]+)/);
+
+  return {
+    source: sourceMatch?.[1] ?? 'Other',
+    topic: topicMatch?.[1] ?? null,
+    body,
+  };
+}
+
 function connectionLabel(status: number | null): string {
   if (status === null) return 'Connecting';
   if (status === 0) return 'Live';
   if (status === 1) return 'Connecting';
   if (status === 3) return 'Reconnecting';
   return 'Offline';
+}
+
+// ---------------------------------------------------------------------------
+// AI Summary Card
+// ---------------------------------------------------------------------------
+
+function AiSummaryCard({
+  message,
+  currentUserName,
+  aiTeammateEnabled,
+  onAskAi,
+}: {
+  message: ChatMessage;
+  currentUserName: string;
+  aiTeammateEnabled: boolean;
+  onAskAi?: () => void;
+}) {
+  const parsed = parseAiSummary(message.text);
+  const [collapsed, setCollapsed] = React.useState(false);
+
+  if (!parsed) return null;
+
+  return (
+    <div className="flex w-full gap-2 justify-start">
+      <div className="mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-semibold uppercase text-purple-700">
+        AI
+      </div>
+      <div className="max-w-[75%] rounded-2xl border border-purple-200 bg-purple-50/60 px-3.5 py-2.5 text-sm shadow-sm">
+        <div className="flex items-center gap-1.5 mb-1">
+          <p className="mb-0 text-[11px] font-semibold text-purple-700">AI Summary</p>
+          <span
+            className="inline-flex items-center gap-0.5 rounded px-2 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 border border-purple-200"
+          >
+            {parsed.source}
+          </span>
+          {parsed.topic && (
+            <span className="text-[10px] font-medium text-purple-600">· {parsed.topic}</span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="flex items-center gap-1 text-[11px] font-medium text-purple-600 hover:underline mb-1.5"
+        >
+          {collapsed ? 'Expand' : 'Collapse'}
+          <ChevronDown className={cn('h-3 w-3', collapsed ? 'rotate-180' : '')} />
+        </button>
+        <div className={cn('whitespace-pre-wrap break-words text-purple-900', collapsed ? 'hidden' : '')}>
+          {parsed.body}
+        </div>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          {aiTeammateEnabled && onAskAi ? (
+            <button
+              type="button"
+              onClick={onAskAi}
+              className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-purple-700 hover:bg-purple-100"
+            >
+              <Bot className="h-3 w-3" />
+              Ask AI
+            </button>
+          ) : (
+            <span />
+          )}
+          <p className="text-right text-[10px] text-purple-500">
+            {formatClock(message.sentTime)}
+          </p>
+        </div>
+      </div>
+      <div className="mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-semibold uppercase text-purple-700">
+        {(message.senderName || currentUserName || 'You').slice(0, 2).toUpperCase()}
+      </div>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -233,6 +348,17 @@ export function NexconnRoomChat({
   );
   const [totalUnread, setTotalUnread] = React.useState(0);
   const [retryKey, setRetryKey] = React.useState(0);
+
+  // ---- AI Summary composer state ------------------------------------------
+  const [aiSummaryOpen, setAiSummaryOpen] = React.useState(false);
+  const [aiSource, setAiSource] = React.useState<AiSummarySource>('Gemini');
+  const [aiTopic, setAiTopic] = React.useState('');
+  const [aiSummaryText, setAiSummaryText] = React.useState('');
+  const [postingAiSummary, setPostingAiSummary] = React.useState(false);
+
+  // ---- AI Teammate state --------------------------------------------------
+  const [aiTeammateEnabled, setAiTeammateEnabled] = React.useState(false);
+  const [aiThinking, setAiThinking] = React.useState(false);
 
   const sdkRef = React.useRef<NexconnSdk | null>(null);
   const channelRef = React.useRef<GroupChannel | null>(null);
@@ -389,7 +515,7 @@ export function NexconnRoomChat({
   // ---- Auto-scroll on new messages ---------------------------------------
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' });
-  }, [messages.length]);
+  }, [messages.length, aiThinking]);
 
   // ---- Older history -----------------------------------------------------
   const loadOlder = React.useCallback(async () => {
@@ -413,6 +539,102 @@ export function NexconnRoomChat({
       setLoadingOlder(false);
     }
   }, [loadingOlder]);
+
+  // ---- AI Teammate: request an inline reply ------------------------------
+  const requestAiReply = React.useCallback(
+    async (prompt: string) => {
+      if (!prompt.trim()) return;
+
+      setAiThinking(true);
+      setError(null);
+
+      try {
+        const recentMessages = messages.slice(-15).map((message) => ({
+          senderName: message.senderName,
+          text: message.text,
+        }));
+
+        const response = await fetch('/api/chat/ai-reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomId, prompt, recentMessages }),
+        });
+        const payload = (await response.json().catch(() => null)) as
+          | {
+              text?: string;
+              messageId?: string | null;
+              senderId?: string;
+              senderName?: string;
+              sentTime?: number;
+              error?: string;
+            }
+          | null;
+
+        if (!response.ok || !payload?.text) {
+          throw new Error(payload?.error || 'The AI teammate could not reply.');
+        }
+
+        const reply: ChatMessage = {
+          id: payload.messageId || `ai-${Date.now()}`,
+          senderId: payload.senderId || AI_TEAMMATE_BOT_USER_ID,
+          senderName: payload.senderName || AI_TEAMMATE_BOT_NAME,
+          text: payload.text,
+          sentTime: payload.sentTime ?? Date.now(),
+          isBot: true,
+          isAiTeammate: true,
+        };
+
+        setMessages((previous) => mergeMessages(previous, [reply]));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setAiThinking(false);
+      }
+    },
+    [messages, roomId]
+  );
+
+  // ---- Post a shared AI Summary ------------------------------------------
+  const handlePostAiSummary = async () => {
+    const sdk = sdkRef.current;
+    const channel = channelRef.current;
+    const body = aiSummaryText.trim();
+
+    if (!sdk || !channel || !body || postingAiSummary) return;
+
+    setPostingAiSummary(true);
+    setError(null);
+
+    try {
+      const topic = aiTopic.trim().replace(/[|\]]/g, '').slice(0, 120);
+      const marker = `[[AI_SUMMARY|source=${aiSource}${topic ? `|topic=${topic}` : ''}]]`;
+      const text = `${marker}\n${body}`;
+
+      const result = await channel.sendMessage(
+        new sdk.SendTextMessageParams({ text })
+      );
+
+      if (!result.isOk) {
+        throw new Error(
+          `Summary failed to send (${result.code}: ${result.msg}).`
+        );
+      }
+
+      if (result.data) {
+        setMessages((previous) =>
+          mergeMessages(previous, [toChatMessage(result.data!)])
+        );
+      }
+
+      setAiTopic('');
+      setAiSummaryText('');
+      setAiSummaryOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPostingAiSummary(false);
+    }
+  };
 
   // ---- Send (including /courtroom) --------------------------------------
   const handleSend = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -479,6 +701,10 @@ export function NexconnRoomChat({
             mergeMessages(previous, [toChatMessage(result.data!)])
           );
         }
+
+        if (aiTeammateEnabled && /(^|\s)@ai\b/i.test(text)) {
+          void requestAiReply(text);
+        }
       }
 
       setDraft('');
@@ -530,7 +756,7 @@ export function NexconnRoomChat({
   const label = connectionLabel(connectionStatus);
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-[calc(100vh-11.5rem)] max-h-[calc(100vh-11.5rem)] flex-col bg-white">
       {/* Header */}
       <div className="flex flex-shrink-0 items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
@@ -566,13 +792,37 @@ export function NexconnRoomChat({
             )}
             {label}
           </span>
+          <button
+            type="button"
+            onClick={() => setAiTeammateEnabled((enabled) => !enabled)}
+            aria-pressed={aiTeammateEnabled}
+            title={
+              aiTeammateEnabled
+                ? 'AI Teammate is on. Mention @ai to get an inline reply.'
+                : 'Turn on the AI Teammate to mention @ai in the thread.'
+            }
+            className={cn(
+              'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+              aiTeammateEnabled
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border-input bg-white text-muted-foreground hover:bg-muted'
+            )}
+          >
+            <Bot className="h-3 w-3" />
+            AI Teammate: {aiTeammateEnabled ? 'On' : 'Off'}
+          </button>
+          {aiTeammateEnabled && (
+            <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
+              🤖 NIM AI in thread
+            </span>
+          )}
         </div>
       </div>
 
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-4"
+        className="flex-1 overflow-y-auto px-4 py-4 pb-10"
       >
         {phase === 'connecting' && messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
@@ -640,6 +890,31 @@ export function NexconnRoomChat({
         <div className="space-y-3">
           {messages.map((message) => {
             const isOwn = message.senderId === currentUserId;
+            const aiSummary = parseAiSummary(message.text);
+
+            // AI Summary messages render as a distinct highlighted card
+            if (aiSummary) {
+              return (
+                <div
+                  key={message.id}
+                  className="flex w-full gap-2 justify-start"
+                >
+                  <AiSummaryCard
+                    message={message}
+                    currentUserName={currentUserName}
+                    aiTeammateEnabled={aiTeammateEnabled}
+                    onAskAi={() =>
+                      void requestAiReply(
+                        `Synthesize and critique this ${aiSummary.source} AI summary${
+                          aiSummary.topic ? ` about "${aiSummary.topic}"` : ''
+                        }. Highlight the key points, then call out anything missing or risky:\n\n${aiSummary.body}`
+                      )
+                    }
+                  />
+                </div>
+              );
+            }
+
             return (
               <div
                 key={message.id}
@@ -652,12 +927,16 @@ export function NexconnRoomChat({
                   <div
                     className={cn(
                       'mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold uppercase',
-                      message.isBot
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-muted text-muted-foreground'
+                      message.isAiTeammate
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : message.isBot
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-muted text-muted-foreground'
                     )}
                   >
-                    {message.isBot ? (
+                    {message.isAiTeammate ? (
+                      <Bot className="h-3.5 w-3.5" />
+                    ) : message.isBot ? (
                       <Gavel className="h-3.5 w-3.5" />
                     ) : (
                       message.senderName.slice(0, 2)
@@ -670,16 +949,22 @@ export function NexconnRoomChat({
                     'max-w-[75%] rounded-2xl px-3.5 py-2 text-sm shadow-sm',
                     isOwn
                       ? 'rounded-br-sm bg-primary-600 text-white'
-                      : message.isBot
-                        ? 'rounded-bl-sm border border-amber-200 bg-amber-50 text-amber-950'
-                        : 'rounded-bl-sm border bg-white text-foreground'
+                      : message.isAiTeammate
+                        ? 'rounded-bl-sm border border-emerald-200 bg-emerald-50 text-emerald-950'
+                        : message.isBot
+                          ? 'rounded-bl-sm border border-amber-200 bg-amber-50 text-amber-950'
+                          : 'rounded-bl-sm border bg-white text-foreground'
                   )}
                 >
                   {!isOwn && (
                     <p
                       className={cn(
                         'mb-0.5 text-[11px] font-semibold',
-                        message.isBot ? 'text-amber-700' : 'text-muted-foreground'
+                        message.isAiTeammate
+                          ? 'text-emerald-700'
+                          : message.isBot
+                            ? 'text-amber-700'
+                            : 'text-muted-foreground'
                       )}
                     >
                       {message.senderName}
@@ -708,11 +993,18 @@ export function NexconnRoomChat({
           })}
         </div>
 
+        {aiThinking && (
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            🤖 NIM AI is thinking...
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
       {/* Composer */}
-      <div className="flex-shrink-0 border-t bg-white px-4 py-3">
+      <div className="flex-shrink-0 border-t bg-white px-4 pt-3 pb-5">
         {error && phase !== 'error' && (
           <p className="mb-2 flex items-center gap-1.5 text-xs text-red-600">
             <AlertTriangle className="h-3.5 w-3.5" />
@@ -736,6 +1028,17 @@ export function NexconnRoomChat({
             disabled={phase !== 'ready' || sending}
           />
           <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setAiSummaryOpen((open) => !open)}
+            disabled={phase !== 'ready' || sending}
+            className="h-[42px] gap-1"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span className="text-[11px] font-medium">+ AI Summary</span>
+          </Button>
+          <Button
             type="submit"
             disabled={phase !== 'ready' || sending || !draft.trim()}
             className="h-[42px]"
@@ -749,10 +1052,94 @@ export function NexconnRoomChat({
           </Button>
         </form>
 
+        {/* AI Summary popover */}
+        {aiSummaryOpen && (
+          <div
+            className="mt-2 rounded-xl border border-purple-200 bg-purple-50 p-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200"
+          >
+            <div className="flex items-center gap-1.5 mb-2">
+              <Sparkles className="h-4 w-4 text-purple-600" />
+              <h3 className="text-sm font-semibold text-purple-800">Share AI Summary</h3>
+            </div>
+
+            <div className="mb-2">
+              <label className="block text-[10px] uppercase font-semibold text-purple-700 mb-1">
+                AI Source
+              </label>
+              <select
+                value={aiSource}
+                onChange={(e) => setAiSource(e.target.value as AiSummarySource)}
+                className="w-full rounded border border-purple-200 bg-white px-2 py-1.5 text-sm text-purple-800 focus:ring-2 focus:ring-purple-500 outline-none"
+              >
+                <option value="Gemini">Gemini</option>
+                <option value="Claude">Claude</option>
+                <option value="ChatGPT">ChatGPT</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div className="mb-2">
+              <label className="block text-[10px] uppercase font-semibold text-purple-700 mb-1">
+                Topic / Title (optional)
+              </label>
+              <input
+                type="text"
+                value={aiTopic}
+                onChange={(e) => setAiTopic(e.target.value)}
+                placeholder="e.g. Architecture decision"
+                className="w-full rounded border border-purple-200 bg-white px-2 py-1.5 text-sm text-purple-800 focus:ring-2 focus:ring-purple-500 outline-none"
+              />
+            </div>
+
+            <div className="mb-2">
+              <label className="block text-[10px] uppercase font-semibold text-purple-700 mb-1">
+                Summary
+              </label>
+              <textarea
+                value={aiSummaryText}
+                onChange={(e) => setAiSummaryText(e.target.value)}
+                rows={3}
+                placeholder="Paste your external AI chat summary here…"
+                className="w-full rounded border border-purple-200 bg-white px-2 py-1.5 text-sm text-purple-800 focus:ring-2 focus:ring-purple-500 outline-none resize-y"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAiSummaryOpen(false)}
+                className="text-purple-600 hover:bg-purple-100"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handlePostAiSummary}
+                disabled={postingAiSummary || !aiSummaryText.trim()}
+                className="bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
+              >
+                {postingAiSummary ? (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-3.5 w-3.5" />
+                )}
+                Post Summary to Thread
+              </Button>
+            </div>
+          </div>
+        )}
+
         <p className="mt-1.5 text-[11px] text-muted-foreground">
           Type <code className="rounded bg-muted px-1">/courtroom &lt;motion&gt;</code>{' '}
-          to start an AI Courtroom trial. You are{' '}
-          <span className="font-medium">{currentUserName}</span>.
+          to start an AI Courtroom trial.{' '}
+          {aiTeammateEnabled && (
+            <>
+              Mention <code className="rounded bg-muted px-1">@ai</code> for an inline reply.{' '}
+            </>
+          )}
+          You are <span className="font-medium">{currentUserName}</span>.
         </p>
       </div>
     </div>

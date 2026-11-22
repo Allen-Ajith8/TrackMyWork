@@ -390,6 +390,8 @@ export interface InvokeTextParams {
   userPrompt: string;
   maxTokens?: number;
   temperature?: number;
+  /** Force a specific model instead of the role's primary/fallback pair. */
+  modelOverride?: string;
 }
 
 export interface InvokeJsonParams<T = unknown> {
@@ -417,9 +419,11 @@ export async function invokeCourtroomText({
   userPrompt,
   maxTokens = 750,
   temperature = 0.3,
+  modelOverride,
 }: InvokeTextParams): Promise<{ text: string; modelUsed: string }> {
   const result = await callNimWithFallback({
     role,
+    modelOverride,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },

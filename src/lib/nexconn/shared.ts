@@ -19,3 +19,7 @@ export function toNexconnUserId(supabaseUserId: string): string {
 /** System identity used for courtroom rulings broadcast into room chat. */
 export const COURTROOM_BOT_USER_ID = 'tmwcourtroombot';
 export const COURTROOM_BOT_NAME = 'AI Courtroom';
+
+/** Optional `@ai` teammate that replies inline in the room thread. */
+export const AI_TEAMMATE_BOT_USER_ID = 'tmwaiteammatebot';
+export const AI_TEAMMATE_BOT_NAME = 'NIM AI';

@@ -6,6 +6,8 @@
 
 import { createHash, randomBytes } from 'node:crypto';
 import {
+  AI_TEAMMATE_BOT_NAME,
+  AI_TEAMMATE_BOT_USER_ID,
   COURTROOM_BOT_NAME,
   COURTROOM_BOT_USER_ID,
 } from './shared';
@@ -130,15 +132,34 @@ export async function ensureCourtroomBotRegistered(): Promise<void> {
   return courtroomBotTokenPromise;
 }
 
+let aiTeammateBotTokenPromise: Promise<void> | null = null;
+
+/** Registers the `@ai` teammate identity with Nexconn (idempotent). */
+export async function ensureAiTeammateBotRegistered(): Promise<void> {
+  if (!aiTeammateBotTokenPromise) {
+    aiTeammateBotTokenPromise = issueNexconnAccessToken({
+      userId: AI_TEAMMATE_BOT_USER_ID,
+      name: AI_TEAMMATE_BOT_NAME,
+    })
+      .then(() => undefined)
+      .catch((error) => {
+        aiTeammateBotTokenPromise = null;
+        throw error;
+      });
+  }
+
+  return aiTeammateBotTokenPromise;
+}
+
 export async function sendNexconnGroupText(params: {
   fromUserId: string;
   channelId: string;
   text: string;
   pushContent?: string;
-}): Promise<void> {
+}): Promise<{ messageId: string | null }> {
   const content = JSON.stringify({ content: params.text });
 
-  await nexconnRequest<{
+  const result = await nexconnRequest<{
     messageIds: Array<{ channelId: string; messageId: string }>;
   }>('/v4/group-channel/message/send', {
     fromUserId: params.fromUserId,
@@ -149,4 +170,6 @@ export async function sendNexconnGroupText(params: {
     shouldPersist: 1,
     isEchoToSender: 0,
   });
+
+  return { messageId: result?.messageIds?.[0]?.messageId ?? null };
 }
