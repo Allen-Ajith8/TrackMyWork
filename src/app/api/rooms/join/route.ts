@@ -109,6 +109,22 @@ export async function POST(req: NextRequest) {
           .eq('id', existingMember.id);
       }
 
+      // Mark any pending room_invitation as accepted and clear its notification
+      const respondedAt = new Date().toISOString();
+      await admin
+        .from('room_invitations')
+        .update({ status: 'accepted', responded_at: respondedAt })
+        .eq('room_id', room.id)
+        .eq('invitee_id', user.id)
+        .eq('status', 'pending');
+
+      await admin
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false)
+        .or(`room_id.eq.${room.id},metadata->>room_id.eq.${room.id}`);
+
       return NextResponse.json({
         success: true,
         roomId: room.id,
@@ -149,6 +165,22 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', pendingByEmail.id);
 
+      // Mark any pending room_invitation as accepted and clear its notification
+      const respondedAt = new Date().toISOString();
+      await admin
+        .from('room_invitations')
+        .update({ status: 'accepted', responded_at: respondedAt })
+        .eq('room_id', room.id)
+        .eq('invitee_id', user.id)
+        .eq('status', 'pending');
+
+      await admin
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false)
+        .or(`room_id.eq.${room.id},metadata->>room_id.eq.${room.id}`);
+
       return NextResponse.json({
         success: true,
         roomId: room.id,
@@ -182,6 +214,22 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Mark any pending room_invitation as accepted and clear its notification
+    const respondedAt = new Date().toISOString();
+    await admin
+      .from('room_invitations')
+      .update({ status: 'accepted', responded_at: respondedAt })
+      .eq('room_id', room.id)
+      .eq('invitee_id', user.id)
+      .eq('status', 'pending');
+
+    await admin
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false)
+      .or(`room_id.eq.${room.id},metadata->>room_id.eq.${room.id}`);
 
     return NextResponse.json({
       success: true,
