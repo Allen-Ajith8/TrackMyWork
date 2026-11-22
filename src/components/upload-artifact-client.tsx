@@ -31,7 +31,7 @@ const TYPES: { value: ArtifactType; label: string }[] = [
 ];
 
 const DOCUMENT_ACCEPT =
-  '.md,.markdown,.txt,.pdf,.json,.csv,.tsv,.yaml,.yml,.toml,.xml,.html,.css,.js,.jsx,.ts,.tsx,.py,.go,.rs,.java,.kt,.swift,.c,.cpp,.h,.hpp,.cs,.php,.rb,.sql,.sh,.log,.doc,.docx,.ppt,.pptx,.key';
+  '.pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png';
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -289,8 +289,8 @@ export function UploadArtifactClient({
             </label>
             <p className="mt-2 text-[11px] text-surface-500 flex items-start gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-purple-500 shrink-0 mt-0.5" />
-              Markdown, TXT, JSON, CSV, code and PDF files have their text extracted server-side and
-              saved for MICA and Courtroom grounding.
+              PDF, DOC, DOCX, PPT, PPTX, TXT and images (JPG/JPEG/PNG) are supported.
+              Text is extracted server-side and saved for MICA and Courtroom grounding.
             </p>
           </div>
         )}

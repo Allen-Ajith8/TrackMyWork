@@ -25,6 +25,8 @@ import {
   Code,
   Box,
   List,
+  ExternalLink,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -122,6 +124,7 @@ function ArtifactDialog({ open, onOpenChange, roomId, onSubmit }: ArtifactDialog
             <Label>File</Label>
             <Input
               type="file"
+              accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) {
@@ -183,6 +186,83 @@ function ArtifactDialog({ open, onOpenChange, roomId, onSubmit }: ArtifactDialog
   );
 }
 
+function ArtifactPreviewDialog({
+  open,
+  onOpenChange,
+  artifact,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  artifact: Artifact | null;
+}) {
+  if (!artifact) return null;
+
+  const text = String(artifact.extracted_text || artifact.content || '').trim();
+  const fileUrl = String(artifact.url || artifact.file_url || '');
+  const fileName = String(artifact.file_name || artifact.name || '');
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  const isImg =
+    artifact.type === 'image' ||
+    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Artifact Preview</DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-auto p-4">
+          {isImg && fileUrl ? (
+            <div className="flex flex-col items-center gap-4">
+              <img
+                src={fileUrl}
+                alt={artifact.name}
+                className="max-w-full max-h-[60vh] object-contain border rounded-lg shadow-lg"
+              />
+              <p className="text-sm text-muted-foreground">{fileName}</p>
+            </div>
+          ) : text ? (
+            <div className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-surface-800">
+              {text}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
+              <p>No preview available</p>
+              {fileUrl && (
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 text-sm underline"
+                >
+                  Open in new tab
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <X className="w-4 h-4 mr-2" />
+            Close
+          </Button>
+          {fileUrl && isImg ? (
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary gap-2 flex items-center"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open original
+            </a>
+          ) : null}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: {
   room: Room;
   initialArtifacts: (Artifact & { uploader?: User | null })[];
@@ -192,6 +272,7 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
   const [supabase] = React.useState(() => createClient());
   const [artifacts, setArtifacts] = React.useState(initialArtifacts);
   const [artifactDialogOpen, setArtifactDialogOpen] = React.useState(false);
+  const [previewArtifact, setPreviewArtifact] = React.useState<Artifact | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [filterType, setFilterType] = React.useState<string>('all');
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
@@ -359,8 +440,12 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
                             <button className="p-1 rounded hover:bg-muted"><MoreVertical className="w-4 h-4" /></button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {}}>View</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {}}>Download</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPreviewArtifact(artifact)}>
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {}}>
+                              Download
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleDeleteArtifact(artifact.id)} className="text-red-600">Delete</DropdownMenuItem>
                           </DropdownMenuContent>
@@ -447,8 +532,12 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
                             <button className="p-1 rounded hover:bg-muted"><MoreVertical className="w-4 h-4" /></button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {}}>View</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {}}>Download</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPreviewArtifact(artifact)}>
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {}}>
+                              Download
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleDeleteArtifact(artifact.id)} className="text-red-600">Delete</DropdownMenuItem>
                           </DropdownMenuContent>
@@ -471,6 +560,14 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
           <ToastDescription>{toast.message}</ToastDescription>
         </Toast>
       )}
+
+      <ArtifactPreviewDialog
+        open={previewArtifact !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewArtifact(null);
+        }}
+        artifact={previewArtifact}
+      />
     </ToastProvider>
   );
 }

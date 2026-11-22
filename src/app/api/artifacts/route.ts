@@ -181,6 +181,17 @@ async function handleUpload(request: NextRequest, userId: string) {
     );
   }
 
+  const allowedExtensions = new Set([
+    'pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png',
+  ]);
+  const fileExt = upload.name.split('.').pop()?.toLowerCase() || '';
+  if (!allowedExtensions.has(fileExt)) {
+    return NextResponse.json(
+      { error: `File type "${fileExt}" is not allowed. Only PDF, DOC, DOCX, PPT, PPTX, TXT, JPG, JPEG and PNG files are accepted.` },
+      { status: 400 }
+    );
+  }
+
   const originalName = upload.name || 'artifact';
   const buffer = Buffer.from(await upload.arrayBuffer());
   const mimeType = upload.type || null;

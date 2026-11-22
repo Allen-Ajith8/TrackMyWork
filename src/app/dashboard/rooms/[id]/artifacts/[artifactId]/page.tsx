@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, ExternalLink, FileText, Sparkles } from 'lucide-react';
+import { ArrowLeft, FileText, Sparkles, Upload } from 'lucide-react';
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { getFallbackDemoRoom, getServerAuthUser, isSupabaseConfigured } from '@/lib/dashboard-data';
 import { formatRelativeTime } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import type { Artifact } from '@/types/database';
+import { ArtifactPreviewTrigger } from '@/components/artifact-preview-dialog';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,11 @@ export default async function ArtifactDetailPage({
 
   const text = String(artifact.extracted_text || artifact.content || '').trim();
   const fileUrl = String(artifact.url || artifact.file_url || '');
+  const isImage =
+    artifact.type === 'image' ||
+    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(
+      String(artifact.file_name || '').split('.').pop()?.toLowerCase() || ''
+    );
 
   return (
     <div className="p-6 space-y-5 max-w-4xl">
@@ -84,17 +90,28 @@ export default async function ArtifactDetailPage({
             {formatRelativeTime(artifact.created_at)}
           </p>
         </div>
-        {fileUrl && (
-          <a
-            href={fileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary gap-2"
+        <div className="flex items-center gap-2">
+          {fileUrl && (
+            <button
+              onClick={() => {
+                (window as unknown as { __previewArtifact?: Artifact }).__previewArtifact = artifact;
+                const event = new CustomEvent('tmw-preview-artifact');
+                window.dispatchEvent(event);
+              }}
+              className="btn-primary gap-2 flex items-center"
+            >
+              <FileText className="w-4 h-4" />
+              Preview
+            </button>
+          )}
+          <Link
+            href={`/dashboard/artifacts/upload?room=${roomId}`}
+            className="btn-outline gap-2 flex items-center"
           >
-            <ExternalLink className="w-4 h-4" />
-            Open file
-          </a>
-        )}
+            <Upload className="w-4 h-4" />
+            Upload Artifact
+          </Link>
+        </div>
       </div>
 
       {artifact.tags?.length > 0 && (
@@ -132,6 +149,8 @@ export default async function ArtifactDetailPage({
           </div>
         )}
       </div>
+
+      <ArtifactPreviewTrigger artifact={artifact} isImage={isImage} />
     </div>
   );
 }
