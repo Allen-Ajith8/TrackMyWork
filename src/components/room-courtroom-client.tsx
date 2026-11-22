@@ -767,7 +767,7 @@ export function RoomCourtroomClient({
     };
 
     const channel = supabase
-      .channel(`courtroom:${selectedSessionId}`)
+      .channel(`courtroom:${selectedSessionId}:${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -839,7 +839,7 @@ export function RoomCourtroomClient({
     };
 
     const channel = supabase
-      .channel(`courtroom:${selectedSessionId}`)
+      .channel(`courtroom:${selectedSessionId}:${Date.now()}:b`)
       .on(
         'postgres_changes',
         {

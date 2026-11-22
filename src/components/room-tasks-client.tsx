@@ -385,7 +385,7 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
   // Realtime subscription for room tasks
   React.useEffect(() => {
     const channel = supabase
-      .channel(`room-tasks-${room.id}`)
+      .channel(`room-tasks-${room.id}:${Date.now()}`)
       .on(
         'postgres_changes',
         {

@@ -114,7 +114,7 @@ export function VibeRealtime() {
     void hydrate();
 
     const channel = supabase
-      .channel(`vibe:${roomId}`)
+      .channel(`vibe:${roomId}:${Date.now()}`)
       .on(
         'postgres_changes',
         {

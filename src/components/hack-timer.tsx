@@ -74,7 +74,7 @@ export function HackTimer() {
     if (!currentRoom?.id) return;
 
     const channel = supabase
-      .channel(`room-timer-${currentRoom.id}`)
+      .channel(`room-timer-${currentRoom.id}:${Date.now()}`)
       .on(
         'postgres_changes',
         {
