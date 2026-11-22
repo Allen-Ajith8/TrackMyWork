@@ -126,6 +126,11 @@ export function AICodingAgent() {
   const [diagnostic, setDiagnostic] = useState<DiagnosticResult | null>(null);
   const [recommendedFixCode, setRecommendedFixCode] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [autoCorrectNotice, setAutoCorrectNotice] = useState<{
+    active: boolean;
+    issue: string;
+    message: string;
+  }>({ active: false, issue: '', message: '' });
 
   // Sync with store when problem changes externally
   useEffect(() => {

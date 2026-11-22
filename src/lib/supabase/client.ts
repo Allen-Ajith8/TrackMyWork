@@ -30,8 +30,8 @@ let supabaseClient: ReturnType<typeof createClientComponentClient> | null = null
 
 export function createClient() {
   if (!supabaseClient) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || fallbackUrl;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || fallbackKey;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     supabaseClient = createClientComponentClient({
       supabaseUrl,
       supabaseKey,
