@@ -91,19 +91,6 @@ export default async function ArtifactDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {fileUrl && (
-            <button
-              onClick={() => {
-                (window as unknown as { __previewArtifact?: Artifact }).__previewArtifact = artifact;
-                const event = new CustomEvent('tmw-preview-artifact');
-                window.dispatchEvent(event);
-              }}
-              className="btn-primary gap-2 flex items-center"
-            >
-              <FileText className="w-4 h-4" />
-              Preview
-            </button>
-          )}
           <Link
             href={`/dashboard/artifacts/upload?room=${roomId}`}
             className="btn-outline gap-2 flex items-center"

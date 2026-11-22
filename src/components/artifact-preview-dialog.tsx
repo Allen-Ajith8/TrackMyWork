@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -104,25 +104,28 @@ export function ArtifactPreviewTrigger({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewArtifact, setPreviewArtifact] = useState<Artifact | null>(null);
 
-  useEffect(() => {
-    const handlePreview = (evt: Event) => {
-      const customEvent = evt as unknown as CustomEvent;
-      const win = window as unknown as { __previewArtifact?: Artifact };
-      if (
-        customEvent.type === 'tmw-preview-artifact' &&
-        win.__previewArtifact?.id === artifact.id
-      ) {
-        setPreviewArtifact(win.__previewArtifact);
-        setPreviewOpen(true);
-        win.__previewArtifact = undefined;
-      }
-    };
-    window.addEventListener('tmw-preview-artifact', handlePreview);
-    return () => window.removeEventListener('tmw-preview-artifact', handlePreview);
-  }, [artifact.id]);
+  const text = String(artifact.extracted_text || artifact.content || '').trim();
+  const fileUrl = String(artifact.url || artifact.file_url || '');
+  const fileName = String(artifact.file_name || artifact.name || '');
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  const isImg =
+    artifact.type === 'image' ||
+    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
 
   return (
     <>
+      {fileUrl && (
+        <button
+          onClick={() => {
+            setPreviewArtifact(artifact);
+            setPreviewOpen(true);
+          }}
+          className="btn-primary gap-2 flex items-center"
+        >
+          <FileText className="w-4 h-4" />
+          Preview
+        </button>
+      )}
       <ArtifactPreviewDialog
         open={previewOpen}
         onOpenChange={(open) => {
