@@ -90,7 +90,7 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-white border border-surface-200 shadow-2xl">
+      <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl bg-white dark:bg-[#0d121f] border border-surface-200 dark:border-slate-800 shadow-2xl">
         {/* Glow backdrop */}
         <div className="absolute -top-24 -left-24 w-72 h-72 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
@@ -102,13 +102,13 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
               <Code2 className="w-3.5 h-3.5" />
               CodeTrack AI Onboarding
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-surface-900 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-surface-900 dark:text-white tracking-tight">
               Hi, Developer! Welcome to{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400">
                 CodeTrack AI
               </span>
             </h2>
-            <p className="text-surface-600 text-xs sm:text-sm max-w-xl mx-auto">
+            <p className="text-surface-600 dark:text-slate-400 text-xs sm:text-sm max-w-xl mx-auto">
               What would you like to begin with today? How would you describe your current DSA level?
             </p>
           </div>
@@ -126,7 +126,7 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
                   className={`group relative flex flex-col justify-between p-5 rounded-2xl border cursor-pointer transition-all duration-200 ${
                     isCurrent
                       ? item.activeBg + ' ring-2 ring-purple-500/50 shadow-lg shadow-purple-500/10'
-                      : 'bg-white border-surface-200 hover:bg-surface-50 ' + item.borderHover
+                      : 'bg-white dark:bg-slate-900/90 border-surface-200 dark:border-slate-800 hover:bg-surface-50 dark:hover:bg-slate-800 ' + item.borderHover
                   }`}
                 >
                   <div className="space-y-3">
@@ -142,19 +142,19 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
                     </div>
 
                     <div>
-                      <h3 className="text-lg font-bold text-surface-900 group-hover:text-primary-600 transition-colors">
+                      <h3 className="text-lg font-bold text-surface-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-purple-400 transition-colors">
                         {item.title}
                       </h3>
-                      <p className="text-xs font-semibold text-primary-600 mt-0.5">
+                      <p className="text-xs font-semibold text-primary-600 dark:text-purple-400 mt-0.5">
                         {item.tagline}
                       </p>
                     </div>
 
-                    <p className="text-xs text-surface-600 leading-relaxed">{item.description}</p>
+                    <p className="text-xs text-surface-600 dark:text-slate-400 leading-relaxed">{item.description}</p>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-surface-200 flex items-center justify-between">
-                    <span className="text-xs text-zinc-500 font-mono">
+                  <div className="mt-4 pt-3 border-t border-surface-200 dark:border-slate-800 flex items-center justify-between">
+                    <span className="text-xs text-zinc-500 dark:text-slate-400 font-mono">
                       {isCurrent ? 'Selected' : 'Click to select'}
                     </span>
                     {isCurrent && (
@@ -167,13 +167,13 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
           </div>
 
           {/* Target Difficulty Selector */}
-          <div className="p-4 rounded-2xl bg-surface-50 border border-surface-200 space-y-2">
+          <div className="p-4 rounded-2xl bg-surface-50 dark:bg-slate-900/60 border border-surface-200 dark:border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-surface-800 flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-surface-800 dark:text-slate-200 flex items-center gap-1.5">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-purple-400" />
                 <span>Preferred Target Difficulty:</span>
               </span>
-              <span className="text-xs text-zinc-500 font-mono">Can change anytime</span>
+              <span className="text-xs text-zinc-500 dark:text-slate-400 font-mono">Can change anytime</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
               {(['Easy', 'Medium', 'Hard', 'Mixed Practice'] as PreferredDifficulty[]).map((d) => (
@@ -184,7 +184,7 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
                   className={`p-2 rounded-xl font-bold transition-all ${
                     selectedDiff === d
                       ? 'bg-purple-600 text-white shadow-md'
-                      : 'bg-white border border-surface-200 text-surface-700 hover:text-surface-900 shadow-xs'
+                      : 'bg-white dark:bg-slate-800 border border-surface-200 dark:border-slate-700 text-surface-700 dark:text-slate-200 hover:text-surface-900 dark:hover:text-white shadow-xs'
                   }`}
                 >
                   {d}
@@ -194,7 +194,7 @@ export function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
           </div>
 
           {/* Footer actions */}
-          <div className="pt-2 border-t border-surface-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="pt-2 border-t border-surface-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-zinc-500 text-center sm:text-left">
               Progress, attempts, and streaks persist across sessions and profile switches.
             </p>

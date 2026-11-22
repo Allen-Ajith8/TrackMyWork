@@ -113,12 +113,12 @@ export function TaskDetailClient({
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className={cn('badge', getTaskStatusColor(status))}>{status.replace('_', ' ')}</span>
-            <span className="badge bg-surface-100 text-surface-700 capitalize">{category}</span>
-            <span className="text-xs text-surface-400">
+            <span className="badge bg-surface-100 dark:bg-slate-800 text-surface-700 dark:text-slate-300 capitalize">{category}</span>
+            <span className="text-xs text-surface-400 dark:text-slate-500">
               Created {formatRelativeTime(task.created_at)}
             </span>
           </div>
-          <h1 className="text-2xl font-bold text-surface-900 mt-2">{title || 'Untitled task'}</h1>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white mt-2">{title || 'Untitled task'}</h1>
         </div>
         <button
           type="button"
@@ -174,7 +174,7 @@ export function TaskDetailClient({
                     'px-3 py-1.5 rounded-full text-sm font-medium border capitalize transition-colors',
                     status === value
                       ? 'bg-primary-600 text-white border-primary-600'
-                      : 'bg-white text-surface-600 border-surface-200 hover:bg-surface-50'
+                      : 'bg-white dark:bg-slate-900/80 text-surface-600 dark:text-slate-300 border-surface-200 dark:border-slate-800 hover:bg-surface-50 dark:hover:bg-slate-800 dark:hover:text-white'
                   )}
                 >
                   {value.replace('_', ' ')}
@@ -256,14 +256,14 @@ export function TaskDetailClient({
                   )}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-surface-900">{assignee.name}</p>
-                  <p className="text-xs text-surface-500">{assignee.role}</p>
+                  <p className="text-sm font-medium text-surface-900 dark:text-white">{assignee.name}</p>
+                  <p className="text-xs text-surface-500 dark:text-slate-400">{assignee.role}</p>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="h-px bg-surface-200" />
+          <div className="h-px bg-surface-200 dark:bg-slate-800" />
 
           <div>
             <label htmlFor="category" className="label">

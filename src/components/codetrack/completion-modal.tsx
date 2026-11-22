@@ -62,7 +62,7 @@ export function CompletionModal({ problem, onClose }: CompletionModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white border border-surface-200 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white dark:bg-[#0d121f] border border-surface-200 dark:border-slate-800 shadow-2xl overflow-hidden">
         {/* Glow accent */}
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 via-purple-500 to-indigo-500" />
 
@@ -74,7 +74,7 @@ export function CompletionModal({ problem, onClose }: CompletionModalProps) {
                 <Sparkles className="w-3.5 h-3.5" />
                 Problem Completion Tracker
               </span>
-              <h3 className="text-xl font-bold text-surface-900 flex items-center gap-2">
+              <h3 className="text-xl font-bold text-surface-900 dark:text-white flex items-center gap-2">
                 {problem.title}
               </h3>
               <div className="flex items-center gap-2 pt-1 text-xs">
@@ -89,7 +89,7 @@ export function CompletionModal({ problem, onClose }: CompletionModalProps) {
                 >
                   {problem.difficulty}
                 </span>
-                <span className="text-zinc-500 font-mono">Attempt #{currentAttempts}</span>
+                <span className="text-zinc-500 dark:text-slate-400 font-mono">Attempt #{currentAttempts}</span>
               </div>
             </div>
             <button
@@ -102,7 +102,7 @@ export function CompletionModal({ problem, onClose }: CompletionModalProps) {
 
           {/* Question Prompt */}
           <div className="space-y-3">
-            <label className="text-sm font-semibold text-surface-900">
+            <label className="text-sm font-semibold text-surface-900 dark:text-white">
               How did you perform on this problem?
             </label>
 
@@ -114,7 +114,7 @@ export function CompletionModal({ problem, onClose }: CompletionModalProps) {
                 className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
                   selectedStatus === 'solved'
                     ? 'bg-emerald-500/15 border-emerald-500 text-white ring-1 ring-emerald-500/40 shadow-sm'
-                    : 'bg-white border-surface-200 text-surface-600 hover:border-surface-300 hover:bg-surface-50'
+                    : 'bg-white dark:bg-slate-900/80 border-surface-200 dark:border-slate-800 text-surface-600 dark:text-slate-300 hover:border-surface-300 dark:hover:border-slate-700 hover:bg-surface-50 dark:hover:bg-slate-800'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -122,7 +122,7 @@ export function CompletionModal({ problem, onClose }: CompletionModalProps) {
                     <CheckCircle className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-surface-900">Solved</p>
+                    <p className="text-sm font-bold text-surface-900 dark:text-white">Solved</p>
                     <p className="text-xs text-zinc-400">Accepted solution on LeetCode with full test pass</p>
                   </div>
                 </div>
@@ -144,7 +144,7 @@ export function CompletionModal({ problem, onClose }: CompletionModalProps) {
                 className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
                   selectedStatus === 'attempted'
                     ? 'bg-amber-500/15 border-amber-500 text-white ring-1 ring-amber-500/40 shadow-sm'
-                    : 'bg-white border-surface-200 text-surface-600 hover:border-surface-300 hover:bg-surface-50'
+                    : 'bg-white dark:bg-slate-900/80 border-surface-200 dark:border-slate-800 text-surface-600 dark:text-slate-300 hover:border-surface-300 dark:hover:border-slate-700 hover:bg-surface-50 dark:hover:bg-slate-800'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -152,7 +152,7 @@ export function CompletionModal({ problem, onClose }: CompletionModalProps) {
                     <Clock className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-surface-900">Attempted</p>
+                    <p className="text-sm font-bold text-surface-900 dark:text-white">Attempted</p>
                     <p className="text-xs text-zinc-400">Wrote code / tackled test cases, still in progress</p>
                   </div>
                 </div>
@@ -174,7 +174,7 @@ export function CompletionModal({ problem, onClose }: CompletionModalProps) {
                 className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
                   selectedStatus === 'practice'
                     ? 'bg-purple-500/15 border-purple-500 text-white ring-1 ring-purple-500/40 shadow-sm'
-                    : 'bg-white border-surface-200 text-surface-600 hover:border-surface-300 hover:bg-surface-50'
+                    : 'bg-white dark:bg-slate-900/80 border-surface-200 dark:border-slate-800 text-surface-600 dark:text-slate-300 hover:border-surface-300 dark:hover:border-slate-700 hover:bg-surface-50 dark:hover:bg-slate-800'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -182,7 +182,7 @@ export function CompletionModal({ problem, onClose }: CompletionModalProps) {
                     <RefreshCw className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-surface-900">Need More Practice</p>
+                    <p className="text-sm font-bold text-surface-900 dark:text-white">Need More Practice</p>
                     <p className="text-xs text-zinc-400">Struggled with the optimal pattern, want to revisit</p>
                   </div>
                 </div>
@@ -209,7 +209,7 @@ export function CompletionModal({ problem, onClose }: CompletionModalProps) {
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. Kadane's algorithm resets when sum < 0. Space O(1)."
               rows={2}
-              className="w-full px-3 py-2 text-xs rounded-xl bg-surface-50 border border-surface-200 text-surface-900 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white resize-none shadow-xs"
+              className="w-full px-3 py-2 text-xs rounded-xl bg-surface-50 dark:bg-[#080c14] border border-surface-200 dark:border-slate-800 text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-[#0b0f19] resize-none shadow-xs"
             />
           </div>
 

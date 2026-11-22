@@ -82,7 +82,7 @@ function TaskCard({ task, members, onUpdate, onDelete }: TaskCardProps) {
 
   return (
     <div className={cn(
-      "bg-white rounded-lg border shadow-sm p-3 hover:shadow-md transition-shadow",
+      "bg-white dark:bg-[#0d121f] rounded-lg border border-surface-200 dark:border-slate-800 shadow-sm p-3 hover:shadow-md transition-shadow",
       (task.is_blocker || task.status === 'blocked') && "border-red-300 ring-1 ring-red-300/50"
     )}>
       <div className="flex items-start justify-between mb-2">
@@ -473,10 +473,10 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
     <ToastProvider>
       <div className="h-[calc(100vh-64px)] flex flex-col">
         {/* Header */}
-        <div className="border-b bg-white px-6 py-4 flex-shrink-0">
+        <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold">Tasks</h1>
+              <h1 className="text-xl font-bold text-surface-900 dark:text-white">Tasks</h1>
               <p className="text-sm text-muted-foreground">{room.name} • {tasks.length} tasks</p>
             </div>
             <div className="flex items-center gap-2">
@@ -500,7 +500,7 @@ export function RoomTasksClient({ room, initialTasks, initialMembers }: {
         </div>
 
         {/* Toolbar */}
-        <div className="border-b bg-white px-6 py-3 flex-shrink-0">
+        <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 py-3 flex-shrink-0">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1 max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

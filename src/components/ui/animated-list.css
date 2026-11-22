@@ -1,0 +1,234 @@
+/* ---- animated-list.css ---- */
+:root {
+  --al-frame: rgba(240, 240, 243, 0.85);
+  --al-frame-edge: rgba(24, 24, 27, 0.07);
+  --al-frame-highlight: rgba(255, 255, 255, 0.95);
+  --al-frame-shadow: 0 20px 40px -20px rgba(24, 24, 27, 0.18), 0 4px 12px -6px rgba(24, 24, 27, 0.08);
+  --al-tile: #ffffff;
+  --al-tile-edge: rgba(228, 228, 231, 0.85);
+  --al-tile-highlight: rgba(255, 255, 255, 1);
+  --al-tile-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
+  --al-well: rgba(24, 24, 27, 0.04);
+  --al-ink: #18181b;
+  --al-muted: rgba(100, 116, 139, 0.8);
+  --al-thumb: rgba(24, 24, 27, 0.18);
+  --al-ring: rgba(168, 85, 247, 0.6);
+  --al-ring-fill: rgba(168, 85, 247, 0.04);
+  --al-hover: brightness(0.98);
+  --al-press: brightness(0.94);
+  --al-active: none;
+}
+
+.dark {
+  --al-frame: rgba(13, 18, 31, 0.75);
+  --al-frame-edge: rgba(255, 255, 255, 0.08);
+  --al-frame-highlight: rgba(255, 255, 255, 0.07);
+  --al-frame-shadow: 0 22px 44px -20px rgba(0, 0, 0, 0.8), 0 6px 16px -8px rgba(0, 0, 0, 0.5);
+  --al-tile: linear-gradient(180deg, #131929 0%, #0d121f 100%);
+  --al-tile-edge: rgba(255, 255, 255, 0.08);
+  --al-tile-highlight: rgba(255, 255, 255, 0.04);
+  --al-tile-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.6);
+  --al-well: rgba(255, 255, 255, 0.06);
+  --al-ink: #f4f4f5;
+  --al-muted: rgba(148, 163, 184, 0.7);
+  --al-thumb: rgba(255, 255, 255, 0.16);
+  --al-ring: rgba(168, 85, 247, 0.55);
+  --al-ring-fill: rgba(168, 85, 247, 0.08);
+  --al-hover: brightness(1.09);
+  --al-press: brightness(0.88);
+  --al-active: brightness(1.12);
+}
+
+.animated-list {
+  position: relative;
+  width: min(100%, var(--al-width));
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  border-radius: calc(var(--al-radius) + 6px);
+  color: var(--al-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.animated-list--framed {
+  padding: 6px;
+  background: var(--al-frame);
+  box-shadow: var(--al-frame-shadow);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+}
+
+.animated-list:has(> .animated-list__viewport:focus-visible) {
+  outline: 2px solid var(--al-accent);
+  outline-offset: 3px;
+}
+
+.animated-list__frame-rim {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px var(--al-frame-edge),
+    inset 0 1px 0 var(--al-frame-highlight);
+  pointer-events: none;
+}
+
+.animated-list__viewport {
+  --al-fade-top: 0px;
+  --al-fade-bottom: 0px;
+  position: relative;
+  box-sizing: border-box;
+  padding: 2px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: calc(var(--al-radius) + 4px);
+  outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--al-thumb) transparent;
+}
+
+.animated-list__viewport::-webkit-scrollbar {
+  width: 6px;
+}
+
+.animated-list__viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.animated-list__viewport::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--al-thumb);
+}
+
+.animated-list__viewport--bare {
+  scrollbar-width: none;
+}
+
+.animated-list__viewport--bare::-webkit-scrollbar {
+  display: none;
+}
+
+.animated-list__track {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--al-gap);
+}
+
+.animated-list__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border-radius: var(--al-radius);
+  background: var(--al-tile);
+  box-shadow: var(--al-tile-shadow);
+  color: var(--al-ink);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.animated-list[data-animated] .animated-list__item:not([data-state]) {
+  opacity: 0;
+}
+
+@media (hover: hover) {
+  .animated-list__item:hover {
+    filter: var(--al-hover);
+  }
+}
+
+.animated-list__item[data-selected]:not(:active) {
+  filter: var(--al-active);
+}
+
+.animated-list__item:active {
+  filter: var(--al-press);
+}
+
+.animated-list__lead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  overflow: visible;
+  color: var(--al-ink);
+}
+
+.animated-list__lead img {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: max(8px, calc(var(--al-radius) - 4px));
+  object-fit: cover;
+}
+
+.animated-list__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.animated-list__title {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.animated-list__description {
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--al-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.animated-list__meta {
+  flex: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--al-muted);
+}
+
+.animated-list__rim {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px var(--al-tile-edge),
+    inset 0 1px 0 var(--al-tile-highlight);
+  pointer-events: none;
+}
+
+.animated-list__indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.animated-list__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--al-radius);
+  background: var(--al-ring-fill);
+  box-shadow: inset 0 0 0 1.5px var(--al-ring);
+}

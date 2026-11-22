@@ -239,10 +239,10 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
     <ToastProvider>
       <div className="h-[calc(100vh-64px)] flex flex-col">
         {/* Header */}
-        <div className="border-b bg-white px-6 py-4 flex-shrink-0">
+        <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold">Submission Hub / Artifacts</h1>
+              <h1 className="text-xl font-bold text-surface-900 dark:text-white">Submission Hub / Artifacts</h1>
               <p className="text-sm text-muted-foreground">{room.name} • {artifacts.length} artifacts</p>
             </div>
             <div className="flex items-center gap-2">
@@ -260,7 +260,7 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
         </div>
 
         {/* Type Filter Chips */}
-        <div className="border-b bg-white px-6 py-3 flex-shrink-0">
+        <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 py-3 flex-shrink-0">
           <div className="flex flex-wrap gap-2">
             <Button
               variant={filterType === 'all' ? 'default' : 'outline'}
@@ -284,7 +284,7 @@ export function RoomArtifactsClient({ room, initialArtifacts, initialMembers }: 
         </div>
 
         {/* Toolbar */}
-        <div className="border-b bg-white px-6 py-3 flex-shrink-0">
+        <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 py-3 flex-shrink-0">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1 max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

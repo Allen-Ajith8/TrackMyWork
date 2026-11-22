@@ -470,14 +470,14 @@ export function RoomTeamClient({ room, initialMembers }: {
     <ToastProvider>
       <div className="h-[calc(100vh-64px)] flex flex-col">
         {/* Header */}
-        <div className="border-b bg-white px-6 py-4 flex-shrink-0">
+        <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                <Users className="w-5 h-5 text-purple-600" />
+              <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center">
+                <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">Team</h1>
+                <h1 className="text-xl font-bold text-surface-900 dark:text-white">Team</h1>
                 <p className="text-sm text-muted-foreground">Members of {room.name}</p>
               </div>
             </div>
@@ -491,7 +491,7 @@ export function RoomTeamClient({ room, initialMembers }: {
         </div>
 
         {/* Toolbar */}
-        <div className="border-b bg-white px-6 py-3 flex-shrink-0">
+        <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 py-3 flex-shrink-0">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1 max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

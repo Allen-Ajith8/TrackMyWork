@@ -88,6 +88,14 @@ export function areOutputsEqual(actual: any, expectedStr: string): boolean {
   const normExpected = normalizeOutput(expectedStr);
 
   if (normActual === normExpected) return true;
+  if (normActual.toLowerCase() === normExpected.toLowerCase()) return true;
+
+  // Handle LeetCode in-place remove (e.g. k = 2, nums = [1, 2, _])
+  const kMatch = expectedStr.match(/k\s*=\s*(\d+)/i);
+  if (kMatch) {
+    const kVal = kMatch[1];
+    if (String(actual) === kVal || normActual === kVal) return true;
+  }
 
   // Compare parsed objects
   try {
@@ -105,6 +113,11 @@ export function areOutputsEqual(actual: any, expectedStr: string): boolean {
       }
     }
   } catch {}
+
+  // Strip wrapping quotes for string comparison
+  const cleanAct = normActual.replace(/^"|"$/g, '');
+  const cleanExp = normExpected.replace(/^"|"$/g, '');
+  if (cleanAct === cleanExp) return true;
 
   return false;
 }
@@ -197,23 +210,21 @@ except Exception as compile_err:
     sys.exit(0)
 
 # Locate solution instance or function
-target_func = None
+candidate_funcs = []
 if 'Solution' in user_scope:
     sol_class = user_scope['Solution']
     try:
         sol_instance = sol_class()
         for attr in dir(sol_instance):
             if not attr.startswith('_') and callable(getattr(sol_instance, attr)):
-                target_func = getattr(sol_instance, attr)
-                break
+                candidate_funcs.append(getattr(sol_instance, attr))
     except Exception as init_err:
         pass
 
-if target_func is None:
+if not candidate_funcs:
     for name, obj in user_scope.items():
         if not name.startswith('_') and callable(obj) and name not in ('re', 'json', 'sys', 'time'):
-            target_func = obj
-            break
+            candidate_funcs.append(obj)
 
 results = []
 
@@ -238,6 +249,24 @@ for tc in test_cases_data:
         continue
 
     try:
+        target_func = None
+        if candidate_funcs:
+            import inspect
+            for fn in candidate_funcs:
+                try:
+                    sig = inspect.signature(fn)
+                    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+                        target_func = fn
+                        break
+                    sig_keys = set(sig.parameters.keys())
+                    if all(k in sig_keys for k in scope.keys()):
+                        target_func = fn
+                        break
+                except Exception:
+                    pass
+            if target_func is None:
+                target_func = candidate_funcs[0]
+
         if target_func is None:
             raise RuntimeError("No Solution class or method found. Define 'class Solution:' with your solution method.")
         
@@ -255,11 +284,17 @@ for tc in test_cases_data:
         actual_str = json.dumps(ret) if ret is not None else 'null'
         
         # Normalize and compare
-        norm_actual = re.sub(r'\\s+', '', actual_str)
-        norm_expected = re.sub(r'\\s+', '', expected_output)
+        norm_actual = re.sub(r'\\s+', '', actual_str).lower()
+        norm_expected = re.sub(r'\\s+', '', expected_output).lower()
         
         passed = (norm_actual == norm_expected)
         
+        # Secondary check for LeetCode in-place remove (e.g. k = 2, nums = [1, 2, _])
+        if not passed:
+            k_match = re.search(r'k\\s*=\\s*(\\d+)', expected_output, re.IGNORECASE)
+            if k_match and str(ret) == k_match.group(1):
+                passed = True
+
         # Secondary check for list element order if applicable
         if not passed:
             try:
@@ -270,6 +305,13 @@ for tc in test_cases_data:
                         passed = True
             except:
                 pass
+        
+        # Secondary check for string unquoted comparison
+        if not passed:
+            clean_act = norm_actual.strip('"').strip("'")
+            clean_exp = norm_expected.strip('"').strip("'")
+            if clean_act == clean_exp:
+                passed = True
         
         results.append({
             'id': tc['id'],

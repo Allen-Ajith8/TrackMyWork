@@ -104,7 +104,7 @@ function TaskCard({ task, members, onUpdate, onDelete }: TaskCardProps) {
 
   return (
     <div className={cn(
-      "bg-white rounded-lg border shadow-sm p-3 hover:shadow-md transition-shadow",
+      "bg-white dark:bg-[#0d121f] rounded-lg border border-surface-200 dark:border-slate-800 shadow-sm p-3 hover:shadow-md transition-shadow",
       (task.is_blocker || task.status === 'blocked') && "border-red-300 ring-1 ring-red-300/50"
     )}>
       <div className="flex items-start justify-between mb-2">
@@ -1399,7 +1399,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
       {/* Room Header */}
-      <div className="border-b bg-white px-6 py-4 flex-shrink-0">
+      <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
@@ -1407,7 +1407,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl font-bold">{activeRoom.name}</h1>
+                <h1 className="text-xl font-bold text-surface-900 dark:text-white">{activeRoom.name}</h1>
                 {timeLeft && (
                   <span
                     className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold shadow-xs ${
@@ -1542,8 +1542,8 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
 
       {/* Live IDE telemetry (heartbeats + file locks from the MCP server) */}
       {(liveHeartbeats.length > 0 || liveLocks.length > 0) && (
-        <div className="border-b bg-white px-6 py-2 flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 font-medium text-green-700">
+        <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 py-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 font-medium text-green-700 dark:text-green-400">
             <HeartPulse className="w-3.5 h-3.5" />
             Coding now
           </span>
@@ -1562,7 +1562,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
             <Badge
               key={lock.id}
               variant="outline"
-              className="font-normal border-amber-300 bg-amber-50 text-amber-800"
+              className="font-normal border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
               title={`Locked until ${new Date(lock.expiresAt).toLocaleTimeString()}`}
             >
               <AlertCircle className="w-3 h-3 mr-1" />
@@ -1578,7 +1578,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
         const isHardware = activeRoom.project_type === 'hardware';
         return (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
-            <div className="border-b bg-white px-6 flex-shrink-0">
+            <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 flex-shrink-0">
               <TabsList className={cn('grid w-full', isHardware ? 'grid-cols-5' : 'grid-cols-4')}>
                 <TabsTrigger value="tasks">
                   <Kanban className="w-4 h-4 mr-2" />
@@ -1652,13 +1652,13 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
             <div className="flex-1 overflow-x-auto">
               {isPanicMode && filteredTasks.length === 0 ? (
                 <div className="h-full min-h-[300px] flex flex-col items-center justify-center p-8 text-center bg-surface-50/50 rounded-xl border">
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 shadow-sm">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4 shadow-sm">
                     <CheckCircle className="w-8 h-8" />
                   </div>
-                  <h3 className="text-lg font-bold text-surface-900 mb-1">
+                  <h3 className="text-lg font-bold text-surface-900 dark:text-white mb-1">
                     No blockers, nothing due in the next 2h
                   </h3>
-                  <p className="text-sm text-surface-500 max-w-sm">
+                  <p className="text-sm text-surface-500 dark:text-slate-400 max-w-sm">
                     All critical work is resolved or not urgently due. Take a breath, you are on track!
                   </p>
                 </div>
@@ -1883,7 +1883,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                     Problem Statement
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-xs leading-relaxed text-surface-800">
+                <CardContent className="text-xs leading-relaxed text-surface-800 dark:text-slate-200">
                   {activeRoom.problem_statement || activeRoom.description || 'No problem statement recorded.'}
                 </CardContent>
               </Card>
@@ -1915,7 +1915,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="p-4 rounded-xl bg-surface-50 border border-surface-200 font-mono text-xs whitespace-pre-wrap leading-relaxed text-surface-800 max-h-60 overflow-y-auto">
+                  <div className="p-4 rounded-xl bg-surface-50 dark:bg-slate-900/90 border border-surface-200 dark:border-slate-800 font-mono text-xs whitespace-pre-wrap leading-relaxed text-surface-800 dark:text-slate-200 max-h-60 overflow-y-auto">
                     {activeRoom.judging_rubric}
                   </div>
                 </CardContent>
@@ -1930,7 +1930,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="p-4 rounded-xl bg-surface-50 border border-surface-200 font-mono text-xs whitespace-pre-wrap leading-relaxed text-surface-800 max-h-60 overflow-y-auto">
+                  <div className="p-4 rounded-xl bg-surface-50 dark:bg-slate-900/90 border border-surface-200 dark:border-slate-800 font-mono text-xs whitespace-pre-wrap leading-relaxed text-surface-800 dark:text-slate-200 max-h-60 overflow-y-auto">
                     {activeRoom.rules_text}
                   </div>
                 </CardContent>

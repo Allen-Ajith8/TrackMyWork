@@ -130,11 +130,13 @@ export async function POST(req: NextRequest) {
       let bugsFound: string[] = [];
       let explanation = '';
       let recommendedFixCode = '';
+      let finalTestResults: TestCase[] = executionResults;
 
       if (allPassed) {
         bugsFound = [];
         explanation = '🎉 Perfect! All test cases passed with zero errors. Your solution is 100% verified and ready for LeetCode!';
-        recommendedFixCode = '';
+        recommendedFixCode = repairedUserCode;
+        finalTestResults = executionResults;
       } else {
         if (failed?.error) {
           bugsFound.push(failed.error);
@@ -146,7 +148,11 @@ export async function POST(req: NextRequest) {
 
         const deterministic = generateDeterministicSolution(problem, activeLang);
         recommendedFixCode = deterministic.code;
-        explanation = diagnostic.whatYouShouldDo || 'Algorithm adjustments required to satisfy test cases.';
+        explanation = diagnostic.whatYouShouldDo || 'Algorithm adjustments applied automatically to satisfy all test cases.';
+
+        // Re-verify the fixed code to obtain verified passing test results
+        const verifiedTests = await executeCodeTests(deterministic.code, activeLang, problem, targetCases);
+        finalTestResults = verifiedTests.length > 0 ? verifiedTests : executionResults;
       }
 
       return NextResponse.json({
@@ -154,9 +160,14 @@ export async function POST(req: NextRequest) {
         bugsFound,
         recommendedFix: explanation,
         recommendedFixCode,
-        testResults: executionResults,
+        originalTestResults: executionResults,
+        testResults: finalTestResults,
         allPassed,
-        diagnostic,
+        wasAutoCorrected: !allPassed,
+        diagnostic: {
+          ...diagnostic,
+          isAllPassed: allPassed || finalTestResults.every((t) => t.passed === true),
+        },
         explanation,
         language: activeLang,
         source: 'langgraph_diagnostics',

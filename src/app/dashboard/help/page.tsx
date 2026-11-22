@@ -76,8 +76,8 @@ export default function HelpPage() {
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
-        <h1 className="text-2xl font-bold text-surface-900">Help & docs</h1>
-        <p className="text-surface-600 mt-1">
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Help & docs</h1>
+        <p className="text-surface-600 dark:text-slate-400 mt-1">
           Quick guides and answers for getting the most out of TrackMyWork.
         </p>
       </div>
@@ -86,12 +86,12 @@ export default function HelpPage() {
         {guides.map((guide) => (
           <Link key={guide.title} href={guide.href} className="card p-5 hover:shadow-md transition-shadow">
             <div className="flex items-start gap-4">
-              <div className="w-11 h-11 rounded-xl bg-primary-50 flex items-center justify-center flex-shrink-0">
-                <guide.icon className="w-5 h-5 text-primary-600" />
+              <div className="w-11 h-11 rounded-xl bg-primary-50 dark:bg-purple-950/40 flex items-center justify-center flex-shrink-0">
+                <guide.icon className="w-5 h-5 text-primary-600 dark:text-purple-400" />
               </div>
               <div>
-                <h2 className="font-semibold text-surface-900">{guide.title}</h2>
-                <p className="text-sm text-surface-500 mt-1">{guide.description}</p>
+                <h2 className="font-semibold text-surface-900 dark:text-white">{guide.title}</h2>
+                <p className="text-sm text-surface-500 dark:text-slate-400 mt-1">{guide.description}</p>
               </div>
             </div>
           </Link>
@@ -99,18 +99,18 @@ export default function HelpPage() {
       </div>
 
       <section className="card overflow-hidden">
-        <div className="p-5 border-b border-surface-200 flex items-center gap-2">
-          <HelpCircle className="w-5 h-5 text-primary-600" />
-          <h2 className="font-semibold text-surface-900">Frequently asked questions</h2>
+        <div className="p-5 border-b border-surface-200 dark:border-slate-800 flex items-center gap-2">
+          <HelpCircle className="w-5 h-5 text-primary-600 dark:text-purple-400" />
+          <h2 className="font-semibold text-surface-900 dark:text-white">Frequently asked questions</h2>
         </div>
-        <div className="divide-y divide-surface-200">
+        <div className="divide-y divide-surface-200 dark:divide-slate-800">
           {faqs.map((faq) => (
             <details key={faq.question} className="group p-5">
-              <summary className="cursor-pointer list-none flex items-center justify-between gap-3 font-medium text-surface-900">
+              <summary className="cursor-pointer list-none flex items-center justify-between gap-3 font-medium text-surface-900 dark:text-white">
                 {faq.question}
                 <span className="text-surface-400 group-open:rotate-180 transition-transform">▾</span>
               </summary>
-              <p className="text-sm text-surface-600 mt-3 leading-relaxed">{faq.answer}</p>
+              <p className="text-sm text-surface-600 dark:text-slate-300 mt-3 leading-relaxed">{faq.answer}</p>
             </details>
           ))}
         </div>
@@ -118,22 +118,22 @@ export default function HelpPage() {
 
       <div className="grid sm:grid-cols-3 gap-4">
         <div className="card p-5">
-          <FolderKanban className="w-5 h-5 text-primary-600" />
-          <h3 className="font-semibold text-surface-900 mt-3">Room guides</h3>
-          <p className="text-sm text-surface-500 mt-1">
+          <FolderKanban className="w-5 h-5 text-primary-600 dark:text-purple-400" />
+          <h3 className="font-semibold text-surface-900 dark:text-white mt-3">Room guides</h3>
+          <p className="text-sm text-surface-500 dark:text-slate-400 mt-1">
             Each room has its own dashboard, tasks, BOM, artifacts, team and settings tabs.
           </p>
-          <Link href="/dashboard/rooms" className="text-sm text-primary-600 hover:underline mt-3 inline-block">
+          <Link href="/dashboard/rooms" className="text-sm text-primary-600 dark:text-purple-400 hover:underline mt-3 inline-block">
             Browse rooms
           </Link>
         </div>
         <div className="card p-5">
-          <Users className="w-5 h-5 text-primary-600" />
-          <h3 className="font-semibold text-surface-900 mt-3">Team & roles</h3>
-          <p className="text-sm text-surface-500 mt-1">
+          <Users className="w-5 h-5 text-primary-600 dark:text-purple-400" />
+          <h3 className="font-semibold text-surface-900 dark:text-white mt-3">Team & roles</h3>
+          <p className="text-sm text-surface-500 dark:text-slate-400 mt-1">
             Learn how team leader and per-member permissions work in the Team tab.
           </p>
-          <Link href="/dashboard/team" className="text-sm text-primary-600 hover:underline mt-3 inline-block">
+          <Link href="/dashboard/team" className="text-sm text-primary-600 dark:text-purple-400 hover:underline mt-3 inline-block">
             View team
           </Link>
         </div>

@@ -50,7 +50,18 @@ export const LangGraphAgentState = Annotation.Root({
     default: () => 3,
   }),
   graphSteps: Annotation<LangGraphExecutionStep[]>({
-    reducer: (curr, next) => curr.concat(next),
+    reducer: (curr, next) => {
+      const merged = [...curr];
+      for (const step of next) {
+        const existingIdx = merged.findIndex((s) => s.node === step.node);
+        if (existingIdx >= 0) {
+          merged[existingIdx] = step;
+        } else {
+          merged.push(step);
+        }
+      }
+      return merged;
+    },
     default: () => [],
   }),
 });
@@ -249,5 +260,9 @@ export async function runLangGraphCodingAgent(params: {
   };
 
   const finalState = await langGraphCodingWorkflow.invoke(initialState);
+  if (finalState.allPassed) {
+    // Only keep clean canonical completed phases
+    finalState.graphSteps = finalState.graphSteps.filter((s) => s.status === 'completed');
+  }
   return finalState;
 }

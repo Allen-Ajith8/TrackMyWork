@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore, useRoomStore } from '@/lib/store';
 import { usePanicTasks } from '@/hooks/usePanicTasks';
 import {
-  formatRemainingTime,
   getHackTimerState,
   type HackTimerState,
   cn,
@@ -22,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Counter } from '@/components/ui/counter';
 
 export function HackTimer() {
   const [mounted, setMounted] = useState(false);
@@ -40,11 +40,15 @@ export function HackTimer() {
   const roomMembers = useRoomStore((state) => state.roomMembers);
   const currentUserId = useAuthStore((state) => state.user?.id);
 
+  const effectiveRoomId = currentRoom?.id ?? 'demo-room-01';
   const currentMember = roomMembers.find((m) => m.user_id === currentUserId);
   const canEditDeadline =
-    isGlobalAdmin || isTeamLeader || Boolean(currentMember?.flag_can_edit_rules);
+    isGlobalAdmin || isTeamLeader || Boolean(currentMember?.flag_can_edit_rules) || !currentRoom;
 
-  const { isPanicMode, setPanicMode } = usePanicTasks({ roomId: currentRoom?.id });
+  const { isPanicMode, setPanicMode } = usePanicTasks({ roomId: effectiveRoomId });
+
+  // Fallback demo deadline (90 mins from session start if none configured)
+  const defaultDeadlineRef = useRef<number>(Date.now() + 90 * 60 * 1000);
 
   // SSR-safe mounting
   useEffect(() => {
@@ -100,20 +104,18 @@ export function HackTimer() {
     };
   }, [currentRoom?.id, currentRoom, setCurrentRoom]);
 
-  // Calculate remaining time
+  // Calculate remaining time with fallback to ensure timer is always active
   const deadlineMs = currentRoom?.submission_deadline
     ? new Date(currentRoom.submission_deadline).getTime()
-    : null;
-  const remainingMs = deadlineMs !== null ? deadlineMs - now : null;
-  const timerState: HackTimerState =
-    remainingMs !== null ? getHackTimerState(remainingMs) : 'normal';
+    : defaultDeadlineRef.current;
+  const remainingMs = deadlineMs - now;
+  const timerState: HackTimerState = getHackTimerState(remainingMs);
 
   // Screen-reader announcement only on threshold changes
   const prevStateRef = useRef<HackTimerState | null>(null);
   const [announcement, setAnnouncement] = useState('');
 
   useEffect(() => {
-    if (remainingMs === null) return;
     if (timerState !== prevStateRef.current) {
       prevStateRef.current = timerState;
       if (timerState === 'passed') {
@@ -126,15 +128,14 @@ export function HackTimer() {
         setAnnouncement('Hackathon submission timer is in normal state.');
       }
     }
-  }, [timerState, remainingMs]);
+  }, [timerState]);
 
   // Under 2h toast suggestion (once per room per session)
   useEffect(() => {
     if (
       !mounted ||
-      !currentRoom?.id ||
+      !effectiveRoomId ||
       isPanicMode ||
-      remainingMs === null ||
       remainingMs <= 0 ||
       remainingMs > 2 * 60 * 60 * 1000
     ) {
@@ -142,7 +143,7 @@ export function HackTimer() {
     }
 
     try {
-      const key = `panic_suggested_${currentRoom.id}`;
+      const key = `panic_suggested_${effectiveRoomId}`;
       const alreadySuggested = sessionStorage.getItem(key);
       if (!alreadySuggested) {
         setShowToast(true);
@@ -151,27 +152,21 @@ export function HackTimer() {
     } catch {
       // ignore storage errors
     }
-  }, [mounted, currentRoom?.id, remainingMs, isPanicMode]);
+  }, [mounted, effectiveRoomId, remainingMs, isPanicMode]);
 
   // Handle open deadline dialog
   const handleOpenDialog = () => {
-    if (currentRoom?.submission_deadline) {
-      try {
-        const d = new Date(currentRoom.submission_deadline);
-        const isoLocal = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-          .toISOString()
-          .slice(0, 16);
-        setDeadlineInput(isoLocal);
-      } catch {
-        setDeadlineInput('');
-      }
-    } else {
-      // Default to 24 hours from now
-      const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const targetMs = currentRoom?.submission_deadline
+      ? new Date(currentRoom.submission_deadline).getTime()
+      : defaultDeadlineRef.current;
+    try {
+      const d = new Date(targetMs);
       const isoLocal = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
         .toISOString()
         .slice(0, 16);
       setDeadlineInput(isoLocal);
+    } catch {
+      setDeadlineInput('');
     }
     setSaveError(null);
     setDialogOpen(true);
@@ -179,7 +174,6 @@ export function HackTimer() {
 
   const handleSaveDeadline = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentRoom) return;
 
     if (!deadlineInput) {
       setSaveError('Please select a valid date and time.');
@@ -187,37 +181,36 @@ export function HackTimer() {
     }
 
     const isoDate = new Date(deadlineInput).toISOString();
+    defaultDeadlineRef.current = new Date(isoDate).getTime();
 
     startTransition(async () => {
       setSaveError(null);
-      try {
-        const { error } = await supabase
-          .from('rooms')
-          .update({ submission_deadline: isoDate })
-          .eq('id', currentRoom.id);
+      if (currentRoom) {
+        try {
+          const { error } = await supabase
+            .from('rooms')
+            .update({ submission_deadline: isoDate })
+            .eq('id', currentRoom.id);
 
-        if (error) {
-          // If Supabase is offline/unconfigured, update local room state directly for demo mode
+          if (error) {
+            setCurrentRoom({
+              ...currentRoom,
+              submission_deadline: isoDate,
+            });
+          } else {
+            setCurrentRoom({
+              ...currentRoom,
+              submission_deadline: isoDate,
+            });
+          }
+        } catch {
           setCurrentRoom({
             ...currentRoom,
             submission_deadline: isoDate,
           });
-          setDialogOpen(false);
-        } else {
-          setCurrentRoom({
-            ...currentRoom,
-            submission_deadline: isoDate,
-          });
-          setDialogOpen(false);
         }
-      } catch {
-        // Fallback for offline/demo mode
-        setCurrentRoom({
-          ...currentRoom,
-          submission_deadline: isoDate,
-        });
-        setDialogOpen(false);
       }
+      setDialogOpen(false);
     });
   };
 
@@ -232,131 +225,47 @@ export function HackTimer() {
   // SSR placeholder
   if (!mounted) {
     return (
-      <div className="h-8 w-24 bg-surface-200/50 rounded-lg animate-pulse" aria-hidden="true" />
+      <div className="h-8 w-28 bg-surface-200/50 dark:bg-slate-800/50 rounded-lg animate-pulse" aria-hidden="true" />
     );
   }
 
-  // If no room is active, render nothing
-  if (!currentRoom) {
-    return null;
-  }
+  // Decompose remainingMs into hours, minutes, and seconds for rolling digit animation
+  const isExpired = remainingMs <= 0;
+  const safeRemainingMs = Math.max(0, remainingMs);
+  const totalSeconds = Math.floor(safeRemainingMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
 
-  // If no deadline set
-  if (!currentRoom.submission_deadline || remainingMs === null) {
-    if (!canEditDeadline) return null;
-
-    return (
-      <>
-        <button
-          onClick={handleOpenDialog}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-surface-300 hover:bg-surface-100 text-surface-700 transition-colors shadow-sm"
-          title="Set room submission deadline"
-        >
-          <Calendar className="w-3.5 h-3.5 text-primary-600" />
-          <span>Set deadline</span>
-        </button>
-
-        {/* Dialog for setting deadline */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-primary-600" />
-                Set Submission Deadline
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSaveDeadline} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="deadline-input">Final Submission Deadline</Label>
-                <Input
-                  id="deadline-input"
-                  type="datetime-local"
-                  value={deadlineInput}
-                  onChange={(e) => setDeadlineInput(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs text-surface-500">Quick Presets</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setPresetHours(1)}
-                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 text-surface-700"
-                  >
-                    +1h (Testing)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPresetHours(6)}
-                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 text-surface-700"
-                  >
-                    +6h
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPresetHours(24)}
-                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 text-surface-700"
-                  >
-                    +24h
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPresetHours(48)}
-                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 text-surface-700"
-                  >
-                    +48h
-                  </button>
-                </div>
-              </div>
-
-              {saveError && (
-                <p className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
-                  {saveError}
-                </p>
-              )}
-
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDialogOpen(false)}
-                  disabled={isPending}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isPending}>
-                  {isPending ? 'Saving…' : 'Save Deadline'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </>
-    );
-  }
-
-  // State-specific styling
-  const stateStyles = {
+  // Styling
+  const normalStyles = {
     normal:
-      'bg-surface-100 text-surface-800 border-surface-200 hover:bg-surface-200/80',
+      'bg-surface-100 text-surface-800 dark:bg-slate-900/60 dark:text-surface-200 border-surface-200 dark:border-slate-800 hover:bg-surface-200/80',
     warning:
       'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20',
     critical:
       'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 animate-pulse-subtle hover:bg-red-500/20',
     passed:
-      'bg-surface-200 text-surface-600 border-surface-300 hover:bg-surface-300/80',
+      'bg-surface-200 text-surface-600 dark:bg-slate-800 dark:text-slate-400 border-surface-300 dark:border-slate-700 hover:bg-surface-300/80',
   };
 
+  const panicStyles =
+    'bg-orange-500/15 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border-orange-500/60 shadow-[0_0_14px_rgba(249,115,22,0.3)] hover:bg-orange-500/25';
+
   const stateIcons = {
-    normal: <Clock className="w-3.5 h-3.5 text-primary-600 flex-shrink-0" />,
+    normal: <Clock className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400 flex-shrink-0" />,
     warning: <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />,
     critical: <AlertTriangle className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />,
     passed: <CheckCircle2 className="w-3.5 h-3.5 text-surface-500 flex-shrink-0" />,
   };
 
-  const timeDisplay = formatRemainingTime(remainingMs);
+  const counterTextColor = isPanicMode
+    ? '#f97316'
+    : timerState === 'critical'
+    ? '#ef4444'
+    : timerState === 'warning'
+    ? '#f59e0b'
+    : undefined;
 
   return (
     <>
@@ -372,21 +281,66 @@ export function HackTimer() {
           disabled={!canEditDeadline}
           className={cn(
             'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold border transition-all duration-200 shadow-sm',
-            stateStyles[timerState],
+            isPanicMode ? panicStyles : normalStyles[timerState],
             canEditDeadline ? 'cursor-pointer' : 'cursor-default'
           )}
-          title={
-            canEditDeadline
-              ? `Deadline: ${new Date(currentRoom.submission_deadline).toLocaleString()} (click to edit)`
-              : `Deadline: ${new Date(currentRoom.submission_deadline).toLocaleString()}`
-          }
+          title={`Submission Deadline: ${new Date(deadlineMs).toLocaleString()} (click to edit)`}
         >
-          {stateIcons[timerState]}
-          <span aria-live="off" className="tabular-nums tracking-tight">
-            {timeDisplay}
-          </span>
+          {isPanicMode ? (
+            <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500/20 animate-pulse flex-shrink-0" />
+          ) : (
+            stateIcons[timerState]
+          )}
+
+          {isExpired ? (
+            <span aria-live="off" className="tabular-nums tracking-tight font-medium">
+              Submissions closed
+            </span>
+          ) : (
+            <span aria-live="off" className="inline-flex items-baseline gap-0.5 tabular-nums tracking-tight font-bold">
+              <Counter
+                value={hours}
+                minDigits={2}
+                fontSize={12}
+                fontWeight={700}
+                textColor={counterTextColor}
+                direction="down"
+                duration={0.6}
+              />
+              <span className={cn('text-[10px] font-semibold opacity-70 mr-1', isPanicMode ? 'text-orange-500' : 'text-current')}>
+                h
+              </span>
+
+              <Counter
+                value={minutes}
+                minDigits={2}
+                fontSize={12}
+                fontWeight={700}
+                textColor={counterTextColor}
+                direction="down"
+                duration={0.6}
+              />
+              <span className={cn('text-[10px] font-semibold opacity-70 mr-1', isPanicMode ? 'text-orange-500' : 'text-current')}>
+                m
+              </span>
+
+              <Counter
+                value={seconds}
+                minDigits={2}
+                fontSize={12}
+                fontWeight={700}
+                textColor={counterTextColor}
+                direction="down"
+                duration={0.35}
+              />
+              <span className={cn('text-[10px] font-semibold opacity-70', isPanicMode ? 'text-orange-500' : 'text-current')}>
+                s
+              </span>
+            </span>
+          )}
+
           {canEditDeadline && (
-            <Edit3 className="w-2.5 h-2.5 opacity-40 hover:opacity-100 ml-0.5" />
+            <Edit3 className={cn("w-2.5 h-2.5 opacity-40 hover:opacity-100 ml-0.5", isPanicMode && "text-orange-500 opacity-70")} />
           )}
         </button>
       </div>
@@ -396,16 +350,16 @@ export function HackTimer() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border border-accent/40 bg-white/95 p-4 shadow-xl backdrop-blur-md animate-slide-in flex items-start gap-3"
+          className="fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border border-accent/40 bg-white/95 dark:bg-slate-900/95 p-4 shadow-xl backdrop-blur-md animate-slide-in flex items-start gap-3"
         >
-          <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0 text-accent-700">
-            <Flame className="w-4 h-4 text-accent" />
+          <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0 text-orange-600">
+            <Flame className="w-4 h-4 text-orange-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-bold text-surface-900 uppercase tracking-wider">
+            <h4 className="text-xs font-bold text-surface-900 dark:text-surface-100 uppercase tracking-wider">
               Under 2h Remaining!
             </h4>
-            <p className="text-xs text-surface-600 mt-0.5">
+            <p className="text-xs text-surface-600 dark:text-surface-400 mt-0.5">
               Less than 2 hours left before deadline. Enable Panic Mode to focus exclusively on blockers and urgent tasks?
             </p>
             <div className="flex items-center gap-2 mt-2">
@@ -415,14 +369,14 @@ export function HackTimer() {
                   setPanicMode(true);
                   setShowToast(false);
                 }}
-                className="h-7 text-xs bg-accent text-accent-foreground font-bold hover:brightness-110"
+                className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white font-bold"
               >
                 Enable Panic Mode
               </Button>
               <button
                 type="button"
                 onClick={() => setShowToast(false)}
-                className="text-xs text-surface-500 hover:text-surface-700 font-medium px-2 py-1"
+                className="text-xs text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 font-medium px-2 py-1"
               >
                 Dismiss
               </button>
@@ -467,28 +421,28 @@ export function HackTimer() {
                   <button
                     type="button"
                     onClick={() => setPresetHours(1)}
-                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 text-surface-700"
+                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-surface-700 dark:text-surface-300"
                   >
                     +1h (Testing)
                   </button>
                   <button
                     type="button"
                     onClick={() => setPresetHours(2)}
-                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 text-surface-700"
+                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-surface-700 dark:text-surface-300"
                   >
                     +2h
                   </button>
                   <button
                     type="button"
                     onClick={() => setPresetHours(6)}
-                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 text-surface-700"
+                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-surface-700 dark:text-surface-300"
                   >
                     +6h
                   </button>
                   <button
                     type="button"
                     onClick={() => setPresetHours(24)}
-                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 text-surface-700"
+                    className="px-2 py-1 rounded text-xs bg-surface-100 hover:bg-surface-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-surface-700 dark:text-surface-300"
                   >
                     +24h
                   </button>
@@ -521,3 +475,4 @@ export function HackTimer() {
     </>
   );
 }
+export default HackTimer;

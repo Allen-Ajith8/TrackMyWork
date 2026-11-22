@@ -25,8 +25,10 @@ function LoginForm() {
     const saved = localStorage.getItem('trackmywork_theme') as 'dark' | 'light' | null;
     if (saved === 'light' || saved === 'dark') {
       setTheme(saved);
-    } else if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
+      document.documentElement.classList.toggle('dark', saved === 'dark');
+    } else {
+      setTheme('light');
+      document.documentElement.classList.remove('dark');
     }
   }, []);
 
@@ -34,6 +36,7 @@ function LoginForm() {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
     localStorage.setItem('trackmywork_theme', nextTheme);
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
   };
 
   const isLight = mounted ? theme === 'light' : true;
