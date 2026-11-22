@@ -13,6 +13,9 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
     },
+    // pdf-parse ships its own pdf.js build and loads worker/cmap files from
+    // disk at runtime, so it must stay outside the server bundle.
+    serverComponentsExternalPackages: ['pdf-parse'],
   },
   images: {
     remotePatterns: [

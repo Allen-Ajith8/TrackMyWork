@@ -142,10 +142,18 @@ CREATE TABLE public.artifacts (
     room_id UUID NOT NULL REFERENCES public.rooms(id) ON DELETE CASCADE,
     uploaded_by UUID NOT NULL REFERENCES public.users(id),
     name TEXT NOT NULL,
-    type TEXT NOT NULL, -- 'apk', 'lottie', 'riv', 'presentation', 'video', 'image', 'other'
-    file_url TEXT NOT NULL, -- Supabase Storage path
+    type TEXT NOT NULL, -- 'apk', 'lottie', 'riv', 'presentation', 'video', 'image', 'document', 'note', 'reference', 'other'
+    file_url TEXT NOT NULL, -- Supabase Storage path or reference URL
+    file_name TEXT,
+    storage_path TEXT, -- Path inside the private 'artifacts' storage bucket
     file_size BIGINT,
     mime_type TEXT,
+    content TEXT, -- Full text for notes / references
+    extracted_text TEXT, -- Server-extracted text for uploaded documents and PDFs
+    kind TEXT DEFAULT 'file', -- 'file' | 'note' | 'reference' | 'link'
+    scope TEXT DEFAULT 'room', -- 'room' | 'workspace'
+    url TEXT, -- Canonical external URL for reference links
+    metadata JSONB DEFAULT '{}'::jsonb,
     tags TEXT[] DEFAULT '{}', -- e.g., ['Leo', 'Mia', 'character', 'v1']
     version TEXT,
     is_final BOOLEAN DEFAULT FALSE,

@@ -146,15 +146,40 @@ export interface HardwareBomItem {
   updated_at: string;
 }
 
+export type ArtifactType =
+  | 'apk'
+  | 'lottie'
+  | 'riv'
+  | 'presentation'
+  | 'video'
+  | 'image'
+  | 'document'
+  | 'note'
+  | 'reference'
+  | 'other';
+
+export type ArtifactKind = 'file' | 'note' | 'reference' | 'link';
+
 export interface Artifact {
   id: string;
   room_id: string;
   uploaded_by: string;
   name: string;
-  type: 'apk' | 'lottie' | 'riv' | 'presentation' | 'video' | 'image' | 'other';
+  type: ArtifactType;
   file_url: string;
+  file_name?: string | null;
+  storage_path?: string | null;
   file_size: number | null;
   mime_type: string | null;
+  /** Full plain-text content for notes, links and small text artifacts. */
+  content?: string | null;
+  /** Server-extracted text for uploaded documents and PDFs. */
+  extracted_text?: string | null;
+  kind?: ArtifactKind | string | null;
+  /** 'room' for room-only material, 'workspace' for shared workspace docs. */
+  scope?: 'room' | 'workspace' | string | null;
+  url?: string | null;
+  metadata?: Record<string, unknown> | null;
   tags: string[];
   version: string | null;
   is_final: boolean;

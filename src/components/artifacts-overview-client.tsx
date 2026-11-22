@@ -21,9 +21,24 @@ interface ArtifactsOverviewClientProps {
   rooms: { id: string; name: string }[];
 }
 
-const TYPE_FILTERS = ['all', 'image', 'video', 'apk', 'presentation', 'lottie', 'riv', 'other'] as const;
+const TYPE_FILTERS = [
+  'all',
+  'document',
+  'note',
+  'reference',
+  'image',
+  'video',
+  'apk',
+  'presentation',
+  'lottie',
+  'riv',
+  'other',
+] as const;
 
 const TYPE_ICONS: Record<string, typeof FileImage> = {
+  document: FileText,
+  note: FileText,
+  reference: FileText,
   image: FileImage,
   video: FileVideo,
   apk: Package,
@@ -169,6 +184,9 @@ export function ArtifactsOverviewClient({ artifacts, rooms }: ArtifactsOverviewC
                   {artifact.is_final && (
                     <span className="badge bg-green-100 text-green-800">Final</span>
                   )}
+                  {(artifact.extracted_text || artifact.content) && (
+                    <span className="badge bg-indigo-100 text-indigo-800">AI Ready</span>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-1.5">
@@ -190,23 +208,34 @@ export function ArtifactsOverviewClient({ artifacts, rooms }: ArtifactsOverviewC
                 )}
 
                 <div className="mt-auto flex items-center gap-2 pt-2 border-t border-surface-100">
-                  <a
-                    href={artifact.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href={`/dashboard/rooms/${artifact.room_id}/artifacts/${artifact.id}`}
                     className="btn-outline text-sm flex-1"
                   >
-                    <ExternalLink className="w-4 h-4" />
-                    Open
-                  </a>
-                  <a
-                    href={artifact.file_url}
-                    download
-                    className="btn-ghost p-2"
-                    aria-label={`Download ${artifact.name}`}
-                  >
-                    <Download className="w-4 h-4" />
-                  </a>
+                    <FileText className="w-4 h-4" />
+                    View
+                  </Link>
+                  {artifact.file_url ? (
+                    <a
+                      href={artifact.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-ghost p-2"
+                      aria-label={`Open ${artifact.name}`}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  ) : null}
+                  {artifact.file_url ? (
+                    <a
+                      href={artifact.file_url}
+                      download
+                      className="btn-ghost p-2"
+                      aria-label={`Download ${artifact.name}`}
+                    >
+                      <Download className="w-4 h-4" />
+                    </a>
+                  ) : null}
                 </div>
               </div>
             );
