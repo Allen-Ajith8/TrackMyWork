@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore, useRoomStore, useTaskStore, useVibeStore } from '@/lib/store';
 import { useCachedPermissions, canUserInRoom } from '@/lib/permissions';
@@ -45,8 +46,10 @@ import {
   Megaphone,
   Calendar,
   Flame,
+  Gavel,
 } from 'lucide-react';
 import { RoomTeamChat } from '@/components/room-team-chat';
+import { CourtroomPanel } from '@/components/courtroom-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -534,7 +537,7 @@ interface ArtifactDialogProps {
 function ArtifactDialog({ open, onOpenChange, roomId, onSubmit }: ArtifactDialogProps) {
   const [file, setFile] = React.useState<File | null>(null);
   const [name, setName] = React.useState('');
-  const [type, setType] = React.useState<'apk' | 'lottie' | 'riv' | 'presentation' | 'video' | 'image' | 'other'>('other');
+  const [type, setType] = React.useState<'apk' | 'lottie' | 'riv' | 'presentation' | 'video' | 'image' | 'document' | 'other'>('document');
   const [tags, setTags] = React.useState('');
   const [isFinal, setIsFinal] = React.useState(false);
 
@@ -553,6 +556,7 @@ function ArtifactDialog({ open, onOpenChange, roomId, onSubmit }: ArtifactDialog
   };
 
   const ARTIFACT_TYPES = [
+    { value: 'document', label: 'Document / Spec / Rules' },
     { value: 'apk', label: 'APK Build' },
     { value: 'lottie', label: 'Lottie Animation' },
     { value: 'riv', label: 'Rive Animation' },
@@ -1169,10 +1173,13 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
 }) {
   const { user } = useAuthStore();
   const cachedPermissions = useCachedPermissions(user?.id ?? null);
+  const router = useRouter();
   const { currentRoom, setCurrentRoom, setRoomMembers } = useRoomStore();
   const { tasks, setTasks, addTask, updateTask, removeTask } = useTaskStore();
   const { heartbeats, fileLocks } = useVibeStore();
-  const [activeTab, setActiveTab] = React.useState<'tasks' | 'chat' | 'bom' | 'artifacts' | 'rules'>('tasks');
+  const [activeTab, setActiveTab] = React.useState<
+    'tasks' | 'chat' | 'courtroom' | 'bom' | 'artifacts' | 'rules'
+  >('tasks');
   const [taskDialogOpen, setTaskDialogOpen] = React.useState(false);
   const [bomDialogOpen, setBomDialogOpen] = React.useState(false);
   const [artifactDialogOpen, setArtifactDialogOpen] = React.useState(false);
@@ -1346,8 +1353,25 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
     // TODO: Sync with Supabase
   };
 
-  const handleUploadArtifact = (data: FormData) => {
-    // TODO: Upload to Supabase Storage and create artifact record
+  const handleUploadArtifact = async (data: FormData) => {
+    try {
+      const response = await fetch('/api/artifacts', {
+        method: 'POST',
+        body: data,
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result?.error || 'Could not upload artifact.');
+      }
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to upload artifact:', error);
+      if (typeof window !== 'undefined') {
+        window.alert(
+          error instanceof Error ? error.message : 'Could not upload artifact.'
+        );
+      }
+    }
   };
 
   const getHeartbeatForUser = (userId: string) => {
@@ -1579,7 +1603,7 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
         return (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
             <div className="border-b bg-white px-6 flex-shrink-0">
-              <TabsList className={cn('grid w-full', isHardware ? 'grid-cols-5' : 'grid-cols-4')}>
+              <TabsList className={cn('grid w-full', isHardware ? 'grid-cols-6' : 'grid-cols-5')}>
                 <TabsTrigger value="tasks">
                   <Kanban className="w-4 h-4 mr-2" />
                   Tasks
@@ -1587,6 +1611,10 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                 <TabsTrigger value="chat">
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Team Chat
+                </TabsTrigger>
+                <TabsTrigger value="courtroom">
+                  <Gavel className="w-4 h-4 mr-2" />
+                  Courtroom
                 </TabsTrigger>
                 {isHardware && (
                   <TabsTrigger value="bom">
@@ -1821,9 +1849,21 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
                         <div className="p-3 border-t">
                           <div className="flex items-center justify-between mb-2">
                             <span className="badge bg-secondary">{artifact.type}</span>
-                            {artifact.is_final && <Badge variant="default">Final</Badge>}
+                            <div className="flex items-center gap-1">
+                              {(artifact.extracted_text || artifact.content) && (
+                                <Badge variant="outline" className="text-[9px] border-indigo-300 text-indigo-800">
+                                  AI Ready
+                                </Badge>
+                              )}
+                              {artifact.is_final && <Badge variant="default">Final</Badge>}
+                            </div>
                           </div>
-                          <p className="text-sm font-medium truncate">{artifact.name}</p>
+                          <Link
+                            href={`/dashboard/rooms/${room.id}/artifacts/${artifact.id}`}
+                            className="text-sm font-medium truncate hover:text-primary-700 hover:underline block"
+                          >
+                            {artifact.name}
+                          </Link>
                           {artifact.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
                               {artifact.tags.map(tag => (
@@ -1859,6 +1899,15 @@ export function RoomDashboardClient({ room, initialTasks, initialBom, initialArt
               userRole={membersList.find((m) => m.user_id === user?.id)?.role_title || (canInvite ? 'Team Leader' : 'Frontend')}
             />
           </div>
+        </TabsContent>
+
+        {/* AI Courtroom */}
+        <TabsContent value="courtroom" className="h-full">
+          <CourtroomPanel
+            roomId={activeRoom.id}
+            roomName={activeRoom.name}
+            initialArtifacts={initialArtifacts}
+          />
         </TabsContent>
 
         {/* Rules & Rubric */}

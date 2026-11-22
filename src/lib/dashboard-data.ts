@@ -187,6 +187,92 @@ export function getFallbackDemoRoom(roomId: string = 'demo-room-001'): {
 
   const artifacts: (Artifact & { uploader?: User | null })[] = [
     {
+      id: 'demo-art-rules',
+      room_id: roomId,
+      uploaded_by: 'demo-dev-user-001',
+      name: 'rules.md',
+      type: 'document',
+      file_url: '/placeholder.png',
+      file_name: 'rules.md',
+      storage_path: null,
+      file_size: 820,
+      mime_type: 'text/markdown',
+      content: `# Hackathon Rules & Constraints
+
+1. The final submission must include a public GitHub repository, a 2-minute demo video, and a slide deck.
+2. All code must be committed before the submission deadline. Late commits are not judged.
+3. The project must use an allowed technology stack and must not rely on paid APIs during the demo.
+4. Every team member must be able to explain their contribution during jury Q&A.
+5. Scope must match the problem statement; unrelated features should be cut before submission.
+
+## Judging rubric
+- Technical execution: 30%
+- Innovation: 25%
+- Product completeness: 20%
+- Presentation and demo: 15%
+- Team collaboration: 10%`,
+      extracted_text: `# Hackathon Rules & Constraints
+
+1. The final submission must include a public GitHub repository, a 2-minute demo video, and a slide deck.
+2. All code must be committed before the submission deadline. Late commits are not judged.
+3. The project must use an allowed technology stack and must not rely on paid APIs during the demo.
+4. Every team member must be able to explain their contribution during jury Q&A.
+5. Scope must match the problem statement; unrelated features should be cut before submission.
+
+## Judging rubric
+- Technical execution: 30%
+- Innovation: 25%
+- Product completeness: 20%
+- Presentation and demo: 15%
+- Team collaboration: 10%`,
+      kind: 'file',
+      scope: 'room',
+      url: '/placeholder.png',
+      metadata: { hasExtractedText: true, source: 'demo' },
+      tags: ['rules', 'rubric', 'constraints'],
+      version: '1.0',
+      is_final: true,
+      canva_design_id: null,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      uploader: DEMO_DEVELOPER_USER,
+    },
+    {
+      id: 'demo-art-research',
+      room_id: roomId,
+      uploaded_by: 'demo-dev-user-001',
+      name: 'research-notes.md',
+      type: 'document',
+      file_url: '/placeholder.png',
+      file_name: 'research-notes.md',
+      storage_path: null,
+      file_size: 640,
+      mime_type: 'text/markdown',
+      content: `# Research Notes: AI Courtroom & Artifact Grounding
+
+- Retrieval-augmented generation (RAG) improves factual consistency when the retrieved context is authoritative and clearly delimited.
+- Benchmarks: citation precision improves when the model is instructed to cite exact document titles and to say "not specified" when evidence is missing.
+- Keep per-document context budgets bounded so the total prompt stays within the model context window.
+- For hackathon judging, map each rubric criterion to concrete evidence rather than general claims.`,
+      extracted_text: `# Research Notes: AI Courtroom & Artifact Grounding
+
+- Retrieval-augmented generation (RAG) improves factual consistency when the retrieved context is authoritative and clearly delimited.
+- Benchmarks: citation precision improves when the model is instructed to cite exact document titles and to say "not specified" when evidence is missing.
+- Keep per-document context budgets bounded so the total prompt stays within the model context window.
+- For hackathon judging, map each rubric criterion to concrete evidence rather than general claims.`,
+      kind: 'file',
+      scope: 'room',
+      url: '/placeholder.png',
+      metadata: { hasExtractedText: true, source: 'demo' },
+      tags: ['research', 'rag', 'benchmark'],
+      version: '1.0',
+      is_final: false,
+      canva_design_id: null,
+      created_at: '2026-01-02T00:00:00.000Z',
+      updated_at: '2026-01-02T00:00:00.000Z',
+      uploader: DEMO_DEVELOPER_USER,
+    },
+    {
       id: 'demo-art-001',
       room_id: roomId,
       uploaded_by: '00000000-0000-0000-0000-000000000001',
