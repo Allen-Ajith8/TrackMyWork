@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useAuthStore } from '@/lib/store';
@@ -66,7 +66,7 @@ export default function DashboardLayout({
   const { setCurrentRoom, clearRoom } = useRoomStore();
   const { setNotifications } = useNotificationStore();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
