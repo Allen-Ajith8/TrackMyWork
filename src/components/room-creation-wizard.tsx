@@ -295,14 +295,14 @@ export function RoomCreationWizard() {
       const code = inviteCode || generateInviteCode();
 
       // Resolve user id (authenticated or demo-mode)
-      let userId = 'demo-dev-user-001';
+      let userId = '00000000-0000-0000-0000-000000000001';
       try {
         const { data: authData } = await supabase.auth.getUser();
         if (authData?.user) {
           userId = authData.user.id;
         }
       } catch {
-        // Fallback for offline demo mode
+        // Fallback for offline demo mode uses a valid UUID format
       }
 
       // Base room payload that aligns with schema.sql

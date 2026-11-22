@@ -68,6 +68,11 @@ export async function POST(
 
     const supabase = createServerClientSupabase();
     const user = await getServerAuthUser(supabase);
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized: Please sign in.' }, { status: 401 });
+    }
+
     const anyUser = user as any;
 
     const userName = body?.user_name || anyUser?.display_name || anyUser?.username || anyUser?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Teammate';
@@ -77,7 +82,7 @@ export async function POST(
     const newMsg: ChatMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       room_id: roomId,
-      user_id: user?.id || 'demo-dev-user-001',
+      user_id: user.id,
       user_name: userName,
       user_avatar: anyUser?.avatar_url || anyUser?.user_metadata?.avatar_url || null,
       user_role: userRole,
@@ -99,6 +104,25 @@ export async function POST(
     if (isSupabaseConfigured()) {
       try {
         const admin = createAdminClient();
+        // Ensure the user profile exists in public.users (FK safety for Magic Link / OTP users)
+        await admin
+          .from('users')
+          .upsert(
+            {
+              id: user.id,
+              email: user.email || '',
+              username: (user as any)?.user_metadata?.username || (user as any)?.username || (user.email || '').split('@')[0] || 'user',
+              display_name:
+                (user as any)?.user_metadata?.display_name ||
+                (user as any)?.user_metadata?.full_name ||
+                (user as any)?.display_name ||
+                (user.email || '').split('@')[0] ||
+                'User',
+              avatar_url: (user as any)?.user_metadata?.avatar_url || null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'id' }
+          );
         await admin.from('room_chat_messages').insert({
           id: newMsg.id,
           room_id: roomId,

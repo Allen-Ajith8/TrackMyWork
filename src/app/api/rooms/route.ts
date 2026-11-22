@@ -30,9 +30,13 @@ export async function POST(req: NextRequest) {
     const supabase = createServerClientSupabase();
     const user = await getServerAuthUser(supabase);
 
-    const userId = user?.id || 'demo-dev-user-001';
-    const userDisplayName = (user as any)?.display_name || (user as any)?.username || 'Developer';
-    const userEmail = user?.email || 'developer@codetrack.ai';
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized: Please sign in.' }, { status: 401 });
+    }
+
+    const userId = user.id;
+    const userDisplayName = (user as any)?.display_name || (user as any)?.username || user.email?.split('@')[0] || 'Developer';
+    const userEmail = user.email || '';
 
     const roomId = `room-${Date.now()}`;
     const inviteCode = body.invite_code || generateInviteCode();

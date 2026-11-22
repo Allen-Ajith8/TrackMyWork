@@ -18,7 +18,7 @@ export function isSupabaseConfigured(): boolean {
 }
 
 export const DEMO_SERVER_USER: User & { aud: string; role: string; last_sign_in_at: string; app_metadata: any; user_metadata: any } = {
-  id: 'demo-dev-user-001',
+  id: '00000000-0000-0000-0000-000000000001',
   email: 'developer@codetrack.ai',
   username: 'developer',
   display_name: 'Developer',
@@ -92,7 +92,7 @@ export function getFallbackDemoRoom(roomId: string = 'demo-room-001'): {
     is_setup_complete: true,
     submission_deadline: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
     jury_expectations: 'Seamless LeetCode integration, automated agent workflows, and real-time collaboration.',
-    created_by: 'demo-dev-user-001',
+    created_by: '00000000-0000-0000-0000-000000000001',
     created_at: matching.created_at,
     updated_at: '2026-01-01T00:00:00.000Z',
   };
@@ -101,7 +101,7 @@ export function getFallbackDemoRoom(roomId: string = 'demo-room-001'): {
     {
       id: 'demo-member-001',
       room_id: roomId,
-      user_id: 'demo-dev-user-001',
+      user_id: '00000000-0000-0000-0000-000000000001',
       role_title: 'Team Leader',
       custom_role_name: null,
       flag_is_team_leader: true,
@@ -130,8 +130,8 @@ export function getFallbackDemoRoom(roomId: string = 'demo-room-001'): {
       status: 'done',
       priority: 1,
       category: 'code',
-      assigned_to: 'demo-dev-user-001',
-      created_by: 'demo-dev-user-001',
+      assigned_to: '00000000-0000-0000-0000-000000000001',
+      created_by: '00000000-0000-0000-0000-000000000001',
       github_issue_number: null,
       github_pr_number: null,
       related_asset_ids: [],
@@ -150,8 +150,8 @@ export function getFallbackDemoRoom(roomId: string = 'demo-room-001'): {
       status: 'in_progress',
       priority: 2,
       category: 'design',
-      assigned_to: 'demo-dev-user-001',
-      created_by: 'demo-dev-user-001',
+      assigned_to: '00000000-0000-0000-0000-000000000001',
+      created_by: '00000000-0000-0000-0000-000000000001',
       github_issue_number: null,
       github_pr_number: null,
       related_asset_ids: [],
@@ -174,7 +174,7 @@ export function getFallbackDemoRoom(roomId: string = 'demo-room-001'): {
       unit_actual_cost: 8.5,
       total_est_cost: 17.0,
       total_actual_cost: 17.0,
-      buyer_id: 'demo-dev-user-001',
+      buyer_id: '00000000-0000-0000-0000-000000000001',
       status: 'received',
       prototype_cost: 17.0,
       mass_prod_cost: null,
@@ -189,7 +189,7 @@ export function getFallbackDemoRoom(roomId: string = 'demo-room-001'): {
     {
       id: 'demo-art-001',
       room_id: roomId,
-      uploaded_by: 'demo-dev-user-001',
+      uploaded_by: '00000000-0000-0000-0000-000000000001',
       name: 'Architecture Diagram v1',
       type: 'image',
       file_url: '/placeholder.png',

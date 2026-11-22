@@ -1,7 +1,7 @@
 import type { User } from '@/types/database';
 
 export const DEMO_DEVELOPER_USER: User = {
-  id: 'demo-dev-user-001',
+  id: '00000000-0000-0000-0000-000000000001',
   email: 'developer@codetrack.ai',
   username: 'developer',
   display_name: 'Developer',

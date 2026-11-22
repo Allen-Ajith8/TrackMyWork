@@ -51,6 +51,27 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient();
 
+    // Ensure the authenticated user's profile exists in public.users before
+    // inserting into room_members (FK safety for Magic Link / OTP users).
+    await admin
+      .from('users')
+      .upsert(
+        {
+          id: user.id,
+          email: user.email || '',
+          username: (user as any)?.user_metadata?.username || (user as any)?.username || (user.email || '').split('@')[0] || 'user',
+          display_name:
+            (user as any)?.user_metadata?.display_name ||
+            (user as any)?.user_metadata?.full_name ||
+            (user as any)?.display_name ||
+            (user.email || '').split('@')[0] ||
+            'User',
+          avatar_url: (user as any)?.user_metadata?.avatar_url || null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+
     // Find the room by invite code or room ID
     let roomQuery = admin.from('rooms').select('*');
     if (code) {

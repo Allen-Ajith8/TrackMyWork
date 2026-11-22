@@ -34,7 +34,7 @@ const DEFAULT_DEMO_ROOM: Room = {
   github_installation_id: null,
   is_setup_complete: true,
   jury_expectations: 'Fast, reliable, and clean implementation.',
-  created_by: 'demo-dev-user-001',
+  created_by: '00000000-0000-0000-0000-000000000001',
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
 };
@@ -42,7 +42,7 @@ const DEFAULT_DEMO_ROOM: Room = {
 const DEFAULT_DEMO_NOTIFICATIONS: (Notification & { roomName?: string | null })[] = [
   {
     id: 'notif-1',
-    user_id: 'demo-dev-user-001',
+    user_id: '00000000-0000-0000-0000-000000000001',
     room_id: 'demo-room-001',
     type: 'task_assigned',
     title: 'New Task Assigned: LeetCode GraphQL Client',
@@ -54,7 +54,7 @@ const DEFAULT_DEMO_NOTIFICATIONS: (Notification & { roomName?: string | null })[
   },
   {
     id: 'notif-2',
-    user_id: 'demo-dev-user-001',
+    user_id: '00000000-0000-0000-0000-000000000001',
     room_id: 'demo-room-001',
     type: 'nim_alert',
     title: 'AI DSA Mentor Debrief Ready',

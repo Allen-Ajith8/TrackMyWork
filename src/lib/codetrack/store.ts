@@ -134,7 +134,7 @@ export const useCodeTrackStore = create<CodeTrackState>()(
       setIsMentorDrawerOpen: (isMentorDrawerOpen) => set({ isMentorDrawerOpen }),
 
       updateProblemProgress: ({
-        userId = 'demo-dev-user-001',
+        userId = '00000000-0000-0000-0000-000000000001',
         problemId,
         topicId,
         difficulty,

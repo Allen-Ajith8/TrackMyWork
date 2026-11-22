@@ -74,6 +74,22 @@ export async function POST(
 
     const respondedAt = new Date().toISOString();
 
+    // Ensure the invitee's profile exists in public.users before inserting into
+    // room_members (FK safety for Magic Link / OTP users).
+    await admin
+      .from('users')
+      .upsert(
+        {
+          id: invitation.invitee_id,
+          email: invitation.invitee_email,
+          username: invitation.invitee_email.split('@')[0] || 'user',
+          display_name: invitation.invitee_email.split('@')[0] || 'User',
+          avatar_url: null,
+          updated_at: respondedAt,
+        },
+        { onConflict: 'id' }
+      );
+
     if (action === 'accept') {
       // Upsert into room_members as active.
       await admin.from('room_members').upsert(
