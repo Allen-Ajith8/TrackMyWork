@@ -2,8 +2,6 @@ import { createServerClientSupabase } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { RoomCourtroomClient } from '@/components/room-courtroom-client';
 import { getFallbackDemoRoom, isSupabaseConfigured } from '@/lib/dashboard-data';
-import { DEMO_DEVELOPER_USER } from '@/lib/constants';
-import type { User } from '@/types/database';
 import { cookies } from 'next/headers';
 
 async function getCourtroomData(roomId: string) {
@@ -58,11 +56,7 @@ export default async function RoomCourtroomPage({
   const { id } = await params;
   const demoMode = !isSupabaseConfigured() || id.startsWith('demo-');
   
-  // Check for dev mode cookie
-  const cookieStore = await cookies();
-  const isDevMode = cookieStore.get('trackmywork_dev_user')?.value === 'true';
-  
-  console.log('[CourtroomPage] id:', id, 'demoMode:', demoMode, 'isDevMode:', isDevMode);
+  console.log('[CourtroomPage] id:', id, 'demoMode:', demoMode);
   
   const { room, sessions } = await getCourtroomData(id);
 
@@ -72,28 +66,25 @@ export default async function RoomCourtroomPage({
     redirect('/dashboard/rooms');
   }
 
-  let user: User;
-  if (demoMode || isDevMode) {
-    user = DEMO_DEVELOPER_USER;
-  } else {
-    const supabase = createServerClientSupabase();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-    if (!authUser) {
-      redirect(`/auth/login?redirect=/dashboard/rooms/${id}/courtroom`);
-    }
-    user = authUser as unknown as User;
+  // Always resolve the real authenticated Supabase user. Never fall back to
+  // DEMO_DEVELOPER_USER (developer@codetrack.ai) — that caused the sidebar
+  // user to ping-pong between the real user and the demo developer.
+  const supabase = createServerClientSupabase();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) {
+    redirect(`/auth/login?redirect=/dashboard/rooms/${id}/courtroom`);
   }
 
-  console.log('[CourtroomPage] rendering with user:', user?.id, 'demoMode:', demoMode || isDevMode);
+  console.log('[CourtroomPage] rendering with user:', authUser.id, 'demoMode:', demoMode);
 
   return (
     <RoomCourtroomClient
       room={room}
-      currentUserId={user.id}
+      currentUserId={authUser.id}
       initialSessions={sessions}
-      demoMode={demoMode || isDevMode}
+      demoMode={demoMode}
     />
   );
 }

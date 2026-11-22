@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import type { Room, RoomMember, Task, HardwareBomItem, Artifact, User } from '@/types/database';
-import { DEMO_DEVELOPER_USER } from '@/lib/constants';
 import { DEMO_ROOMS } from '@/lib/dashboard-data';
 
 export interface StoredRoomBundle {

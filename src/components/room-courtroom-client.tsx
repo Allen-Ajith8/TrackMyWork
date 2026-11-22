@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 // ============================================================================
 // TrackMyWork - AI Courtroom Workspace (Phase 5)
@@ -824,61 +824,6 @@ export function RoomCourtroomClient({
     return () => clearInterval(timer);
   }, [selectedSessionId, demoMode, loadSession]);
 
-  // -------------------------------------------------------------------------
-  // Supabase Realtime subscription (+ polling fallback for safety)
-  // -------------------------------------------------------------------------
-
-  React.useEffect(() => {
-    if (demoMode) return;
-    if (!selectedSessionId) return;
-
-    setRealtimeState('connecting');
-
-    const refresh = () => {
-      void loadSession(selectedSessionId, { silent: true });
-    };
-
-    const channel = supabase
-      .channel(`courtroom:${selectedSessionId}:${Date.now()}:b`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'court_sessions',
-          filter: `id=eq.${selectedSessionId}`,
-        },
-        refresh
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'court_transcripts',
-          filter: `session_id=eq.${selectedSessionId}`,
-        },
-        refresh
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'court_petitions',
-          filter: `session_id=eq.${selectedSessionId}`,
-        },
-        refresh
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') setRealtimeState('live');
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setRealtimeState('polling');
-      });
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [selectedSessionId, demoMode, loadSession]);
 
   React.useEffect(() => {
     if (!selectedSessionId || !isActive) return;

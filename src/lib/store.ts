@@ -3,9 +3,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User, Room, RoomMember, Task, Notification, VibeHeartbeat } from '@/types/database';
-import { DEMO_DEVELOPER_USER } from '@/lib/constants';
-
-export { DEMO_DEVELOPER_USER };
 
 interface AuthState {
   user: User | null;

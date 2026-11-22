@@ -138,7 +138,7 @@ export function RoomTeamChat({
     const optimisticMsg: ChatMessage = {
       id: `client-${Date.now()}`,
       room_id: roomId,
-      user_id: currentUser?.id || '00000000-0000-0000-0000-000000000001',
+      user_id: currentUser?.id || 'system',
       user_name: currentUser?.display_name || currentUser?.username || currentUser?.email?.split('@')[0] || (isTeamLeader ? 'Team Leader' : 'Teammate'),
       user_avatar: currentUser?.avatar_url || null,
       user_role: userRole || (isTeamLeader ? 'Team Leader' : 'Frontend'),
@@ -405,3 +405,5 @@ export function RoomTeamChat({
     </Card>
   );
 }
+
+
