@@ -50,34 +50,38 @@ if (NIM_KEY_PROBLEM) {
 
 type ModelPair = { primary: string; fallback: string };
 
+// Live-probed against this NVIDIA account (Nov 2026). Models that only emit
+// reasoning tokens (nemotron lightning/nano-omni), or that exceed the request
+// timeout (kimi-k3.1-pro, glm-5.3-flash, gemma-4-31b, muse-glimmer), are not
+// used as primaries. bolt-e4b is the fastest reliable JSON/text model.
 const ROLE_MODEL_MAP: Record<CourtRole, ModelPair> = {
   'Clerk Router': {
-    primary: 'nvidia/nemotron-3.5-lightning-30b-a3b',
-    fallback: 'nvidia/nemotron-3.5-bolt-e4b',
+    primary: 'nvidia/nemotron-3.5-bolt-e4b',
+    fallback: 'nvidia/nemotron-3-ultra-550b-a55b',
   },
   'Visionary Counsel': {
-    primary: 'moonshotai/kimi-k3.1-pro',
-    fallback: 'mistralai/mistral-large-4-1t-a52b',
+    primary: 'nvidia/nemotron-3.5-bolt-e4b',
+    fallback: 'nvidia/nemotron-3-ultra-550b-a55b',
   },
   'Feasibility Prosecutor': {
-    primary: 'nvidia/nemotron-3-ultra-550b-a55b',
-    fallback: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
+    primary: 'nvidia/nemotron-3.5-bolt-e4b',
+    fallback: 'nvidia/nemotron-3-ultra-550b-a55b',
   },
   'Architect Counsel': {
-    primary: 'nvidia/nemotron-3.5-super-vl-120b-a12b',
-    fallback: 'mistralai/mistral-large-4-1t-a52b',
+    primary: 'nvidia/nemotron-3.5-bolt-e4b',
+    fallback: 'nvidia/nemotron-3-ultra-550b-a55b',
   },
   'Security Witness': {
-    primary: 'minimaxai/minimax-m3.1-flash',
-    fallback: 'nvidia/nemotron-3.5-lightning-30b-a3b',
+    primary: 'nvidia/nemotron-3.5-bolt-e4b',
+    fallback: 'minimaxai/minimax-m3.1-flash',
   },
   'UX Witness': {
-    primary: 'z-ai/glm-5.3-flash',
-    fallback: 'nvidia/nemotron-3.5-lightning-30b-a3b',
+    primary: 'nvidia/nemotron-3.5-bolt-e4b',
+    fallback: 'nvidia/nemotron-3-ultra-550b-a55b',
   },
   'Presiding Judge': {
     primary: 'nvidia/nemotron-3-ultra-550b-a55b',
-    fallback: 'moonshotai/kimi-k3.1-pro',
+    fallback: 'nvidia/nemotron-3.5-bolt-e4b',
   },
 } as const;
 
@@ -90,19 +94,70 @@ function getModelPair(role: CourtRole): ModelPair {
 // ---------------------------------------------------------------------------
 
 function stripThinkTags(text: string): string {
-  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  return text
+    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, '')
+    .replace(/<thinking\b[^>]*>[\s\S]*?<\/thinking>/gi, '')
+    .replace(/<think\b[^>]*>[\s\S]*$/gi, '')
+    .replace(/<thinking\b[^>]*>[\s\S]*$/gi, '')
+    .trim();
 }
 
 function stripJsonFences(text: string): string {
   return text
-    .replace(/```json\s*/gi, '')
-    .replace(/```\s*$/gi, '')
+    .replace(/```(?:json)?\s*/gi, '')
+    .replace(/```/g, '')
     .trim();
 }
 
 // ---------------------------------------------------------------------------
+// Helpers (JSON extraction)
+// ---------------------------------------------------------------------------
+
+/**
+ * Walk from an opening `{` / `[` to its matching close, ignoring braces that
+ * appear inside JSON strings. Returns -1 when the value is truncated.
+ */
+function findMatchingBracket(text: string, start: number): number {
+  const open = text[start];
+  const close = open === '{' ? '}' : ']';
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i++) {
+    const char = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+    } else if (char === open) {
+      depth++;
+    } else if (char === close) {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/** Every balanced `{...}` / `[...]` candidate, in document order. */
+function extractJsonCandidates(text: string): string[] {
+  const candidates: string[] = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== '{' && text[i] !== '[') continue;
+    const end = findMatchingBracket(text, i);
+    if (end !== -1) candidates.push(text.slice(i, end + 1));
+  }
+  return candidates;
+}
+
+// ---------------------------------------------------------------------------
 // Resilient NIM JSON parser
-// Handles empty/truncated outputs,  reasoning blocks,
+// Handles empty/truncated outputs, reasoning blocks,
 // markdown fences, and conversational text wrapping the JSON object.
 // ---------------------------------------------------------------------------
 
@@ -129,39 +184,41 @@ export function parseNimJson<T = unknown>(
     )}`
   );
 
-  // Strip  reasoning blocks
-  let cleaned = raw.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+  // Drop closed  /  blocks, plus any unclosed block that
+  // swallowed the rest of a truncated response.
+  const withoutReasoning = raw
+    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, '')
+    .replace(/<thinking\b[^>]*>[\s\S]*?<\/thinking>/gi, '')
+    .replace(/<think\b[^>]*>[\s\S]*$/gi, '')
+    .replace(/<thinking\b[^>]*>[\s\S]*$/gi, '');
 
-  // Strip all markdown code fences (``` ... ``` and ```json ... ```)
-  cleaned = cleaned.replace(/```[\s\S]*?```/gi, '').trim();
+  // Strip fence *markers* only — never delete the JSON inside the fence.
+  const cleaned = stripJsonFences(withoutReasoning);
 
-  // Try direct parse first
-  try {
-    return { data: JSON.parse(cleaned) as T, modelUsed };
-  } catch {
-    // Fall through to extraction below.
+  // Also keep a copy of the raw text with only fence markers removed, so a
+  // truncated reasoning block can't hide otherwise-valid JSON.
+  const rawWithoutFences = stripJsonFences(raw);
+
+  const sources = [cleaned, rawWithoutFences];
+
+  // 1. Direct parse
+  for (const source of sources) {
+    if (!source) continue;
+    try {
+      return { data: JSON.parse(source) as T, modelUsed };
+    } catch {
+      // Fall through to balanced extraction.
+    }
   }
 
-  // Extract from first { to last } (or [ to ] for arrays)
-  const firstBrace = cleaned.indexOf('{');
-  const lastBrace = cleaned.lastIndexOf('}');
-  const firstBracket = cleaned.indexOf('[');
-  const lastBracket = cleaned.lastIndexOf(']');
-
-  // Prefer object extraction, fall back to array
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    const candidate = cleaned.slice(firstBrace, lastBrace + 1);
-    try {
-      return { data: JSON.parse(candidate) as T, modelUsed };
-    } catch {
-      // Fall through to error below.
-    }
-  } else if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
-    const candidate = cleaned.slice(firstBracket, lastBracket + 1);
-    try {
-      return { data: JSON.parse(candidate) as T, modelUsed };
-    } catch {
-      // Fall through to error below.
+  // 2. Extract the first balanced JSON object/array from each source.
+  for (const source of sources) {
+    for (const candidate of extractJsonCandidates(source)) {
+      try {
+        return { data: JSON.parse(candidate) as T, modelUsed };
+      } catch {
+        // Try the next candidate.
+      }
     }
   }
 

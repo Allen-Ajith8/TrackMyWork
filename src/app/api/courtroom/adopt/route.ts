@@ -17,7 +17,6 @@ import {
   isNexconnConfigured,
   sendNexconnGroupText,
 } from '@/lib/nexconn/server';
-import { isSupabaseConfigured } from '@/lib/dashboard-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,35 +32,12 @@ const PRIORITY_MAP: Record<string, number> = {
 };
 
 export async function POST(req: NextRequest) {
-  // Check for dev mode cookie
-  const cookieHeader = req.headers.get('cookie') || '';
-  console.log('[API courtroom/adopt] Cookie header:', cookieHeader);
-  const isDevMode = cookieHeader.includes('trackmywork_dev_user=true') || !isSupabaseConfigured();
-  console.log('[API courtroom/adopt] isDevMode:', isDevMode, 'isSupabaseConfigured:', isSupabaseConfigured());
+  const supabase = createServerClientSupabase();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
 
-  let user = null;
-  if (isSupabaseConfigured()) {
-    const supabase = createServerClientSupabase();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-    if (authUser) user = authUser;
-  }
-
-  // Demo mode: allow anonymous access when Supabase is not configured or dev cookie is set
-  if (!user && isDevMode) {
-    // Create a demo user for the trial
-    user = { 
-      id: 'demo-dev-user-001', 
-      email: 'dev@trackmywork.local',
-      app_metadata: {},
-      user_metadata: {},
-      aud: 'authenticated',
-      created_at: new Date().toISOString()
-    };
-  }
-
-  if (!user) {
+  if (!authUser) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
   }
 
@@ -97,28 +73,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // In dev mode, skip room membership checks
-  if (!isDevMode) {
-    // Verify room membership
-    const [{ data: membership }, { data: profile }] = await Promise.all([
-      admin
-        .from('room_members')
-        .select('status')
-        .eq('room_id', session.room_id)
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .maybeSingle(),
-      admin.from('users').select('is_global_admin').eq('id', user.id).maybeSingle(),
-    ]);
+  // Verify room membership
+  const [{ data: membership }, { data: profile }] = await Promise.all([
+    admin
+      .from('room_members')
+      .select('status')
+      .eq('room_id', session.room_id)
+      .eq('user_id', authUser.id)
+      .eq('status', 'active')
+      .maybeSingle(),
+    admin.from('users').select('is_global_admin').eq('id', authUser.id).maybeSingle(),
+  ]);
 
-    const isMember =
-      membership?.status === 'active' ||
-      session.created_by === user.id ||
-      Boolean(profile?.is_global_admin);
+  const isMember =
+    membership?.status === 'active' ||
+    session.created_by === authUser.id ||
+    Boolean(profile?.is_global_admin);
 
-    if (!isMember) {
-      return NextResponse.json({ error: 'You do not have access to this room.' }, { status: 403 });
-    }
+  if (!isMember) {
+    return NextResponse.json({ error: 'You do not have access to this room.' }, { status: 403 });
   }
 
   // Find the selected OptionCard
@@ -144,7 +117,7 @@ export async function POST(req: NextRequest) {
   // 1. Create tasks from generated_tasks
   const tasksToInsert = selectedOption.generated_tasks.map((task) => ({
     room_id: session.room_id,
-    created_by: user.id,
+    created_by: authUser.id,
     title: task.title,
     description: task.description || null,
     status: 'todo' as const,

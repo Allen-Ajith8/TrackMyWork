@@ -15,32 +15,12 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { sessionId: string } }
 ) {
-  // Check for dev mode cookie
-  const cookieHeader = req.headers.get('cookie') || '';
-  console.log('[API courtroom/session] Cookie header:', cookieHeader);
-  const isDevMode = cookieHeader.includes('trackmywork_dev_user=true');
-  console.log('[API courtroom/session] isDevMode:', isDevMode);
-
-  let user = null;
   const supabase = createServerClientSupabase();
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
-  if (authUser) user = authUser;
 
-  // Demo mode: allow anonymous access when dev cookie is set
-  if (!user && isDevMode) {
-    user = { 
-      id: 'demo-dev-user-001', 
-      email: 'dev@trackmywork.local',
-      app_metadata: {},
-      user_metadata: {},
-      aud: 'authenticated',
-      created_at: new Date().toISOString()
-    };
-  }
-
-  if (!user) {
+  if (!authUser) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
   }
 
@@ -59,28 +39,25 @@ export async function GET(
     return NextResponse.json({ error: 'Court session not found.' }, { status: 404 });
   }
 
-  // In dev mode, skip room membership checks
-  if (!isDevMode) {
-    // Verify room membership
-    const [{ data: membership }, { data: profile }] = await Promise.all([
-      admin
-        .from('room_members')
-        .select('status')
-        .eq('room_id', session.room_id)
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .maybeSingle(),
-      admin.from('users').select('is_global_admin').eq('id', user.id).maybeSingle(),
-    ]);
+  // Verify room membership
+  const [{ data: membership }, { data: profile }] = await Promise.all([
+    admin
+      .from('room_members')
+      .select('status')
+      .eq('room_id', session.room_id)
+      .eq('user_id', authUser.id)
+      .eq('status', 'active')
+      .maybeSingle(),
+    admin.from('users').select('is_global_admin').eq('id', authUser.id).maybeSingle(),
+  ]);
 
-    const isMember =
-      membership?.status === 'active' ||
-      session.created_by === user.id ||
-      Boolean(profile?.is_global_admin);
+  const isMember =
+    membership?.status === 'active' ||
+    session.created_by === authUser.id ||
+    Boolean(profile?.is_global_admin);
 
-    if (!isMember) {
-      return NextResponse.json({ error: 'You do not have access to this room.' }, { status: 403 });
-    }
+  if (!isMember) {
+    return NextResponse.json({ error: 'You do not have access to this room.' }, { status: 403 });
   }
 
   // Fetch transcripts ordered by turn_index

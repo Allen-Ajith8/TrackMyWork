@@ -646,21 +646,31 @@ function LoginForm() {
             <span className={isLight ? 'text-neutral-500' : 'text-neutral-400'}>Quick access:</span>
             <button
               type="button"
-              onClick={() => {
-                if (typeof document !== 'undefined') {
-                  document.cookie = 'trackmywork_dev_user=true; path=/; max-age=2592000; SameSite=Lax';
+              onClick={async () => {
+                setLoading(true);
+                setError('');
+                try {
+                  const searchParams = new URLSearchParams();
+                  searchParams.set('redirect', redirect);
+                  const res = await fetch(`/api/auth/dev-login?${searchParams.toString()}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                  });
+                  if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: 'Dev login failed' }));
+                    throw new Error(err.error);
+                  }
+                  // Successful - the API redirects, but if it returns JSON we navigate manually
+                  router.push(redirect);
+                  router.refresh();
+                } catch (err: any) {
+                  setError(err?.message || 'Dev login failed');
+                } finally {
+                  setLoading(false);
                 }
-                completeLogin({
-                  email: 'dev@trackmywork.local',
-                  display_name: 'Dev User',
-                  username: 'dev',
-                  avatar_url: 'https://api.dicebear.com/7.x/initials/svg?seed=Dev',
-                }, {
-                  is_global_admin: true,
-                  roomPermissions: {},
-                })
               }}
-              className="text-red-600 dark:text-red-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+              disabled={loading}
+              className="text-red-600 dark:text-red-400 font-bold hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-60"
             >
               <span>Sign in as Dev</span>
               <ArrowRight className="w-3.5 h-3.5" />

@@ -8,7 +8,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runCourtroomSession } from '@/lib/courtroom/graph';
-import { isSupabaseConfigured } from '@/lib/dashboard-data';
 import { waitUntil } from '@vercel/functions';
 
 export const dynamic = 'force-dynamic';
@@ -22,33 +21,12 @@ type StartBody = {
 };
 
 export async function POST(req: NextRequest) {
-  // Check for dev mode cookie
-  const cookieHeader = req.headers.get('cookie') || '';
-  const isDevMode = cookieHeader.includes('trackmywork_dev_user=true') || !isSupabaseConfigured();
+  const supabase = createServerClientSupabase();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
 
-  let user = null;
-  if (isSupabaseConfigured()) {
-    const supabase = createServerClientSupabase();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-    if (authUser) user = authUser;
-  }
-
-  // Demo mode: allow anonymous access when Supabase is not configured or dev cookie is set
-  if (!user && isDevMode) {
-    // Create a demo user for the trial
-    user = {
-      id: 'demo-dev-user-001',
-      email: 'dev@trackmywork.local',
-      app_metadata: {},
-      user_metadata: {},
-      aud: 'authenticated',
-      created_at: new Date().toISOString(),
-    };
-  }
-
-  if (!user) {
+  if (!authUser) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
   }
 
@@ -73,40 +51,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'motion must be at most 4,000 characters.' }, { status: 400 });
   }
 
-  // In demo mode, skip Supabase room membership checks
-  let room: { id: string; created_by: string } | null = null;
+  // Verify room membership
   const admin = createAdminClient();
-  if (!isDevMode) {
-    // Verify room membership
-    const [{ data: membership }, { data: profile }, { data: roomData }] = await Promise.all([
-      admin
-        .from('room_members')
-        .select('status')
-        .eq('room_id', roomId)
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .maybeSingle(),
-      admin.from('users').select('is_global_admin').eq('id', user.id).maybeSingle(),
-      admin.from('rooms').select('id, created_by').eq('id', roomId).maybeSingle(),
-    ]);
+  const [{ data: membership }, { data: profile }, { data: roomData }] = await Promise.all([
+    admin
+      .from('room_members')
+      .select('status')
+      .eq('room_id', roomId)
+      .eq('user_id', authUser.id)
+      .eq('status', 'active')
+      .maybeSingle(),
+    admin.from('users').select('is_global_admin').eq('id', authUser.id).maybeSingle(),
+    admin.from('rooms').select('id, created_by').eq('id', roomId).maybeSingle(),
+  ]);
 
-    room = roomData;
-    const isMember =
-      membership?.status === 'active' ||
-      room?.created_by === user.id ||
-      Boolean(profile?.is_global_admin);
+  const room = roomData;
+  const isMember =
+    membership?.status === 'active' ||
+    room?.created_by === authUser.id ||
+    Boolean(profile?.is_global_admin);
 
-    if (!isMember || !room) {
-      return NextResponse.json({ error: 'You do not have access to this room.' }, { status: 403 });
-    }
-  } else {
-    // Demo mode: fetch room from database but skip membership checks
-    const { data: roomData } = await admin.from('rooms').select('id, created_by').eq('id', roomId).maybeSingle();
-    room = roomData;
-  }
-
-  if (!room) {
-    return NextResponse.json({ error: 'Room not found.' }, { status: 404 });
+  if (!isMember || !room) {
+    return NextResponse.json({ error: 'You do not have access to this room.' }, { status: 403 });
   }
 
   // Insert court_sessions row
@@ -114,7 +80,7 @@ export async function POST(req: NextRequest) {
     .from('court_sessions')
     .insert({
       room_id: roomId,
-      created_by: user.id,
+      created_by: authUser.id,
       motion,
       repo_context: repoContext,
       status: 'routing',

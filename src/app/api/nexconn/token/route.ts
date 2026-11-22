@@ -16,7 +16,6 @@ import {
   isNexconnConfigured,
   issueNexconnAccessToken,
 } from '@/lib/nexconn/server';
-import { isSupabaseConfigured } from '@/lib/dashboard-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,9 +24,14 @@ type TokenBody = {
 };
 
 export async function POST(req: NextRequest) {
-  // Check for dev mode cookie
-  const cookieHeader = req.headers.get('cookie') || '';
-  const isDevMode = cookieHeader.includes('trackmywork_dev_user=true') || !isSupabaseConfigured();
+  const supabase = createServerClientSupabase();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  }
 
   if (!isNexconnConfigured()) {
     return NextResponse.json(
@@ -41,31 +45,6 @@ export async function POST(req: NextRequest) {
       },
       { status: 503 }
     );
-  }
-
-  let user = null;
-  if (isSupabaseConfigured()) {
-    const supabase = createServerClientSupabase();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-    if (authUser) user = authUser;
-  }
-
-  // Demo mode: allow anonymous access when Supabase is not configured or dev cookie is set
-  if (!user && isDevMode) {
-    user = {
-      id: 'demo-dev-user-001',
-      email: 'dev@trackmywork.local',
-      app_metadata: {},
-      user_metadata: {},
-      aud: 'authenticated',
-      created_at: new Date().toISOString(),
-    };
-  }
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
   }
 
   const body = (await req.json().catch(() => null)) as TokenBody | null;
@@ -84,20 +63,20 @@ export async function POST(req: NextRequest) {
         .from('room_members')
         .select('status')
         .eq('room_id', roomId)
-        .eq('user_id', user.id)
+        .eq('user_id', authUser.id)
         .eq('status', 'active')
         .maybeSingle(),
       admin
         .from('users')
         .select('display_name, username, avatar_url, is_global_admin')
-        .eq('id', user.id)
+        .eq('id', authUser.id)
         .maybeSingle(),
     ]);
 
   const isMember =
     Boolean(room) &&
     (membership?.status === 'active' ||
-      room?.created_by === user.id ||
+      room?.created_by === authUser.id ||
       Boolean(profile?.is_global_admin));
 
   if (!isMember) {
@@ -107,11 +86,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const nexconnUserId = toNexconnUserId(user.id);
+  const nexconnUserId = toNexconnUserId(authUser.id);
   const displayName =
     profile?.display_name ||
     profile?.username ||
-    user.email?.split('@')[0] ||
+    authUser.email?.split('@')[0] ||
     'TrackMyWork member';
 
   try {

@@ -7,7 +7,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientSupabase } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isSupabaseConfigured } from '@/lib/dashboard-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,32 +16,12 @@ type InterjectBody = {
 };
 
 export async function POST(req: NextRequest) {
-  // Check for dev mode cookie
-  const cookieHeader = req.headers.get('cookie') || '';
-  const isDevMode = cookieHeader.includes('trackmywork_dev_user=true') || !isSupabaseConfigured();
+  const supabase = createServerClientSupabase();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
 
-  let user = null;
-  if (isSupabaseConfigured()) {
-    const supabase = createServerClientSupabase();
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-    if (authUser) user = authUser;
-  }
-
-  // Demo mode: allow anonymous access when Supabase is not configured or dev cookie is set
-  if (!user && isDevMode) {
-    user = {
-      id: 'demo-dev-user-001',
-      email: 'dev@trackmywork.local',
-      app_metadata: {},
-      user_metadata: {},
-      aud: 'authenticated',
-      created_at: new Date().toISOString(),
-    };
-  }
-
-  if (!user) {
+  if (!authUser) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
   }
 
@@ -80,15 +59,15 @@ export async function POST(req: NextRequest) {
       .from('room_members')
       .select('status')
       .eq('room_id', session.room_id)
-      .eq('user_id', user.id)
+      .eq('user_id', authUser.id)
       .eq('status', 'active')
       .maybeSingle(),
-    admin.from('users').select('is_global_admin, display_name, username').eq('id', user.id).maybeSingle(),
+    admin.from('users').select('is_global_admin, display_name, username').eq('id', authUser.id).maybeSingle(),
   ]);
 
   const isMember =
     membership?.status === 'active' ||
-    session.created_by === user.id ||
+    session.created_by === authUser.id ||
     Boolean(profile?.is_global_admin);
 
   if (!isMember) {
@@ -115,7 +94,7 @@ export async function POST(req: NextRequest) {
   const nextTurnIndex = (existingTranscripts?.[0]?.turn_index ?? -1) + 1;
 
   // Determine user display name for model_id prefix
-  const userLabel = profile?.display_name || profile?.username || user.email || 'Teammate';
+  const userLabel = profile?.display_name || profile?.username || authUser.email || 'Teammate';
 
   // Insert human interjection transcript row
   const { error: insertError } = await admin.from('court_transcripts').insert({
