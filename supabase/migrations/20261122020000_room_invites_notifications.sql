@@ -32,19 +32,6 @@ create unique index if not exists idx_room_invitations_pending_unique
 alter table if exists public.notifications
   add column if not exists metadata jsonb default '{}'::jsonb;
 
--- Add 'room_invite' to the notification_type enum if not already present.
-do $$
-begin
-  if not exists (
-    select 1 from pg_enum
-    where enumtypid = 'public.notification_type'::regtype
-      and enumlabel = 'room_invite'
-  ) then
-    alter type public.notification_type add value 'room_invite';
-  end if;
-end
-$$;
-
 create index if not exists idx_notifications_user_id on public.notifications(user_id);
 create index if not exists idx_notifications_is_read on public.notifications(is_read);
 
@@ -68,7 +55,7 @@ drop policy if exists "room_invitations_insert_member" on public.room_invitation
 create policy "room_invitations_insert_member" on public.room_invitations
   for insert with check (
     public.is_global_admin(auth.uid())
-    or public.has_room_permission(auth.uid(), room_id, 'can_invite_members')
+    or public.is_team_leader(auth.uid(), room_id)
     or auth.uid() = inviter_id
   );
 
