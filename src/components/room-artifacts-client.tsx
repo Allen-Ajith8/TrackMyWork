@@ -4,6 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useAuthStore } from '@/lib/store';
+import { createClient } from '@/lib/supabase/client';
 import {
   Plus,
   Search,

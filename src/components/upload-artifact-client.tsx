@@ -15,6 +15,7 @@ import {
   UploadCloud,
 } from 'lucide-react';
 import type { ArtifactType } from '@/types/database';
+import { createClient } from '@/lib/supabase/client';
 
 type UploadMode = 'file' | 'note' | 'reference';
 
