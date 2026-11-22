@@ -332,7 +332,12 @@ async function phase2CollectPetitions(state: typeof CourtroomState.State) {
         maxTokens: 120,
       });
 
-      return { role, petition: result.data };
+      return { role, petition: {
+        wantsFloor: Boolean(result.data.wantsFloor),
+        grounds: result.data.grounds ?? null,
+        targetRole: result.data.targetRole ?? null,
+        justification: result.data.justification ?? '',
+      } };
     })
   );
 

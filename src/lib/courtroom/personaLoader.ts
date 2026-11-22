@@ -70,8 +70,9 @@ export function clearPersonaCache(): void {
  * Escape text for safe inclusion inside XML blocks.
  * Strips control characters and escapes any stray tag-like sequences.
  */
-function xmlEscape(value: string): string {
-  return value
+function xmlEscape(value: string | null | undefined): string {
+  const v = value ?? '';
+  return v
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -189,7 +190,7 @@ export function buildJudgePetitionReviewPrompt({
     lines.push(`    <wants_floor>${petition.wants_floor}</wants_floor>`);
     lines.push(`    <grounds>${xmlEscape(petition.grounds ?? '')}</grounds>`);
     lines.push(`    <target_role>${xmlEscape(petition.target_role ?? '')}</target_role>`);
-    lines.push(`    <justification>${xmlEscape(petition.justification)}</justification>`);
+    lines.push(`    <justification>${xmlEscape(petition.justification ?? '')}</justification>`);
     lines.push('  </petition>');
   }
   lines.push('</petitions>');
@@ -278,8 +279,8 @@ export function buildJudgeSynthesisPrompt({
     lines.push(`    <wants_floor>${petition.wants_floor}</wants_floor>`);
     lines.push(`    <grounds>${xmlEscape(petition.grounds ?? '')}</grounds>`);
     lines.push(`    <target_role>${xmlEscape(petition.target_role ?? '')}</target_role>`);
-    lines.push(`    <justification>${xmlEscape(petition.justification)}</justification>`);
-    lines.push(`    <judge_decision>${xmlEscape(petition.judge_decision)}</judge_decision>`);
+    lines.push(`    <justification>${xmlEscape(petition.justification ?? '')}</justification>`);
+    lines.push(`    <judge_decision>${xmlEscape(petition.judge_decision ?? '')}</judge_decision>`);
     lines.push(`    <judge_reason>${xmlEscape(petition.judge_reason ?? '')}</judge_reason>`);
     lines.push('  </petition>');
   }
