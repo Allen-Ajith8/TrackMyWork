@@ -127,7 +127,7 @@ export function RoomTeamChat({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages.length]);
 
   const handleSendMessage = async (textToSend?: string, announceOverride?: boolean) => {
     const text = (textToSend ?? input).trim();

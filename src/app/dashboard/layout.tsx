@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useAuthStore } from '@/lib/store';
-import { DEMO_DEVELOPER_USER } from '@/lib/constants';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -21,7 +20,7 @@ import {
   Code2,
 } from 'lucide-react';
 import Link from 'next/link';
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { useRoomStore, useNotificationStore, useUIStore, useTaskStore } from '@/lib/store';
 import { LoadingScreen } from '@/components/loading-screen';
 import { NotificationsBell } from '@/components/notifications-bell';
@@ -31,7 +30,6 @@ import { PanicModeToggle } from '@/components/panic-mode-toggle';
 import { PanicModeBanner } from '@/components/panic-mode-banner';
 import { userFromAuthUser } from '@/lib/profile';
 import GlassSurface from '@/components/ui/glass-surface';
-import { DUMMY_USER, DUMMY_ROOM, DUMMY_MEMBERS, DUMMY_TASKS } from '@/lib/dummy-data';
 
 const avatarFallback = (value: string) => value.replace(/^@/, '').charAt(0).toUpperCase() || 'U';
 
@@ -63,17 +61,13 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, session, setUser, setSession, clearAuth } = useAuthStore();
-  const { setCurrentRoom, clearRoom } = useRoomStore();
+  const { setCurrentRoom, clearRoom: clearRoomStore } = useRoomStore();
   const { setNotifications } = useNotificationStore();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const [supabase] = useState(() => createClient());
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
-      const storedUser = useAuthStore.getState().user;
-      if (!storedUser) {
-        setUser(DEMO_DEVELOPER_USER);
-      }
       return;
     }
 
@@ -103,7 +97,7 @@ export default function DashboardLayout({
         }
       } else if (event === 'SIGNED_OUT') {
         clearAuth();
-        clearRoom();
+        clearRoomStore();
         setNotifications([]);
         if (typeof document !== 'undefined') {
           document.cookie = 'trackmywork_user=; path=/; max-age=0; SameSite=Lax';
@@ -120,30 +114,11 @@ export default function DashboardLayout({
         setSession(toStoredSession(session));
         syncUserProfile(session.user);
       } else {
-        const storedUser = useAuthStore.getState().user;
-        if (!storedUser) {
-          setUser(DEMO_DEVELOPER_USER);
-          const currentRoom = useRoomStore.getState().currentRoom;
-          if (!currentRoom) {
-            setCurrentRoom(DUMMY_ROOM);
-            useRoomStore.getState().setRoomMembers(DUMMY_MEMBERS);
-            useRoomStore.getState().setPermissions(true, true);
-            useTaskStore.getState().setTasks(DUMMY_TASKS);
-          }
-        }
+        // Do NOT fall back to DEMO_DEVELOPER_USER when no session exists;
+        // let onAuthStateChange establish the real user instead.
       }
     }).catch(() => {
-      const storedUser = useAuthStore.getState().user;
-      if (!storedUser) {
-        setUser(DEMO_DEVELOPER_USER);
-        const currentRoom = useRoomStore.getState().currentRoom;
-        if (!currentRoom) {
-          setCurrentRoom(DUMMY_ROOM);
-          useRoomStore.getState().setRoomMembers(DUMMY_MEMBERS);
-          useRoomStore.getState().setPermissions(true, true);
-          useTaskStore.getState().setTasks(DUMMY_TASKS);
-        }
-      }
+      // Swallow transient getSession() delays; do not overwrite with demo user.
     });
 
     // Keep the mobile drawer closed on small screens.
@@ -152,7 +127,7 @@ export default function DashboardLayout({
     }
 
     return () => subscription.unsubscribe();
-  }, [router, setUser, setSession, clearAuth, clearRoom, setNotifications, setSidebarOpen]);
+  }, [router, setUser, setSession, clearAuth, clearRoomStore, setNotifications, setSidebarOpen]);
 
   const handleSignOut = async () => {
     try {
@@ -161,7 +136,7 @@ export default function DashboardLayout({
       console.warn('Sign out error:', err);
     }
     clearAuth();
-    clearRoom();
+    clearRoomStore();
     setNotifications([]);
     if (typeof document !== 'undefined') {
       document.cookie = 'trackmywork_user=; path=/; max-age=0; SameSite=Lax';
@@ -169,9 +144,10 @@ export default function DashboardLayout({
     router.push('/auth/login');
   };
 
-  const activeUser = user || DEMO_DEVELOPER_USER;
-  const displayName = activeUser.display_name || activeUser.username || activeUser.email?.split('@')[0] || 'User';
-  const secondaryLabel = activeUser.email || (activeUser.username ? `@${activeUser.username}` : 'Member');
+  const activeUser = user;
+  const displayName = activeUser?.display_name || activeUser?.username || activeUser?.email?.split('@')[0] || 'User';
+  const secondaryLabel = activeUser?.email || (activeUser?.username ? `@${activeUser.username}` : 'Member');
+  const isGlobalAdmin = activeUser?.is_global_admin || false;
 
   return (
     <div className="min-h-screen bg-surface-50">
@@ -235,8 +211,8 @@ export default function DashboardLayout({
                 title="Edit your profile"
               >
                 <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden ring-2 ring-white shadow-sm">
-                  {activeUser.avatar_url ? (
-                    <img src={activeUser.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
+                  {activeUser?.avatar_url ? (
+                    <img src={activeUser?.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
                   ) : (
                     <span className="text-primary-700 font-semibold">
                       {avatarFallback(displayName)}
@@ -311,7 +287,7 @@ export default function DashboardLayout({
               <NotificationsBell />
 
               {/* Global Admin Ghost Mode */}
-              {activeUser.is_global_admin && (
+              {activeUser?.is_global_admin && (
                 <Link href="/dashboard/admin" className="btn-ghost p-2 text-purple-600 hover:bg-purple-50">
                   <Eye className="w-5 h-5" />
                 </Link>
