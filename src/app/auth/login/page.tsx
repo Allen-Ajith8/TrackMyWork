@@ -44,7 +44,8 @@ function LoginForm() {
   const [error, setError] = useState(
     searchParams.get('error_description') || searchParams.get('error') || ''
   );
-  const [otpStep, setOtpStep] = useState<'none' | 'sent'>('none');
+  const [otpStep, setOtpStep] = useState<'none' | 'sent' | 'verified'>('none');
+  const [otpCode, setOtpCode] = useState('');
   const [infoMessage, setInfoMessage] = useState(searchParams.get('message') || '');
 
   // Modal states for seamless OAuth
@@ -354,6 +355,43 @@ function LoginForm() {
     }
   }
 
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    const token = otpCode.trim();
+    if (!token) {
+      setError('Please enter the 6-digit code.');
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email',
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    } else {
+      setOtpStep('verified');
+      setLoading(false);
+      // The email OTP flow establishes a session; refresh to pick it up and redirect.
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          router.push(redirect);
+          router.refresh();
+        } else {
+          setOtpStep('none');
+          setError('Sign-in session not found. Please request a new magic link.');
+        }
+      });
+    }
+  }
+
   return (
     <div className={`min-h-screen relative flex items-center justify-center px-4 py-8 transition-colors duration-500 overflow-hidden ${
       isLight ? 'bg-white text-neutral-950' : 'bg-[#08080a] text-white'
@@ -612,32 +650,62 @@ function LoginForm() {
                 {loading ? 'Sending…' : 'Send Magic Link'}
               </button>
             </div>
-          ) : (
+          ) : otpStep === 'sent' ? (
             <div className={`mt-6 p-4 border rounded-lg ${isLight ? 'border-neutral-200 bg-neutral-50/50' : 'border-neutral-800 bg-neutral-900/30'}`}>
               <div className="flex items-center gap-2 mb-3">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-green-600" />
+                <Mail className="w-4 h-4 shrink-0" />
                 <span className={`text-sm font-medium ${isLight ? 'text-neutral-800' : 'text-neutral-200'}`}>
-                  Check your inbox
+                  Verify 6-digit code
                 </span>
               </div>
               <p className={`text-xs mb-3 ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`}>
-                We sent a magic link to <span className="font-medium">{email}</span>. Click the link in the email to sign in.
+                We sent a 6-digit code to <span className="font-medium">{email}</span>. Enter it here or click the link in the email.
               </p>
-              <button
-                type="button"
-                onClick={() => setOtpStep('none')}
-                className="w-full py-2.5 rounded-xl border text-xs font-medium transition-all disabled:opacity-60 cursor-pointer"
-              >
-                <ArrowLeft className="w-3 h-3 mr-1" /> Send another
-              </button>
+              <form onSubmit={handleVerifyOtp} className="space-y-3">
+                <div>
+                  <label htmlFor="otp-code" className={`block text-xs font-bold mb-1 ${isLight ? 'text-neutral-800' : 'text-neutral-200'}`}>
+                    6-Digit Code
+                  </label>
+                  <input
+                    id="otp-code"
+                    type="text"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                    className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all text-center letter-spacing-widest ${
+                      isLight
+                        ? 'border-neutral-300 bg-white text-black focus:border-red-500 placeholder:text-neutral-400'
+                        : 'border-neutral-800 bg-neutral-900/90 text-white focus:border-red-500 placeholder:text-neutral-500'
+                    }`}
+                    placeholder="123456"
+                    required
+                    disabled={loading}
+                    autoComplete="otp"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading || otpCode.length !== 6}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-red-600/30 transition-all active:scale-[0.99] disabled:opacity-60 cursor-pointer"
+                >
+                  {loading ? 'Verifying…' : 'Verify Code'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOtpStep('none')}
+                  className="w-full py-2 rounded-xl border text-xs font-medium transition-all disabled:opacity-60 cursor-pointer"
+                >
+                  <ArrowLeft className="w-3 h-3 mr-1" /> Send another
+                </button>
+              </form>
             </div>
-          )}
-
-          <p className={`mt-4 text-center text-xs ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`}>
-            <Link href="/auth/forgot-password" className={`text-red-600 dark:text-red-400 hover:underline font-medium`}>
-              Forgot password?
-            </Link>
-          </p>
+          ) : (
+            <>
+            <p className={`mt-4 text-center text-xs ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`}>
+              <Link href="/auth/forgot-password" className={`text-red-600 dark:text-red-400 hover:underline font-medium`}>
+                Forgot password?
+              </Link>
+            </p>
 
           {/* Quick Instant Sign-In for Dev */}
           <div className={`mt-6 pt-5 border-t flex items-center justify-between text-xs ${
@@ -683,6 +751,7 @@ function LoginForm() {
               Create an account
             </Link>
           </p>
+          </>)})
         </div>
 
         {/* Seamless OAuth Dialog Modal */}

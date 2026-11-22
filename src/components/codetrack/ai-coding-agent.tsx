@@ -118,6 +118,7 @@ export function AICodingAgent() {
   const [debugIssues, setDebugIssues] = useState<string[]>([]);
   const [diagnostic, setDiagnostic] = useState<DiagnosticResult | null>(null);
   const [recommendedFixCode, setRecommendedFixCode] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Sync with store when problem changes externally
   useEffect(() => {
@@ -250,6 +251,7 @@ export function AICodingAgent() {
   const handleSolveWithAgent = async () => {
     setIsLoading(true);
     setActiveConsoleTab('agent');
+    setErrorMessage(null);
 
     try {
       const res = await fetch('/api/codetrack/agent', {
@@ -280,9 +282,11 @@ export function AICodingAgent() {
           setTestCases(data.testResults);
         }
       } else {
-        throw new Error('Local fallback');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Agent request failed');
       }
-    } catch {
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Agent request failed.');
       const local = generateDeterministicSolution(selectedProblem, language);
       setCode(local.code);
       setStructuredExplanation(local.structuredExplanation || null);
@@ -298,6 +302,7 @@ export function AICodingAgent() {
   const handleGetHint = async () => {
     setIsLoading(true);
     setActiveConsoleTab('hints');
+    setErrorMessage(null);
 
     try {
       const res = await fetch('/api/codetrack/agent', {
@@ -316,9 +321,11 @@ export function AICodingAgent() {
         setSocraticQuestion(data.socraticQuestion || '');
         setCurrentHintIndex((i) => i + 1);
       } else {
-        throw new Error();
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Hint request failed');
       }
-    } catch {
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Hint request failed.');
       const local = generateAgentHint(selectedProblem, currentHintIndex);
       setAgentHints((prev) => Array.from(new Set([...prev, local.hint])));
       setSocraticQuestion(local.socraticQuestion);
@@ -471,6 +478,7 @@ export function AICodingAgent() {
   const handleDebugCode = async () => {
     setIsLoading(true);
     setActiveConsoleTab('debug');
+    setErrorMessage(null);
     const cleanUserCode = repairStrandedCode(code, language);
     if (cleanUserCode !== code) {
       setCode(cleanUserCode);
@@ -510,9 +518,11 @@ export function AICodingAgent() {
           setTestCases(data.testResults);
         }
       } else {
-        throw new Error();
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Debug request failed');
       }
-    } catch {
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Debug request failed.');
       const local = analyzeAndDebugCode(selectedProblem, cleanUserCode, language);
       setDebugIssues(local.bugsFound);
       setAgentExplanation(local.advice);
@@ -566,6 +576,7 @@ export function AICodingAgent() {
   const handleRunTests = async () => {
     setIsLoading(true);
     setActiveConsoleTab('tests');
+    setErrorMessage(null);
     const cleanUserCode = repairStrandedCode(code, language);
     if (cleanUserCode !== code) {
       setCode(cleanUserCode);
@@ -595,14 +606,16 @@ export function AICodingAgent() {
           setDiagnostic(diag);
         }
       } else {
-        throw new Error('Execution failed');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Execution failed');
       }
-    } catch {
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Execution failed.');
       const fallbackTests = testCases.map((tc) => ({
         ...tc,
         passed: false,
         actualOutput: 'Runner Connection Error',
-        error: 'Could not connect to code runner. Check server connection.',
+        error: err?.message || 'Could not connect to code runner. Check server connection.',
       }));
       setTestCases(fallbackTests);
       setDiagnostic(diagnoseTestFailure(selectedProblem, code, language, fallbackTests));
@@ -945,6 +958,16 @@ export function AICodingAgent() {
             <p className="text-xs font-semibold text-surface-600">
               Agent formulating optimal {language.toUpperCase()} solution &amp; complexity invariants...
             </p>
+          </div>
+        )}
+
+        {/* Error Panel — shows the exact API error message */}
+        {errorMessage && (
+          <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-900 shadow-sm">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
+              <p className="text-xs text-red-800 leading-relaxed font-medium whitespace-pre-wrap">{errorMessage}</p>
+            </div>
           </div>
         )}
 

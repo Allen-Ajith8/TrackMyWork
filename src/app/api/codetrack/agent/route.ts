@@ -187,6 +187,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error: any) {
     console.error('[CodeTrack Agent API] Error:', error);
-    return NextResponse.json({ error: error?.message || 'Agent error' }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: error?.message || 'Agent error',
+        details: error?.details || error?.stack || String(error),
+      },
+      { status: 500 }
+    );
   }
 }

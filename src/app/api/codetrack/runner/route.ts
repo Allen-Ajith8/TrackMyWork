@@ -30,7 +30,10 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || 'Execution error' },
+      {
+        error: error?.message || 'Execution error',
+        details: error?.details || error?.stack || String(error),
+      },
       { status: 500 }
     );
   }
