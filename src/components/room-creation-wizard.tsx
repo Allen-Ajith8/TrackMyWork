@@ -523,9 +523,6 @@ export function RoomCreationWizard() {
             <div>
               <CardTitle className="text-lg font-bold flex items-center gap-2">
                 <span>Step 1: Basics & Hackathon Setup</span>
-                <Badge className="bg-primary-50 text-primary-700 border-primary-200 text-xs">
-                  Excel Sheet 1
-                </Badge>
               </CardTitle>
               <CardDescription className="text-xs">
                 Essential project identifiers, hackathon deadlines, and repository configurations.
@@ -745,15 +742,15 @@ export function RoomCreationWizard() {
                   className={cn(
                     'p-3 rounded-lg border text-left transition-all',
                     watchProjectType === 'software'
-                      ? 'border-primary-600 bg-primary-50/50 ring-2 ring-primary-500/20'
-                      : 'border-surface-200 hover:border-surface-300 bg-white'
+                      ? 'border-primary-600 bg-primary-50/50 dark:bg-primary-950/40 dark:border-primary-500 ring-2 ring-primary-500/20'
+                      : 'border-surface-200 dark:border-slate-800 hover:border-surface-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
                   )}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <Code className="w-4 h-4 text-primary-600" />
-                    <span className="font-semibold text-xs text-surface-900">Software Project</span>
+                    <Code className="w-4 h-4 text-primary-600 dark:text-purple-400" />
+                    <span className="font-semibold text-xs text-surface-900 dark:text-white">Software Project</span>
                   </div>
-                  <p className="text-[11px] text-surface-500 leading-tight">
+                  <p className="text-[11px] text-surface-500 dark:text-slate-400 leading-tight">
                     Web, mobile, cloud, AI. Bill of Materials (BOM) is excluded.
                   </p>
                 </button>
@@ -763,15 +760,15 @@ export function RoomCreationWizard() {
                   className={cn(
                     'p-3 rounded-lg border text-left transition-all',
                     watchProjectType === 'hardware'
-                      ? 'border-amber-600 bg-amber-50/50 ring-2 ring-amber-500/20'
-                      : 'border-surface-200 hover:border-surface-300 bg-white'
+                      ? 'border-amber-600 bg-amber-50/50 dark:bg-amber-950/40 dark:border-amber-500 ring-2 ring-amber-500/20'
+                      : 'border-surface-200 dark:border-slate-800 hover:border-surface-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
                   )}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <Cpu className="w-4 h-4 text-amber-600" />
-                    <span className="font-semibold text-xs text-surface-900">Hardware Project</span>
+                    <Cpu className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span className="font-semibold text-xs text-surface-900 dark:text-white">Hardware Project</span>
                   </div>
-                  <p className="text-[11px] text-surface-500 leading-tight">
+                  <p className="text-[11px] text-surface-500 dark:text-slate-400 leading-tight">
                     IoT, sensors, electronics. Bill of Materials (BOM) is included.
                   </p>
                 </button>
@@ -779,7 +776,7 @@ export function RoomCreationWizard() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-surface-900">Max Team Size</Label>
+              <Label className="text-xs font-bold text-surface-900 dark:text-white">Max Team Size</Label>
               <Select
                 onValueChange={(v: string) => form.setValue('team_size', Number(v))}
                 defaultValue={watchTeamSize.toString()}
@@ -852,8 +849,8 @@ export function RoomCreationWizard() {
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-1 space-y-2">
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-primary-200 shadow-xs">
-              <span className="text-lg font-black tracking-widest font-mono text-primary-900 px-2">
+            <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-primary-200 dark:border-primary-800 shadow-xs">
+              <span className="text-lg font-black tracking-widest font-mono text-primary-900 dark:text-primary-300 px-2">
                 {inviteCode}
               </span>
               <Button
@@ -861,13 +858,13 @@ export function RoomCreationWizard() {
                 size="sm"
                 variant="outline"
                 onClick={handleCopyCode}
-                className="h-7 text-xs font-bold gap-1"
+                className="h-7 text-xs font-bold gap-1 dark:border-slate-700 dark:text-slate-200"
               >
-                {copiedCode ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                {copiedCode ? <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3 h-3" />}
                 <span>{copiedCode ? 'Copied!' : 'Copy Code'}</span>
               </Button>
             </div>
-            <p className="text-[11px] text-primary-800">
+            <p className="text-[11px] text-primary-800 dark:text-primary-300">
               Teammates enter this 6-digit code on their dashboard to join this room instantly.
             </p>
           </CardContent>
@@ -881,9 +878,6 @@ export function RoomCreationWizard() {
             <div>
               <CardTitle className="text-lg font-bold flex items-center gap-2">
                 <span>Invite Teammates & Configure RBAC</span>
-                <Badge className="bg-primary-50 text-primary-700 border-primary-200 text-xs">
-                  Excel Sheet 2
-                </Badge>
               </CardTitle>
               <CardDescription className="text-xs">
                 Assign custom roles and configure Discord-style permission switches for every teammate.
@@ -929,13 +923,13 @@ export function RoomCreationWizard() {
               {watchMembers.map((member, index) => (
                 <div
                   key={index}
-                  className="rounded-2xl border-2 border-surface-200 bg-white p-4 space-y-4 shadow-xs"
+                  className="rounded-2xl border-2 border-surface-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 space-y-4 shadow-xs"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="grid gap-3 sm:grid-cols-2 flex-1">
                       {/* Teammate Email */}
                       <div className="space-y-1">
-                        <Label htmlFor={`member-email-${index}`} className="text-xs font-bold text-surface-900">
+                        <Label htmlFor={`member-email-${index}`} className="text-xs font-bold text-surface-900 dark:text-white">
                           Teammate Email *
                         </Label>
                         <Input
@@ -1008,7 +1002,7 @@ export function RoomCreationWizard() {
                   <div className="pt-3 border-t border-surface-100 space-y-2">
                     <span className="text-xs font-bold text-surface-800 flex items-center gap-1.5">
                       <Sliders className="w-3.5 h-3.5 text-primary-600" />
-                      <span>Role Permissions (Excel Sheet 2 Toggles)</span>
+                      <span>Role Permissions</span>
                     </span>
 
                     <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -1052,9 +1046,6 @@ export function RoomCreationWizard() {
         <CardHeader className="pb-4">
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             <span>Step 3: Hackathon Rules & Judging Rubric</span>
-            <Badge className="bg-primary-50 text-primary-700 border-primary-200 text-xs">
-              Excel Sheet 1 (Rows 15–19)
-            </Badge>
           </CardTitle>
           <CardDescription className="text-xs">
             Paste official rules and evaluation rubrics. NIM AI uses these to detect scope creep and drive Mock Jury evaluations.
@@ -1062,11 +1053,11 @@ export function RoomCreationWizard() {
         </CardHeader>
 
         <CardContent className="space-y-5">
-          {/* Note from Excel Sheet */}
+          {/* Note */}
           <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-xs text-amber-950">
             <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <strong className="font-bold">Setup Note from Excel Reference:</strong>
+              <strong className="font-bold">Setup Note:</strong>
               <p className="leading-relaxed text-[11px] text-amber-900">
                 Rubric and rules matter most because NVIDIA NIM scope-creep detection and Mock Jury Q&A score backlog tasks and commits directly against them.
               </p>
@@ -1236,7 +1227,7 @@ export function RoomCreationWizard() {
                 <span>Ready to Launch Hackathon Room</span>
               </CardTitle>
               <Badge className="bg-emerald-600 text-white font-mono text-[10px]">
-                Excel Sheet 4 Verified
+                Verified
               </Badge>
             </div>
             <CardDescription className="text-xs text-emerald-900">
@@ -1246,25 +1237,25 @@ export function RoomCreationWizard() {
 
           <CardContent className="space-y-3">
             <div className="grid gap-2 sm:grid-cols-3 text-xs">
-              <div className="p-3 rounded-xl bg-white border border-emerald-200 space-y-1">
+              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 space-y-1">
                 <span className="text-[10px] font-mono uppercase text-muted-foreground block font-bold">Room Name</span>
-                <span className="font-bold text-surface-900 block truncate">{values.name || 'Untitled Room'}</span>
+                <span className="font-bold text-surface-900 dark:text-white block truncate">{values.name || 'Untitled Room'}</span>
               </div>
 
-              <div className="p-3 rounded-xl bg-white border border-emerald-200 space-y-1">
+              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 space-y-1">
                 <span className="text-[10px] font-mono uppercase text-muted-foreground block font-bold">Hackathon</span>
-                <span className="font-bold text-surface-900 block truncate">{values.hackathon_name || 'Hackathon 2026'}</span>
+                <span className="font-bold text-surface-900 dark:text-white block truncate">{values.hackathon_name || 'Hackathon 2026'}</span>
               </div>
 
-              <div className="p-3 rounded-xl bg-white border border-emerald-200 space-y-1">
+              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 space-y-1">
                 <span className="text-[10px] font-mono uppercase text-muted-foreground block font-bold">Submission Deadline</span>
-                <span className="font-bold text-amber-700 block truncate">{values.submission_deadline || 'Not set'}</span>
+                <span className="font-bold text-amber-700 dark:text-amber-400 block truncate">{values.submission_deadline || 'Not set'}</span>
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-white border border-emerald-200 text-xs text-surface-700 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 text-xs text-surface-700 dark:text-slate-200 flex items-center justify-between">
               <span>
-                <strong>Invite Code:</strong> <span className="font-mono font-bold text-primary-700">{inviteCode}</span>
+                <strong>Invite Code:</strong> <span className="font-mono font-bold text-primary-700 dark:text-primary-300">{inviteCode}</span>
               </span>
               <span>
                 <strong>Team Size:</strong> {values.team_size} members ({values.project_type})
@@ -1273,12 +1264,12 @@ export function RoomCreationWizard() {
           </CardContent>
         </Card>
 
-        {/* After Creation Guide (Sheet 3) */}
-        <Card className="border border-surface-200 bg-white shadow-xs">
+        {/* After Creation Guide */}
+        <Card className="border border-surface-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <CardHeader className="pb-3">
-            <CardTitle className="text-xs font-black uppercase tracking-wider text-surface-700 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary-600" />
-              <span>After Creation Integration Checklist (Excel Sheet 3)</span>
+            <CardTitle className="text-xs font-black uppercase tracking-wider text-surface-700 dark:text-slate-200 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-primary-600 dark:text-purple-400" />
+              <span>After Creation Integration Checklist</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-xs">

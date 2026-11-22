@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+import { ClickSpark } from '@/components/ui/click-spark';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -62,9 +63,34 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var theme = localStorage.getItem('trackmywork_theme');
+                if (theme === 'dark') {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
       </head>
-      <body className="min-h-screen bg-surface-50">
-        {children}
+      <body className="min-h-screen bg-surface-50 dark:bg-[#0b0f19] text-surface-900 dark:text-surface-100 transition-colors duration-200">
+        <ClickSpark
+          sparkColor={['#ef4444', '#a855f7', '#f97316', '#3b82f6', '#10b981', '#ffffff']}
+          sparkSize={13}
+          sparkRadius={32}
+          sparkCount={9}
+          duration={450}
+          glow={0.8}
+          extraScale={1.1}
+          className="min-h-screen"
+        >
+          {children}
+        </ClickSpark>
       </body>
     </html>
   );

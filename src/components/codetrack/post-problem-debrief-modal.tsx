@@ -141,7 +141,7 @@ export function PostProblemDebriefModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-10 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-      <div className="relative w-full max-w-2xl md:max-w-3xl lg:max-w-4xl rounded-3xl bg-white border border-surface-200 shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
+      <div className="relative w-full max-w-2xl md:max-w-3xl lg:max-w-4xl rounded-3xl bg-white dark:bg-[#0d121f] border border-surface-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
         {/* Glow Top Bar */}
         <div className="h-1.5 bg-gradient-to-r from-primary-600 via-pink-500 to-indigo-600 shrink-0" />
 
@@ -153,10 +153,10 @@ export function PostProblemDebriefModal({
                 <Bot className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-xs font-mono text-primary-600 uppercase tracking-widest block font-bold">
+                <span className="text-xs font-mono text-primary-600 dark:text-purple-400 uppercase tracking-widest block font-bold">
                   Adaptive AI Mentor Debrief
                 </span>
-                <h3 className="text-lg sm:text-2xl font-bold text-surface-900 flex items-center gap-2 mt-0.5">
+                <h3 className="text-lg sm:text-2xl font-bold text-surface-900 dark:text-white flex items-center gap-2 mt-0.5">
                   <span>How did you find #{problem.frontendQuestionId} {problem.title}?</span>
                 </h3>
               </div>
@@ -164,7 +164,7 @@ export function PostProblemDebriefModal({
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-surface-400 hover:text-surface-700 hover:bg-surface-100 transition-colors shrink-0"
+              className="p-2 rounded-xl text-surface-400 dark:text-slate-400 hover:text-surface-700 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-slate-800 transition-colors shrink-0"
               title="Close debrief"
             >
               <X className="w-5 h-5" />
@@ -181,7 +181,7 @@ export function PostProblemDebriefModal({
                     ? 'bg-primary-600 shadow-sm shadow-primary-600/30'
                     : s < step
                     ? 'bg-emerald-500'
-                    : 'bg-surface-200'
+                    : 'bg-surface-200 dark:bg-slate-800'
                 }`}
               />
             ))}
@@ -191,11 +191,11 @@ export function PostProblemDebriefModal({
           {step === 1 && (
             <div className="space-y-5 animate-in fade-in-50 duration-200">
               <div className="space-y-1.5">
-                <span className="text-xs font-mono text-primary-600 font-bold tracking-wider">Step 1 of 4</span>
-                <h4 className="text-lg sm:text-xl font-bold text-surface-900">
+                <span className="text-xs font-mono text-primary-600 dark:text-purple-400 font-bold tracking-wider">Step 1 of 4</span>
+                <h4 className="text-lg sm:text-xl font-bold text-surface-900 dark:text-white">
                   Did you solve this problem independently?
                 </h4>
-                <p className="text-xs sm:text-sm text-surface-600">
+                <p className="text-xs sm:text-sm text-surface-600 dark:text-slate-400">
                   Be honest! Your mentor uses this to calibrate your challenge curve.
                 </p>
               </div>
@@ -207,28 +207,28 @@ export function PostProblemDebriefModal({
                     title: 'Yes, completely independently.',
                     desc: 'Wrote optimal code without external hints or solution lookups.',
                     icon: CheckCircle,
-                    color: 'text-emerald-600',
+                    color: 'text-emerald-600 dark:text-emerald-400',
                   },
                   {
                     id: 'small_hint' as IndependenceLevel,
                     title: 'Yes, with a small hint.',
                     desc: 'Looked at algorithmic approach/clues but wrote the code myself.',
                     icon: Sparkles,
-                    color: 'text-amber-600',
+                    color: 'text-amber-600 dark:text-amber-400',
                   },
                   {
                     id: 'substantial_help' as IndependenceLevel,
                     title: 'I needed substantial help.',
                     desc: 'Read discussion solutions or tutorial walkthroughs to finish.',
                     icon: HelpCircle,
-                    color: 'text-primary-600',
+                    color: 'text-primary-600 dark:text-purple-400',
                   },
                   {
                     id: 'unsolved' as IndependenceLevel,
                     title: "I couldn't solve it.",
                     desc: 'Encountered test failures, TLE, or got stuck on the approach.',
                     icon: AlertTriangle,
-                    color: 'text-rose-600',
+                    color: 'text-rose-600 dark:text-rose-400',
                   },
                 ].map((opt) => (
                   <button
@@ -237,14 +237,14 @@ export function PostProblemDebriefModal({
                     onClick={() => setIndependence(opt.id)}
                     className={`flex items-start gap-4 p-4 sm:p-5 rounded-2xl border text-left transition-all ${
                       independence === opt.id
-                        ? 'bg-primary-50/70 border-primary-600 text-surface-900 ring-2 ring-primary-500/30 shadow-sm'
-                        : 'bg-white border-surface-200 text-surface-600 hover:border-primary-300 hover:bg-surface-50'
+                        ? 'bg-primary-50/70 dark:bg-primary-950/40 border-primary-600 dark:border-primary-500 text-surface-900 dark:text-white ring-2 ring-primary-500/30 shadow-sm'
+                        : 'bg-white dark:bg-slate-900/80 border-surface-200 dark:border-slate-800 text-surface-600 dark:text-slate-300 hover:border-primary-300 dark:hover:border-slate-700 hover:bg-surface-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <opt.icon className={`w-6 h-6 shrink-0 mt-0.5 ${opt.color}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm sm:text-base font-bold text-surface-900">{opt.title}</p>
-                      <p className="text-xs sm:text-sm text-surface-600 mt-1 leading-relaxed">{opt.desc}</p>
+                      <p className="text-sm sm:text-base font-bold text-surface-900 dark:text-white">{opt.title}</p>
+                      <p className="text-xs sm:text-sm text-surface-600 dark:text-slate-400 mt-1 leading-relaxed">{opt.desc}</p>
                     </div>
                   </button>
                 ))}
@@ -256,11 +256,11 @@ export function PostProblemDebriefModal({
           {step === 2 && (
             <div className="space-y-5 animate-in fade-in-50 duration-200">
               <div className="space-y-1.5">
-                <span className="text-xs font-mono text-primary-600 font-bold tracking-wider">Step 2 of 4</span>
-                <h4 className="text-lg sm:text-xl font-bold text-surface-900">
+                <span className="text-xs font-mono text-primary-600 dark:text-purple-400 font-bold tracking-wider">Step 2 of 4</span>
+                <h4 className="text-lg sm:text-xl font-bold text-surface-900 dark:text-white">
                   What was the biggest challenge you faced?
                 </h4>
-                <p className="text-xs sm:text-sm text-surface-600">
+                <p className="text-xs sm:text-sm text-surface-600 dark:text-slate-400">
                   Select the primary obstacle or specify your custom takeaway.
                 </p>
               </div>
@@ -283,8 +283,8 @@ export function PostProblemDebriefModal({
                     }}
                     className={`p-4 rounded-xl border text-left text-xs sm:text-sm font-medium transition-all ${
                       challengeFaced === challenge && !customChallenge
-                        ? 'bg-primary-50/70 border-primary-600 text-primary-900 ring-2 ring-primary-500/30 shadow-sm font-semibold'
-                        : 'bg-white border-surface-200 text-surface-700 hover:border-primary-300 hover:bg-surface-50'
+                        ? 'bg-primary-50/70 dark:bg-primary-950/40 border-primary-600 dark:border-primary-500 text-primary-900 dark:text-primary-300 ring-2 ring-primary-500/30 shadow-sm font-semibold'
+                        : 'bg-white dark:bg-slate-900/80 border-surface-200 dark:border-slate-800 text-surface-700 dark:text-slate-200 hover:border-primary-300 dark:hover:border-slate-700 hover:bg-surface-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     {challenge}
@@ -293,13 +293,13 @@ export function PostProblemDebriefModal({
               </div>
 
               <div className="space-y-2 pt-2">
-                <label className="text-xs sm:text-sm text-surface-700 font-medium">Or type a specific hurdle:</label>
+                <label className="text-xs sm:text-sm text-surface-700 dark:text-slate-300 font-medium">Or type a specific hurdle:</label>
                 <input
                   type="text"
                   value={customChallenge}
                   onChange={(e) => setCustomChallenge(e.target.value)}
                   placeholder="e.g. Off-by-one error when contracting the left window bound..."
-                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-xl bg-surface-50 border border-surface-200 text-surface-900 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white"
+                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-xl bg-surface-50 dark:bg-[#080c14] border border-surface-200 dark:border-slate-800 text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-[#0b0f19]"
                 />
               </div>
             </div>
@@ -309,11 +309,11 @@ export function PostProblemDebriefModal({
           {step === 3 && (
             <div className="space-y-5 animate-in fade-in-50 duration-200">
               <div className="space-y-1.5">
-                <span className="text-xs font-mono text-primary-600 font-bold tracking-wider">Step 3 of 4</span>
-                <h4 className="text-lg sm:text-xl font-bold text-surface-900">
+                <span className="text-xs font-mono text-primary-600 dark:text-purple-400 font-bold tracking-wider">Step 3 of 4</span>
+                <h4 className="text-lg sm:text-xl font-bold text-surface-900 dark:text-white">
                   How confident are you about this concept now?
                 </h4>
-                <p className="text-xs sm:text-sm text-surface-600">
+                <p className="text-xs sm:text-sm text-surface-600 dark:text-slate-400">
                   Assessing your mastery helps decide whether to consolidate or advance.
                 </p>
               </div>
@@ -324,19 +324,19 @@ export function PostProblemDebriefModal({
                     id: 'high' as ConfidenceLevel,
                     title: 'Very confident.',
                     desc: 'I could code this pattern again quickly under interview pressure.',
-                    color: 'border-emerald-300 bg-emerald-50 text-emerald-800',
+                    color: 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:border-emerald-800/60 dark:text-emerald-300',
                   },
                   {
                     id: 'medium' as ConfidenceLevel,
                     title: 'Somewhat confident.',
                     desc: 'I understand the logic, but might struggle if the constraints mutate.',
-                    color: 'border-amber-300 bg-amber-50 text-amber-800',
+                    color: 'border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:border-amber-800/60 dark:text-amber-300',
                   },
                   {
                     id: 'low' as ConfidenceLevel,
                     title: 'Need more practice.',
                     desc: 'I need to review similar variations before tackling harder problems.',
-                    color: 'border-rose-300 bg-rose-50 text-rose-800',
+                    color: 'border-rose-300 bg-rose-50 text-rose-800 dark:bg-rose-950/30 dark:border-rose-800/60 dark:text-rose-300',
                   },
                 ].map((opt) => (
                   <button
@@ -346,17 +346,17 @@ export function PostProblemDebriefModal({
                     className={`flex flex-col justify-between p-4 sm:p-5 rounded-2xl border text-left transition-all ${
                       confidence === opt.id
                         ? `${opt.color} ring-2 ring-primary-500/40 shadow-sm`
-                        : 'bg-white border-surface-200 text-surface-600 hover:border-primary-300 hover:bg-surface-50'
+                        : 'bg-white dark:bg-slate-900/80 border-surface-200 dark:border-slate-800 text-surface-600 dark:text-slate-300 hover:border-primary-300 dark:hover:border-slate-700 hover:bg-surface-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <div>
-                      <p className="text-sm sm:text-base font-bold text-surface-900">{opt.title}</p>
-                      <p className="text-xs sm:text-sm text-surface-600 mt-1 leading-relaxed">{opt.desc}</p>
+                      <p className="text-sm sm:text-base font-bold text-surface-900 dark:text-white">{opt.title}</p>
+                      <p className="text-xs sm:text-sm text-surface-600 dark:text-slate-400 mt-1 leading-relaxed">{opt.desc}</p>
                     </div>
                     <div className="flex justify-end pt-3">
                       <div
                         className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
-                          confidence === opt.id ? 'border-primary-600 bg-primary-600' : 'border-surface-300'
+                          confidence === opt.id ? 'border-primary-600 bg-primary-600' : 'border-surface-300 dark:border-slate-700'
                         }`}
                       >
                         {confidence === opt.id && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -367,13 +367,13 @@ export function PostProblemDebriefModal({
               </div>
 
               <div className="space-y-2 pt-2">
-                <label className="text-xs sm:text-sm text-surface-700 font-medium">Personal takeaway notes (optional):</label>
+                <label className="text-xs sm:text-sm text-surface-700 dark:text-slate-300 font-medium">Personal takeaway notes (optional):</label>
                 <textarea
                   value={personalNotes}
                   onChange={(e) => setPersonalNotes(e.target.value)}
                   placeholder="e.g. Always remember to check if target - current_val exists in map..."
                   rows={3}
-                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-xl bg-surface-50 border border-surface-200 text-surface-900 placeholder-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white resize-none"
+                  className="w-full px-4 py-3 text-xs sm:text-sm rounded-xl bg-surface-50 dark:bg-[#080c14] border border-surface-200 dark:border-slate-800 text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-[#0b0f19] resize-none"
                 />
               </div>
             </div>
@@ -383,11 +383,11 @@ export function PostProblemDebriefModal({
           {step === 4 && (
             <div className="space-y-5 animate-in fade-in-50 duration-200">
               <div className="space-y-1.5">
-                <span className="text-xs font-mono text-primary-600 font-bold tracking-wider">Step 4 of 4</span>
-                <h4 className="text-lg sm:text-xl font-bold text-surface-900">
+                <span className="text-xs font-mono text-primary-600 dark:text-purple-400 font-bold tracking-wider">Step 4 of 4</span>
+                <h4 className="text-lg sm:text-xl font-bold text-surface-900 dark:text-white">
                   What would you like to solve next?
                 </h4>
-                <p className="text-xs sm:text-sm text-surface-600">
+                <p className="text-xs sm:text-sm text-surface-600 dark:text-slate-400">
                   Your mentor never increases difficulty automatically without your consent.
                 </p>
               </div>
@@ -428,17 +428,17 @@ export function PostProblemDebriefModal({
                       idx === 4 ? 'sm:col-span-2' : ''
                     } ${
                       preferredNext === opt.id
-                        ? 'bg-primary-50/70 border-primary-600 text-surface-900 ring-2 ring-primary-500/30 shadow-sm'
-                        : 'bg-white border-surface-200 text-surface-600 hover:border-primary-300 hover:bg-surface-50'
+                        ? 'bg-primary-50/70 dark:bg-primary-950/40 border-primary-600 dark:border-primary-500 text-surface-900 dark:text-white ring-2 ring-primary-500/30 shadow-sm'
+                        : 'bg-white dark:bg-slate-900/80 border-surface-200 dark:border-slate-800 text-surface-600 dark:text-slate-300 hover:border-primary-300 dark:hover:border-slate-700 hover:bg-surface-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <div className="pr-3">
-                      <p className="text-sm sm:text-base font-bold text-surface-900">{opt.title}</p>
-                      <p className="text-xs sm:text-sm text-surface-600 mt-1 leading-relaxed">{opt.desc}</p>
+                      <p className="text-sm sm:text-base font-bold text-surface-900 dark:text-white">{opt.title}</p>
+                      <p className="text-xs sm:text-sm text-surface-600 dark:text-slate-400 mt-1 leading-relaxed">{opt.desc}</p>
                     </div>
                     <div
                       className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
-                        preferredNext === opt.id ? 'border-primary-600 bg-primary-600' : 'border-surface-300'
+                        preferredNext === opt.id ? 'border-primary-600 bg-primary-600' : 'border-surface-300 dark:border-slate-700'
                       }`}
                     >
                       {preferredNext === opt.id && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -450,12 +450,12 @@ export function PostProblemDebriefModal({
           )}
 
           {/* Footer Controls */}
-          <div className="pt-4 sm:pt-6 border-t border-surface-200 flex items-center justify-between">
+          <div className="pt-4 sm:pt-6 border-t border-surface-200 dark:border-slate-800 flex items-center justify-between">
             {step > 1 ? (
               <button
                 type="button"
                 onClick={() => setStep((s) => s - 1)}
-                className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-surface-600 hover:text-surface-900 hover:bg-surface-100 flex items-center gap-2 transition-colors"
+                className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-surface-600 dark:text-slate-400 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back</span>
@@ -466,7 +466,7 @@ export function PostProblemDebriefModal({
                   href={problem.leetcodeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs sm:text-sm text-surface-600 hover:text-surface-900 flex items-center gap-1.5 underline underline-offset-4"
+                  className="text-xs sm:text-sm text-surface-600 dark:text-slate-400 hover:text-surface-900 dark:hover:text-white flex items-center gap-1.5 underline underline-offset-4"
                 >
                   <span>Reopen Problem</span>
                   <ExternalLink className="w-3.5 h-3.5" />
@@ -478,7 +478,7 @@ export function PostProblemDebriefModal({
                     onClose();
                     setAgentProblem(problem);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200 text-xs font-semibold transition-all shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-700 dark:bg-primary-950/40 dark:hover:bg-primary-900/50 dark:text-primary-300 border border-primary-200 dark:border-primary-800/60 text-xs font-semibold transition-all shadow-xs"
                 >
                   <Cpu className="w-3.5 h-3.5" />
                   <span>Open in AI Agent</span>

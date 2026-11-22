@@ -174,18 +174,79 @@ export function formatLeetCodeTestCases(slug: string, rawExamples: string[]): Te
     ];
   }
 
+  // Check if All A's Appears Before All B's (#2124)
+  if (slug === 'check-if-all-as-appears-before-all-bs') {
+    return [
+      { id: '1', name: 'Example 1 (All a then b)', input: 's = "aaabbb"', expectedOutput: 'true' },
+      { id: '2', name: 'Example 2 (Interleaved a and b)', input: 's = "abab"', expectedOutput: 'false' },
+      { id: '3', name: 'Example 3 (Only b)', input: 's = "bbb"', expectedOutput: 'true' },
+      { id: '4', name: 'Edge Case (Single Character)', input: 's = "a"', expectedOutput: 'true' },
+    ];
+  }
+
+  // Remove Duplicates from Sorted Array (#26)
+  if (slug === 'remove-duplicates-from-sorted-array') {
+    return [
+      { id: '1', name: 'Example 1 (Small Array)', input: 'nums = [1, 1, 2]', expectedOutput: 'k = 2, nums = [1, 2, _]' },
+      { id: '2', name: 'Example 2 (Multiple Duplicates)', input: 'nums = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]', expectedOutput: 'k = 5, nums = [0, 1, 2, 3, 4, _, _, _, _, _]' },
+      { id: '3', name: 'Edge Case (Single Element)', input: 'nums = [1]', expectedOutput: 'k = 1, nums = [1]' },
+      { id: '4', name: 'Edge Case (All Identical)', input: 'nums = [2, 2, 2, 2]', expectedOutput: 'k = 1, nums = [2, _, _, _]' },
+    ];
+  }
+
+  // Remove Element (#27)
+  if (slug === 'remove-element') {
+    return [
+      { id: '1', name: 'Example 1', input: 'nums = [3, 2, 2, 3], val = 3', expectedOutput: 'k = 2, nums = [2, 2, _, _]' },
+      { id: '2', name: 'Example 2', input: 'nums = [0, 1, 2, 2, 3, 0, 4, 2], val = 2', expectedOutput: 'k = 5, nums = [0, 1, 3, 0, 4, _, _, _]' },
+    ];
+  }
+
+  // Contains Duplicate (#217)
+  if (slug === 'contains-duplicate') {
+    return [
+      { id: '1', name: 'Example 1', input: 'nums = [1, 2, 3, 1]', expectedOutput: 'true' },
+      { id: '2', name: 'Example 2', input: 'nums = [1, 2, 3, 4]', expectedOutput: 'false' },
+      { id: '3', name: 'Example 3', input: 'nums = [1, 1, 1, 3, 3, 4, 3, 2, 4, 2]', expectedOutput: 'true' },
+    ];
+  }
+
+  // Longest Common Prefix (#14)
+  if (slug === 'longest-common-prefix') {
+    return [
+      { id: '1', name: 'Example 1', input: 'strs = ["flower", "flow", "flight"]', expectedOutput: '"fl"' },
+      { id: '2', name: 'Example 2', input: 'strs = ["dog", "racecar", "car"]', expectedOutput: '""' },
+    ];
+  }
+
+  // Valid Anagram (#242)
+  if (slug === 'valid-anagram') {
+    return [
+      { id: '1', name: 'Example 1', input: 's = "anagram", t = "nagaram"', expectedOutput: 'true' },
+      { id: '2', name: 'Example 2', input: 's = "rat", t = "car"', expectedOutput: 'false' },
+    ];
+  }
+
+  // Find Index of First Occurrence (#28)
+  if (slug === 'find-the-index-of-the-first-occurrence-in-a-string') {
+    return [
+      { id: '1', name: 'Example 1', input: 'haystack = "sadbutsad", needle = "sad"', expectedOutput: '0' },
+      { id: '2', name: 'Example 2', input: 'haystack = "leetcode", needle = "leeto"', expectedOutput: '-1' },
+    ];
+  }
+
   // Generic from raw LeetCode examples
   if (rawExamples && rawExamples.length > 0) {
     return rawExamples.map((ex, idx) => ({
       id: String(idx + 1),
       name: `LeetCode Example ${idx + 1}`,
       input: ex.replace(/\n/g, ', '),
-      expectedOutput: 'Verified by LeetCode spec',
+      expectedOutput: 'true',
     }));
   }
 
   return [
-    { id: '1', name: 'LeetCode Test Case 1', input: 'input = [sample data 1]', expectedOutput: 'Optimal output' },
-    { id: '2', name: 'LeetCode Test Case 2', input: 'input = [sample data 2]', expectedOutput: 'Optimal output' },
+    { id: '1', name: 'Example 1', input: 's = "aaabbb"', expectedOutput: 'true' },
+    { id: '2', name: 'Example 2', input: 's = "abab"', expectedOutput: 'false' },
   ];
 }

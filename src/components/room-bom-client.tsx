@@ -33,6 +33,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Toast, ToastProvider, ToastViewport, ToastTitle, ToastDescription } from '@/components/ui/toast';
+import { GlassIconTile } from '@/components/ui/glass-icons';
 import { cn, formatRelativeTime, formatCurrency, getBomStatusColor } from '@/lib/utils';
 import type { HardwareBomItem, BomStatus, RoomMember, User, Room } from '@/types/database';
 
@@ -278,10 +279,10 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
     <ToastProvider>
       <div className="h-[calc(100vh-64px)] flex flex-col">
         {/* Header */}
-        <div className="border-b bg-white px-6 py-4 flex-shrink-0">
+        <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold">Bill of Materials</h1>
+              <h1 className="text-xl font-bold text-surface-900 dark:text-white">Bill of Materials</h1>
               <p className="text-sm text-muted-foreground">{room.name} • {bom.length} components</p>
             </div>
             <div className="flex items-center gap-2">
@@ -306,57 +307,72 @@ export function RoomBomClient({ room, initialBom, initialMembers }: {
         </div>
 
         {/* Summary Cards */}
-        <div className="border-b bg-white px-6 py-4 flex-shrink-0">
+        <div className="border-b border-surface-200 dark:border-slate-800 bg-white/50 dark:bg-[#0d121f]/50 px-6 py-4 flex-shrink-0">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Est. Cost</p>
-                    <p className="text-2xl font-bold">{formatCurrency(totalEst)}</p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-green-500" />
+            <div className="relative overflow-hidden rounded-2xl border p-4 transition-all duration-300 group shadow-xs hover:shadow-md hover:-translate-y-0.5 bg-gradient-to-br from-[#eff6ff] via-[#f8faff] to-[#eef2ff] border-blue-100/90 hover:border-blue-200 dark:bg-gradient-to-br dark:from-[#11192e] dark:via-[#0c1424] dark:to-[#080d19] dark:border-blue-900/50">
+              <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full blur-2xl pointer-events-none bg-blue-400/20 dark:bg-blue-500/15" />
+              <div className="relative z-10 flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium text-surface-600 dark:text-slate-400">Total Est. Cost</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1 text-surface-900 dark:text-white">
+                    {formatCurrency(totalEst)}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Actual Cost</p>
-                    <p className="text-2xl font-bold">{formatCurrency(totalActual)}</p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-blue-500" />
+                <div className="shrink-0 -mt-1 -mr-1">
+                  <GlassIconTile icon={<DollarSign className="w-4 h-4 text-white" />} color="blue" size={38} roundness={0.55} plate="tilt" />
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Received</p>
-                    <p className="text-2xl font-bold">{receivedCount}</p>
-                  </div>
-                  <CheckCircle className="w-8 h-8 text-green-500" />
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden rounded-2xl border p-4 transition-all duration-300 group shadow-xs hover:shadow-md hover:-translate-y-0.5 bg-gradient-to-br from-[#fff7ed] via-[#fffbf5] to-[#ffedd5] border-amber-100/90 hover:border-amber-200 dark:bg-gradient-to-br dark:from-[#352511] dark:via-[#261909] dark:to-[#170e04] dark:border-amber-700/50">
+              <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full blur-2xl pointer-events-none bg-amber-400/20 dark:bg-amber-500/20" />
+              <div className="relative z-10 flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium text-surface-600 dark:text-amber-200/70">Total Actual Cost</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1 text-surface-900 dark:text-white">
+                    {formatCurrency(totalActual)}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Failed</p>
-                    <p className="text-2xl font-bold">{failedCount}</p>
-                  </div>
-                  <XCircle className="w-8 h-8 text-red-500" />
+                <div className="shrink-0 -mt-1 -mr-1">
+                  <GlassIconTile icon={<DollarSign className="w-4 h-4 text-white" />} color="orange" size={38} roundness={0.55} plate="tilt" />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden rounded-2xl border p-4 transition-all duration-300 group shadow-xs hover:shadow-md hover:-translate-y-0.5 bg-gradient-to-br from-[#ecfdf5] via-[#f6fef9] to-[#d1fae5] border-emerald-100/90 hover:border-emerald-200 dark:bg-gradient-to-br dark:from-[#0b281d] dark:via-[#071d15] dark:to-[#04120d] dark:border-emerald-700/50">
+              <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full blur-2xl pointer-events-none bg-emerald-400/20 dark:bg-emerald-500/20" />
+              <div className="relative z-10 flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium text-surface-600 dark:text-emerald-200/70">Received</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1 text-surface-900 dark:text-white">
+                    {receivedCount}
+                  </p>
+                </div>
+                <div className="shrink-0 -mt-1 -mr-1">
+                  <GlassIconTile icon={<CheckCircle className="w-4 h-4 text-white" />} color="green" size={38} roundness={0.55} plate="tilt" />
+                </div>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden rounded-2xl border p-4 transition-all duration-300 group shadow-xs hover:shadow-md hover:-translate-y-0.5 bg-gradient-to-br from-[#fef2f2] via-[#fff5f5] to-[#fee2e2] border-red-100/90 hover:border-red-200 dark:bg-gradient-to-br dark:from-[#351214] dark:via-[#260c0e] dark:to-[#170708] dark:border-red-700/50">
+              <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full blur-2xl pointer-events-none bg-red-400/20 dark:bg-red-500/20" />
+              <div className="relative z-10 flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium text-surface-600 dark:text-red-200/70">Failed</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1 text-surface-900 dark:text-white">
+                    {failedCount}
+                  </p>
+                </div>
+                <div className="shrink-0 -mt-1 -mr-1">
+                  <GlassIconTile icon={<XCircle className="w-4 h-4 text-white" />} color="red" size={38} roundness={0.55} plate="tilt" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Toolbar */}
-        <div className="border-b bg-white px-6 py-3 flex-shrink-0">
+        <div className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-6 py-3 flex-shrink-0">
           <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1 max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchLeetCodeQuestion, formatLeetCodeTestCases } from '@/lib/codetrack/leetcode-api';
+import { LEETCODE_PROBLEMS } from '@/lib/codetrack/data';
+import { getProblemTestCases } from '@/lib/codetrack/agent';
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,7 +17,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Problem not found on LeetCode' }, { status: 404 });
     }
 
-    const testCases = formatLeetCodeTestCases(slug, question.exampleTestcaseList);
+    const matchedProblem = LEETCODE_PROBLEMS.find((p) => p.slug === slug || p.id === slug);
+    const localCases = matchedProblem ? getProblemTestCases(matchedProblem) : [];
+    const testCases = (localCases && localCases.length > 0)
+      ? localCases
+      : formatLeetCodeTestCases(slug, question.exampleTestcaseList);
 
     return NextResponse.json({
       question,
@@ -25,3 +31,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error?.message || 'Failed to fetch LeetCode data' }, { status: 500 });
   }
 }
+

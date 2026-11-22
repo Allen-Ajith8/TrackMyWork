@@ -67,11 +67,11 @@ export function ActivityFeedClient({
               'px-3 py-1.5 rounded-full text-sm font-medium border transition-colors',
               filter === item.id
                 ? 'bg-primary-600 text-white border-primary-600'
-                : 'bg-white text-surface-600 border-surface-200 hover:bg-surface-50'
+                : 'bg-white dark:bg-slate-900/80 text-surface-600 dark:text-slate-300 border-surface-200 dark:border-slate-800 hover:bg-surface-50 dark:hover:bg-slate-800 dark:hover:text-white'
             )}
           >
             {item.label}
-            <span className={cn('ml-2 text-xs', filter === item.id ? 'text-white/80' : 'text-surface-400')}>
+            <span className={cn('ml-2 text-xs', filter === item.id ? 'text-white/80' : 'text-surface-400 dark:text-slate-500')}>
               {counts[item.id] || 0}
             </span>
           </button>

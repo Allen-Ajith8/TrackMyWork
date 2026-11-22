@@ -33,40 +33,40 @@ export function LearningHistoryView() {
     <div className="space-y-6">
       {/* Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl bg-white border border-surface-200 space-y-1 shadow-sm">
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#0d121f]/90 border border-surface-200 dark:border-slate-800 space-y-1 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-400 font-medium">Attempted / Solved Logs</span>
+            <span className="text-xs text-zinc-400 dark:text-slate-400 font-medium">Attempted / Solved Logs</span>
             <Award className="w-4 h-4 text-purple-400" />
           </div>
-          <span className="text-2xl font-bold text-surface-900">{historyEntries.length}</span>
-          <p className="text-[11px] text-zinc-500 font-mono">{solvedCount} marked as solved</p>
+          <span className="text-2xl font-bold text-surface-900 dark:text-white">{historyEntries.length}</span>
+          <p className="text-[11px] text-zinc-500 dark:text-slate-400 font-mono">{solvedCount} marked as solved</p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white border border-surface-200 space-y-1 shadow-sm">
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#0d121f]/90 border border-surface-200 dark:border-slate-800 space-y-1 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-400 font-medium">Independent Mastery</span>
+            <span className="text-xs text-zinc-400 dark:text-slate-400 font-medium">Independent Mastery</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
-          <span className="text-2xl font-bold text-surface-900">{independentCount}</span>
-          <p className="text-[11px] text-zinc-500 font-mono">Solved without hints</p>
+          <span className="text-2xl font-bold text-surface-900 dark:text-white">{independentCount}</span>
+          <p className="text-[11px] text-zinc-500 dark:text-slate-400 font-mono">Solved without hints</p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white border border-surface-200 space-y-1 shadow-sm">
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#0d121f]/90 border border-surface-200 dark:border-slate-800 space-y-1 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-400 font-medium">Assisted Practice</span>
+            <span className="text-xs text-zinc-400 dark:text-slate-400 font-medium">Assisted Practice</span>
             <HelpCircle className="w-4 h-4 text-amber-400" />
           </div>
-          <span className="text-2xl font-bold text-surface-900">{assistedCount}</span>
-          <p className="text-[11px] text-zinc-500 font-mono">Solved with clues/help</p>
+          <span className="text-2xl font-bold text-surface-900 dark:text-white">{assistedCount}</span>
+          <p className="text-[11px] text-zinc-500 dark:text-slate-400 font-mono">Solved with clues/help</p>
         </div>
       </div>
 
       {/* History Table */}
-      <div className="p-6 rounded-3xl bg-white border border-surface-200 space-y-4 shadow-sm">
+      <div className="p-6 rounded-3xl bg-white dark:bg-[#0d121f]/90 border border-surface-200 dark:border-slate-800 space-y-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-base font-bold text-surface-900">Problem Attempt &amp; Debrief Ledger</h4>
-            <p className="text-xs text-surface-600">
+            <h4 className="text-base font-bold text-surface-900 dark:text-white">Problem Attempt &amp; Debrief Ledger</h4>
+            <p className="text-xs text-surface-600 dark:text-slate-400">
               Detailed record of independence ratings, hurdles faced, and confidence scores
             </p>
           </div>
@@ -74,7 +74,7 @@ export function LearningHistoryView() {
         </div>
 
         {historyEntries.length > 0 ? (
-          <div className="divide-y divide-surface-200 overflow-x-auto">
+          <div className="divide-y divide-surface-200 dark:divide-slate-800 overflow-x-auto">
             {historyEntries.map((entry) => {
               const prob = LEETCODE_PROBLEMS.find((p) => p.id === entry.problemId);
               const title = prob ? prob.title : entry.problemId;
@@ -91,11 +91,11 @@ export function LearningHistoryView() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       {frontendId && (
-                        <span className="px-2 py-0.5 rounded bg-surface-100 border border-surface-200 font-mono text-[11px] font-bold text-surface-700">
+                        <span className="px-2 py-0.5 rounded bg-surface-100 dark:bg-slate-800 border border-surface-200 dark:border-slate-700 font-mono text-[11px] font-bold text-surface-700 dark:text-slate-300">
                           #{frontendId}
                         </span>
                       )}
-                      <h5 className="text-sm font-bold text-surface-900">{title}</h5>
+                      <h5 className="text-sm font-bold text-surface-900 dark:text-white">{title}</h5>
                       <span
                         className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
                           entry.difficulty === 'Easy'

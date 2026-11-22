@@ -128,11 +128,11 @@ export function NotificationsClient({
               'px-3 py-1.5 rounded-full text-sm font-medium border capitalize transition-colors',
               filter === value
                 ? 'bg-primary-600 text-white border-primary-600'
-                : 'bg-white text-surface-600 border-surface-200 hover:bg-surface-50'
+                : 'bg-white dark:bg-slate-900/80 text-surface-600 dark:text-slate-300 border-surface-200 dark:border-slate-800 hover:bg-surface-50 dark:hover:bg-slate-800 dark:hover:text-white'
             )}
           >
             {value}
-            <span className={cn('ml-2 text-xs', filter === value ? 'text-white/80' : 'text-surface-400')}>
+            <span className={cn('ml-2 text-xs', filter === value ? 'text-white/80' : 'text-surface-400 dark:text-slate-500')}>
               {value === 'all' ? notifications.length : unreadCount}
             </span>
           </button>
@@ -142,10 +142,10 @@ export function NotificationsClient({
       {filtered.length === 0 ? (
         <div className="card p-12 text-center">
           <BellOff className="w-14 h-14 mx-auto text-surface-300" />
-          <h3 className="mt-4 text-lg font-semibold text-surface-900">
+          <h3 className="mt-4 text-lg font-semibold text-surface-900 dark:text-white">
             {notifications.length === 0 ? 'No notifications yet' : 'Nothing unread'}
           </h3>
-          <p className="text-surface-500 mt-1 max-w-md mx-auto">
+          <p className="text-surface-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
             {notifications.length === 0
               ? 'Invites, task updates and deadline reminders will show up here.'
               : 'You have read everything. Nice work!'}
@@ -155,7 +155,7 @@ export function NotificationsClient({
           </Link>
         </div>
       ) : (
-        <div className="card divide-y divide-surface-200 overflow-hidden">
+        <div className="card divide-y divide-surface-200 dark:divide-slate-800 overflow-hidden">
           {filtered.map((notification) => {
             const meta = iconFor(notification.type);
             const Icon = meta.icon;

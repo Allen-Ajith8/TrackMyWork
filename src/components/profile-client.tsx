@@ -309,8 +309,8 @@ export function ProfileClient({ authUser, initialProfile }: ProfileClientProps) 
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900">Your profile</h1>
-          <p className="text-surface-600 mt-1">
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Your profile</h1>
+          <p className="text-surface-600 dark:text-slate-400 mt-1">
             This is how teammates see you. Your email stays private.
           </p>
         </div>

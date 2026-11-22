@@ -143,9 +143,9 @@ export function UploadArtifactClient({
   if (rooms.length === 0) {
     return (
       <div className="card p-12 text-center max-w-xl mx-auto">
-        <FileImage className="w-14 h-14 mx-auto text-surface-300" />
-        <h1 className="text-xl font-bold text-surface-900 mt-4">Create a room first</h1>
-        <p className="text-surface-500 mt-2">
+        <FileImage className="w-14 h-14 mx-auto text-surface-300 dark:text-slate-600" />
+        <h1 className="text-xl font-bold text-surface-900 dark:text-white mt-4">Create a room first</h1>
+        <p className="text-surface-500 dark:text-slate-400 mt-2">
           Artifacts live inside a room. Create a room, then upload your builds and designs.
         </p>
         <Link href="/dashboard/rooms/new" className="btn-primary mt-6">
@@ -164,8 +164,8 @@ export function UploadArtifactClient({
       </Link>
 
       <div>
-        <h1 className="text-2xl font-bold text-surface-900">Upload artifact</h1>
-        <p className="text-surface-600 mt-1">Share a build, design or deliverable with your room.</p>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Upload artifact</h1>
+        <p className="text-surface-600 dark:text-slate-400 mt-1">Share a build, design or deliverable with your room.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">
@@ -194,13 +194,13 @@ export function UploadArtifactClient({
           </label>
           <label
             htmlFor="file"
-            className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-surface-300 bg-surface-50 px-6 py-8 text-center cursor-pointer hover:border-primary-400 hover:bg-primary-50/40 transition-colors"
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-surface-300 dark:border-slate-700 bg-surface-50 dark:bg-slate-900/60 px-6 py-8 text-center cursor-pointer hover:border-primary-400 hover:bg-primary-50/40 dark:hover:bg-slate-800/60 transition-colors"
           >
-            <UploadCloud className="w-7 h-7 text-primary-600" />
-            <span className="text-sm font-medium text-surface-800">
+            <UploadCloud className="w-7 h-7 text-primary-600 dark:text-purple-400" />
+            <span className="text-sm font-medium text-surface-800 dark:text-slate-200">
               {file ? file.name : 'Click to choose a file'}
             </span>
-            <span className="text-xs text-surface-500">
+            <span className="text-xs text-surface-500 dark:text-slate-400">
               {file ? formatBytes(file.size) : 'APK, images, videos, presentations and more'}
             </span>
             <input id="file" type="file" className="hidden" onChange={handleFile} />
@@ -277,7 +277,7 @@ export function UploadArtifactClient({
           )}
         </div>
 
-        <label className="flex items-start gap-3 rounded-lg border border-surface-200 p-3 cursor-pointer">
+        <label className="flex items-start gap-3 rounded-lg border border-surface-200 dark:border-slate-800 p-3 cursor-pointer">
           <input
             type="checkbox"
             className="mt-0.5"
@@ -285,8 +285,8 @@ export function UploadArtifactClient({
             onChange={(event) => setIsFinal(event.target.checked)}
           />
           <span>
-            <span className="text-sm font-medium text-surface-900 block">Mark as final</span>
-            <span className="text-xs text-surface-500">
+            <span className="text-sm font-medium text-surface-900 dark:text-white block">Mark as final</span>
+            <span className="text-xs text-surface-500 dark:text-slate-400">
               Use this for the version the team should present or ship.
             </span>
           </span>

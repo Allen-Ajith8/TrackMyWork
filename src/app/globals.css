@@ -59,12 +59,34 @@
     --ring: 25 100% 50%;
   }
 
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 271 81% 62%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 271 81% 62%;
+  }
+
   * {
-    @apply border-surface-200;
+    @apply border-surface-200 dark:border-surface-800;
   }
 
   body {
-    @apply bg-surface-50 text-surface-900 antialiased;
+    @apply bg-surface-50 text-surface-900 antialiased dark:bg-[#0b0f19] dark:text-surface-100;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
@@ -87,35 +109,35 @@
   }
 
   .btn-secondary {
-    @apply btn bg-surface-100 text-surface-900 hover:bg-surface-200 focus:ring-surface-400 active:bg-surface-300;
+    @apply btn bg-surface-100 text-surface-900 hover:bg-surface-200 focus:ring-surface-400 active:bg-surface-300 dark:bg-surface-800 dark:text-surface-100 dark:hover:bg-surface-700;
   }
 
   .btn-ghost {
-    @apply btn bg-transparent text-surface-600 hover:bg-surface-100 focus:ring-surface-400 active:bg-surface-200;
+    @apply btn bg-transparent text-surface-600 hover:bg-surface-100 focus:ring-surface-400 active:bg-surface-200 dark:text-surface-300 dark:hover:bg-surface-800/60 dark:hover:text-white;
   }
 
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 active:bg-red-800;
+    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 active:bg-red-800 dark:bg-red-600 dark:hover:bg-red-700;
   }
 
   .btn-outline {
-    @apply btn border border-surface-300 bg-transparent hover:bg-surface-100 focus:ring-surface-400;
+    @apply btn border border-surface-300 bg-transparent hover:bg-surface-100 focus:ring-surface-400 dark:border-surface-700 dark:text-surface-200 dark:hover:bg-surface-800;
   }
 
   .input {
-    @apply w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm placeholder:text-surface-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition-all duration-200 disabled:bg-surface-100 disabled:cursor-not-allowed;
+    @apply w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm placeholder:text-surface-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none transition-all duration-200 disabled:bg-surface-100 disabled:cursor-not-allowed dark:bg-surface-900 dark:border-surface-700 dark:text-white dark:placeholder:text-surface-500 dark:disabled:bg-surface-800;
   }
 
   .label {
-    @apply block text-sm font-medium text-surface-700 mb-1;
+    @apply block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1;
   }
 
   .card {
-    @apply bg-white rounded-xl border border-surface-200 shadow-sm;
+    @apply bg-white rounded-xl border border-surface-200 shadow-sm dark:bg-[#0d121f]/90 dark:border-slate-800/80;
   }
 
   .card-hover {
-    @apply card transition-all duration-200 hover:shadow-md hover:border-surface-300;
+    @apply card transition-all duration-200 hover:shadow-md hover:border-surface-300 dark:hover:border-slate-700;
   }
 
   .badge {
@@ -123,11 +145,11 @@
   }
 
   .sidebar-link {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-surface-600 hover:bg-surface-100 hover:text-surface-900 transition-colors;
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-surface-600 hover:bg-surface-100 hover:text-surface-900 transition-colors dark:text-surface-400 dark:hover:bg-surface-800/50 dark:hover:text-white;
   }
 
   .sidebar-link-active {
-    @apply sidebar-link bg-primary-50 text-primary-700 font-semibold;
+    @apply sidebar-link bg-primary-50 text-primary-700 font-semibold dark:bg-purple-950/40 dark:text-purple-300 dark:border dark:border-purple-800/40;
   }
 }
 
@@ -164,7 +186,7 @@
   }
 
   .glass {
-    @apply bg-white/80 backdrop-blur-lg border border-surface-200/50;
+    @apply bg-white/80 backdrop-blur-lg border border-surface-200/50 dark:bg-[#0b0f19]/80 dark:border-slate-800/60;
   }
 
   .gradient-primary {
@@ -234,6 +256,109 @@
     border-radius: inherit;
     position: relative;
     z-index: 1;
+  }
+
+  /* Universal Dark Mode Surface Typography & Contrast Overrides */
+  .dark .text-surface-900,
+  :root.dark .text-surface-900 {
+    color: #f8fafc;
+  }
+
+  .dark .text-surface-800,
+  :root.dark .text-surface-800 {
+    color: #f1f5f9;
+  }
+
+  .dark .text-surface-700,
+  :root.dark .text-surface-700 {
+    color: #e2e8f0;
+  }
+
+  .dark .text-surface-600,
+  :root.dark .text-surface-600 {
+    color: #94a3b8;
+  }
+
+  .dark .text-surface-500,
+  :root.dark .text-surface-500 {
+    color: #64748b;
+  }
+
+  .dark .text-surface-400,
+  :root.dark .text-surface-400 {
+    color: #475569;
+  }
+
+  .dark a:hover .text-surface-900,
+  .dark button:hover .text-surface-900,
+  .dark .group:hover .group-hover\:text-surface-900 {
+    color: #ffffff;
+  }
+
+  .dark a:hover .text-surface-700,
+  .dark button:hover .text-surface-700,
+  .dark .group:hover .group-hover\:text-surface-700 {
+    color: #f8fafc;
+  }
+
+  .dark a:hover .text-surface-600,
+  .dark button:hover .text-surface-600,
+  .dark .group:hover .group-hover\:text-surface-600 {
+    color: #cbd5e1;
+  }
+
+  .dark .bg-surface-50,
+  :root.dark .bg-surface-50 {
+    background-color: #0d121f;
+  }
+
+  .dark .hover\:bg-surface-50:hover {
+    background-color: #161e31;
+  }
+
+  .dark .bg-surface-100,
+  :root.dark .bg-surface-100 {
+    background-color: #172033;
+  }
+
+  .dark .hover\:bg-surface-100:hover {
+    background-color: #202b44;
+  }
+
+  .dark .bg-surface-200,
+  :root.dark .bg-surface-200 {
+    background-color: #243048;
+  }
+
+  .dark .border-surface-100,
+  :root.dark .border-surface-100 {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .dark .border-surface-200,
+  :root.dark .border-surface-200 {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .dark .border-surface-300,
+  :root.dark .border-surface-300 {
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .dark .divide-surface-100 > :not([hidden]) ~ :not([hidden]),
+  :root.dark .divide-surface-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .dark .divide-surface-200 > :not([hidden]) ~ :not([hidden]),
+  :root.dark .divide-surface-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .dark select option,
+  :root.dark select option {
+    background-color: #0d121f;
+    color: #f8fafc;
   }
 }
 

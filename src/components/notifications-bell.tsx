@@ -222,7 +222,7 @@ export function NotificationsBell() {
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        <Bell className="w-5 h-5 text-surface-600" />
+        <Bell className="w-5 h-5 text-surface-600 dark:text-slate-300" />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center">
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -234,14 +234,14 @@ export function NotificationsBell() {
         <div
           role="dialog"
           aria-label="Notifications"
-          className="absolute right-0 top-full mt-2 z-[70] w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-surface-200 bg-white shadow-2xl"
+          className="absolute right-0 top-full mt-2 z-[70] w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] shadow-2xl"
         >
-          <div className="flex items-center justify-between gap-3 border-b border-surface-200 px-4 py-3">
+          <div className="flex items-center justify-between gap-3 border-b border-surface-200 dark:border-slate-800 px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-surface-900">
+              <p className="text-sm font-semibold text-surface-900 dark:text-white">
                 Notifications
               </p>
-              <p className="text-xs text-surface-500">
+              <p className="text-xs text-surface-500 dark:text-slate-400">
                 {unreadCount === 0
                   ? 'You are all caught up'
                   : `${unreadCount} unread`}
@@ -251,7 +251,7 @@ export function NotificationsBell() {
               type="button"
               onClick={handleMarkAll}
               disabled={unreadCount === 0 || busy}
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:text-surface-300"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary-600 dark:text-purple-400 transition-colors hover:bg-primary-50 dark:hover:bg-purple-950/40 disabled:cursor-not-allowed disabled:text-surface-300 dark:disabled:text-slate-600"
             >
               {busy ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -264,19 +264,19 @@ export function NotificationsBell() {
 
           <div className="max-h-[420px] overflow-y-auto">
             {loading && items.length === 0 ? (
-              <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-surface-500">
+              <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-surface-500 dark:text-slate-400">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Loading notifications…
               </div>
             ) : items.length === 0 ? (
               <div className="flex flex-col items-center px-6 py-10 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-100">
-                  <BellOff className="w-6 h-6 text-surface-400" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-100 dark:bg-slate-800">
+                  <BellOff className="w-6 h-6 text-surface-400 dark:text-slate-500" />
                 </div>
-                <p className="mt-3 text-sm font-medium text-surface-900">
+                <p className="mt-3 text-sm font-medium text-surface-900 dark:text-white">
                   No notifications yet
                 </p>
-                <p className="mt-1 text-xs text-surface-500">
+                <p className="mt-1 text-xs text-surface-500 dark:text-slate-400">
                   Invites, task updates and deadline reminders will show up here.
                 </p>
               </div>
@@ -315,8 +315,8 @@ export function NotificationsBell() {
                           className={cn(
                             'truncate text-sm',
                             notification.is_read
-                              ? 'text-surface-600'
-                              : 'font-semibold text-surface-900'
+                              ? 'text-surface-600 dark:text-slate-400'
+                              : 'font-semibold text-surface-900 dark:text-white'
                           )}
                         >
                           {notification.title}
@@ -326,11 +326,11 @@ export function NotificationsBell() {
                         )}
                       </div>
                       {message && (
-                        <p className="mt-0.5 line-clamp-2 text-xs text-surface-600">
+                        <p className="mt-0.5 line-clamp-2 text-xs text-surface-600 dark:text-slate-400">
                           {message}
                         </p>
                       )}
-                      <p className="mt-1 text-[11px] text-surface-500">
+                      <p className="mt-1 text-[11px] text-surface-500 dark:text-slate-400">
                         {formatRelativeTime(notification.created_at)}
                         {notification.roomName
                           ? ` · ${notification.roomName}`
@@ -384,8 +384,8 @@ export function NotificationsBell() {
                 );
 
                 const itemClass = cn(
-                  'flex w-full items-start px-4 py-3 text-left transition-colors hover:bg-surface-50',
-                  !notification.is_read && 'bg-primary-50/40'
+                  'flex w-full items-start px-4 py-3 text-left transition-colors hover:bg-surface-50 dark:hover:bg-slate-800/40',
+                  !notification.is_read && 'bg-primary-50/40 dark:bg-purple-950/25'
                 );
 
                 const goToRoom =
@@ -427,8 +427,8 @@ export function NotificationsBell() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 border-t border-surface-200 bg-surface-50 px-4 py-2">
-            <span className="inline-flex items-center gap-1 text-[11px] text-surface-500">
+          <div className="flex items-center gap-2 border-t border-surface-200 dark:border-slate-800 bg-surface-50 dark:bg-slate-900/80 px-4 py-2">
+            <span className="inline-flex items-center gap-1 text-[11px] text-surface-500 dark:text-slate-400">
               <Handshake className="w-3.5 h-3.5" />
               Updates from your rooms
             </span>

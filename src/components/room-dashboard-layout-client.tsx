@@ -56,14 +56,14 @@ export function RoomDashboardLayoutClient({ room, children }: RoomDashboardLayou
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
       {/* Room Sub-navigation */}
-      <nav className="border-b bg-white px-4 flex-shrink-0">
+      <nav className="border-b border-surface-200 dark:border-slate-800 bg-white dark:bg-[#0d121f] px-4 flex-shrink-0">
         <div className="flex items-center justify-between h-12">
           <div className="flex items-center gap-3">
             <Link href="/dashboard/rooms" className="btn-ghost p-2 hover:bg-muted rounded-lg">
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h2 className="font-semibold">{room.name}</h2>
+              <h2 className="font-semibold text-surface-900 dark:text-white">{room.name}</h2>
               <p className="text-xs text-muted-foreground">Invite: {room.invite_code}</p>
             </div>
           </div>
@@ -80,8 +80,8 @@ export function RoomDashboardLayoutClient({ room, children }: RoomDashboardLayou
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap',
                     isActive
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      ? 'bg-primary-50 text-primary-700 dark:bg-purple-950/40 dark:text-purple-300'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-slate-800'
                   )}
                 >
                   <item.icon className="w-4 h-4" />
