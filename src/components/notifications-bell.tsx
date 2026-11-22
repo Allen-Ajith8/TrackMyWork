@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
   Bell,
@@ -13,16 +14,22 @@ import {
   Loader2,
   MessageSquare,
   UserPlus,
+  X,
 } from 'lucide-react';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useAuthStore, useNotificationStore } from '@/lib/store';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import type { Notification, NotificationType } from '@/types/database';
 
-type NotificationWithRoom = Notification & { roomName: string | null };
+type NotificationWithRoom = Notification & {
+  roomName: string | null;
+  inviteId: string | null;
+  inviteStatus: 'pending' | 'accepted' | 'declined' | null;
+};
 
 const TYPE_META: Record<string, { icon: typeof Bell; className: string }> = {
   invite: { icon: UserPlus, className: 'bg-blue-50 text-blue-600' },
+  room_invite: { icon: UserPlus, className: 'bg-blue-50 text-blue-600' },
   nim_alert: { icon: AlertTriangle, className: 'bg-amber-50 text-amber-600' },
   conflict: { icon: AlertTriangle, className: 'bg-red-50 text-red-600' },
   webhook: { icon: MessageSquare, className: 'bg-purple-50 text-purple-600' },
@@ -39,18 +46,24 @@ function iconFor(type: NotificationType) {
 /**
  * Bell button in the top bar. Clicking it opens a YouTube-style notifications
  * panel instead of navigating to a separate page.
+ *
+ * Notifications are loaded via GET /api/notifications and kept live through a
+ * Supabase Realtime subscription on the `notifications` table (INSERT events
+ * filtered by user_id). Pending room_invite items render Accept / Decline
+ * buttons that call POST /api/invites/[inviteId]/respond.
  */
 export function NotificationsBell() {
   const [supabase] = useState(() => createClient());
+  const router = useRouter();
   const { user } = useAuthStore();
-  const { unreadCount, setNotifications, markAsRead, markAllAsRead } =
-    useNotificationStore();
+  const { unreadCount, setNotifications, markAsRead } = useNotificationStore();
 
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationWithRoom[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const userId = user?.id ?? null;
 
   const load = useCallback(async () => {
@@ -60,22 +73,24 @@ export function NotificationsBell() {
     }
     setLoading(true);
     try {
-      const { data } = await supabase
-        .from('notifications')
-        .select('*, rooms(name)')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      const next = (data || []).map((notification: any) => ({
-        ...notification,
-        roomName: notification.rooms?.name || null,
-      })) as NotificationWithRoom[];
+      const res = await fetch(`/api/notifications`, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) {
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      const next = (data.notifications || []) as NotificationWithRoom[];
 
       setItems(next);
       setNotifications(
-        next.map(({ roomName, ...notification }) => notification as Notification)
+        next.map(({ roomName, inviteId, inviteStatus, ...notification }) => ({
+          ...notification,
+        })) as Notification[]
       );
+    } catch {
+      // swallow - keep badge conservative
     } finally {
       setLoading(false);
     }
@@ -87,27 +102,54 @@ export function NotificationsBell() {
     void load();
   }, [load]);
 
+  // Subscribe to live notification INSERT events for this user.
   useEffect(() => {
-    if (!open) return;
+    if (!userId || !isSupabaseConfigured()) return;
 
-    const onPointerDown = (event: MouseEvent | TouchEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false);
+    const channelName = `notif-${userId}:${Date.now()}`;
+    const channel = supabase.channel(channelName);
+
+    channel
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload: any) => {
+          const notification = payload.new as Notification & {
+            metadata?: Record<string, unknown>;
+            rooms?: { name: string | null } | null;
+          };
+          const enriched: NotificationWithRoom = {
+            ...notification,
+            roomName: notification.rooms?.name || null,
+            inviteId:
+              (notification.metadata?.invite_id as string | undefined) || null,
+            inviteStatus: 'pending',
+          };
+          setItems((current) => [enriched, ...current].slice(0, 50));
+          setNotifications([
+            { ...notification } as Notification,
+            ...useNotificationStore.getState().notifications,
+          ]);
+          void load();
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
     };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('touchstart', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('touchstart', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   async function handleMarkRead(notification: NotificationWithRoom) {
     if (notification.is_read) return;
@@ -123,11 +165,45 @@ export function NotificationsBell() {
       .eq('id', notification.id);
   }
 
+  async function handleRespond(
+    inviteId: string | null,
+    action: 'accept' | 'decline'
+  ) {
+    if (!inviteId) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/invites/${inviteId}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) {
+        throw new Error('Failed to respond to invitation.');
+      }
+      const data = await res.json();
+
+      setItems((current) =>
+        current.map((item) =>
+          item.inviteId === inviteId ? { ...item, is_read: true } : item
+        )
+      );
+      markAsRead(inviteId);
+      setOpen(false);
+
+      if (action === 'accept' && data.roomId) {
+        void router.push(`/dashboard/rooms/${data.roomId}`);
+      }
+    } catch {
+      // error surfaced generically
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleMarkAll() {
     if (!userId || unreadCount === 0) return;
     setBusy(true);
     setItems((current) => current.map((item) => ({ ...item, is_read: true })));
-    markAllAsRead();
     await supabase
       .from('notifications')
       .update({ is_read: true })
@@ -206,12 +282,22 @@ export function NotificationsBell() {
               </div>
             ) : (
               items.map((notification) => {
-                const meta = iconFor(notification.type);
+                const meta = iconFor(notification.type as NotificationType);
                 const Icon = meta.icon;
+                const content = notification.content as
+                  | Record<string, unknown>
+                  | undefined;
                 const message =
-                  typeof notification.content?.message === 'string'
-                    ? notification.content.message
-                    : null;
+                  typeof content?.message === 'string'
+                    ? content.message
+                    : typeof notification.metadata?.message === 'string'
+                      ? notification.metadata.message
+                      : null;
+
+                const isPendingInvite =
+                  (notification.type === 'room_invite' ||
+                    notification.type === 'invite') &&
+                  notification.inviteStatus === 'pending';
 
                 const body = (
                   <div className="flex items-start gap-3">
@@ -250,7 +336,50 @@ export function NotificationsBell() {
                           ? ` · ${notification.roomName}`
                           : ''}
                       </p>
+
+                      {isPendingInvite && (
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              handleRespond(notification.inviteId, 'accept')
+                            }
+                            className="flex-1 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[10px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {busy ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Check className="w-3 h-3" />
+                            )}
+                            Accept
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              handleRespond(notification.inviteId, 'decline')
+                            }
+                            className="flex-1 items-center justify-center rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
                     </div>
+
+                    {isPendingInvite ? null : (
+                      <button
+                        type="button"
+                        className="rounded p-1 text-surface-400 hover:text-surface-600"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleMarkRead(notification);
+                        }}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 );
 
@@ -259,14 +388,24 @@ export function NotificationsBell() {
                   !notification.is_read && 'bg-primary-50/40'
                 );
 
-                return notification.action_url ? (
+                const goToRoom =
+                  notification.action_url ||
+                  (notification.room_id
+                    ? `/dashboard/rooms/${notification.room_id}`
+                    : null);
+
+                return goToRoom ? (
                   <Link
                     key={notification.id}
-                    href={notification.action_url}
+                    href={goToRoom}
                     className={itemClass}
-                    onClick={() => {
-                      void handleMarkRead(notification);
-                      setOpen(false);
+                    onClick={(e) => {
+                      if (isPendingInvite) {
+                        e.preventDefault();
+                      } else {
+                        void handleMarkRead(notification);
+                        setOpen(false);
+                      }
                     }}
                   >
                     {body}
@@ -276,7 +415,10 @@ export function NotificationsBell() {
                     key={notification.id}
                     type="button"
                     className={itemClass}
-                    onClick={() => handleMarkRead(notification)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleMarkRead(notification);
+                    }}
                   >
                     {body}
                   </button>

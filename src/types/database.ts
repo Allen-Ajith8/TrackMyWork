@@ -9,6 +9,7 @@ export type TaskCategory = 'code' | 'hardware' | 'animation' | 'design' | 'docs'
 export type BomStatus = 'planned' | 'ordered' | 'received' | 'installed' | 'failed';
 export type NotificationType =
   | 'invite'
+  | 'room_invite'
   | 'nim_alert'
   | 'conflict'
   | 'webhook'
@@ -170,6 +171,7 @@ export interface Notification {
   type: NotificationType;
   title: string;
   content: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
   is_read: boolean;
   action_url: string | null;
   created_at: string;
@@ -249,6 +251,26 @@ export interface RoomIntegration {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface RoomInvitation {
+  id: string;
+  room_id: string;
+  inviter_id: string;
+  invitee_id: string;
+  invitee_email: string;
+  role: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+  responded_at: string | null;
+}
+
+export interface NotificationMetadata {
+  invite_id?: string;
+  room_id?: string;
+  room_name?: string;
+  inviter_name?: string;
+  [key: string]: unknown;
 }
 
 // Combined types for UI

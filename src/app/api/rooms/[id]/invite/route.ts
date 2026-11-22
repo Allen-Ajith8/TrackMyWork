@@ -325,6 +325,27 @@ export async function POST(
       });
     }
 
+    // 409 if there is already a pending room_invitations row for this invitee.
+    const { data: pendingInvite } = await admin
+      .from('room_invitations')
+      .select('id, status')
+      .eq('room_id', roomId)
+      .eq('invitee_id', invitee.id)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (pendingInvite) {
+      return NextResponse.json(
+        {
+          error: 'This person already has a pending invitation to this room.',
+          inviteId: pendingInvite.id,
+          joinUrl,
+          inviteCode: room.invite_code,
+        },
+        { status: 409 }
+      );
+    }
+
     // Insert pending room_member with the requested role & permissions
     const permissions = body?.permissions ?? {};
     const { data: member, error: memberError } = await admin
@@ -353,6 +374,27 @@ export async function POST(
       console.error('[Invite API] Member insert failed:', memberError);
     }
 
+    // Also record a room_invitations row so the /api/invites/[id]/respond flow
+    // can accept/decline this invite via the shared context table.
+    let inviteId: string | null = null;
+    try {
+      const { data: inv } = await admin
+        .from('room_invitations')
+        .insert({
+          room_id: roomId,
+          inviter_id: user.id,
+          invitee_id: invitee.id,
+          invitee_email: email,
+          role: roleTitle,
+          status: 'pending',
+        })
+        .select('id')
+        .maybeSingle();
+      inviteId = inv?.id ?? null;
+    } catch (invErr) {
+      console.warn('[Invite API] room_invitations insert failed:', invErr);
+    }
+
     // Create in-app notification
     await admin.from('notifications').insert({
       user_id: invitee.id,
@@ -366,6 +408,12 @@ export async function POST(
         invited_by: user.id,
         role_title: roleTitle,
         join_url: joinUrl,
+      },
+      metadata: {
+        invite_id: inviteId,
+        room_id: roomId,
+        room_name: room.name,
+        inviter_name: (user as any)?.display_name || (user as any)?.username || user.email?.split('@')[0] || 'Team Leader',
       },
       action_url: joinUrl,
     });
@@ -382,6 +430,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
+      inviteId,
       emailSent: Boolean(emailSent || mailResult.success),
       member: member || {
         room_id: roomId,
